@@ -14,11 +14,11 @@ button:disabled{opacity:.5;cursor:wait}.notice{padding:12px;border-radius:9px;ba
 .error{background:#fff0ef;color:#8b2828}.hidden{display:none!important}
 </style></head><body><main><section class="card">
 <h1>تکمیل ثبت‌نام گلخانه‌دار</h1>
-<p>به سامانه مشاوره گلخانه پیوندگستر پارسان دعوت شده‌اید. برای تکمیل ثبت‌نام، گذرواژه حساب خود را تعیین کنید. پس از آن، حساب شما برای تأیید مدیر سامانه در وضعیت انتظار قرار می‌گیرد.</p>
+<p>به سامانه مشاوره گلخانه پیوندگستر پارسان دعوت شده‌اید. برای تکمیل ثبت‌نام یا بازیابی دسترسی، گذرواژه حساب خود را تعیین یا به‌روزرسانی کنید. وضعیت دسترسی حساب مطابق تأیید مدیر سامانه خواهد بود.</p>
 <div id="form-area" class="hidden"><form id="accept-form">
 <label for="password">گذرواژه جدید</label><input id="password" type="password" minlength="8" autocomplete="new-password" required placeholder="حداقل ۸ نویسه">
 <label for="password2">تکرار گذرواژه</label><input id="password2" type="password" minlength="8" autocomplete="new-password" required>
-<button id="submit" type="submit">ثبت گذرواژه و تکمیل ثبت‌نام</button>
+<button id="submit" type="submit">ثبت / به‌روزرسانی گذرواژه</button>
 </form></div>
 <p id="status" class="notice">در حال بررسی اعتبار دعوت‌نامه…</p>
 </section></main>
@@ -38,7 +38,7 @@ if(a!==b){status("گذرواژه و تکرار آن یکسان نیستند.",tr
 $("submit").disabled=true;const {error}=await supabase.auth.updateUser({password:a});$("submit").disabled=false;
 if(error){status("ثبت گذرواژه انجام نشد: "+error.message,true);return;}
 $("form-area").classList.add("hidden");$("password").value="";$("password2").value="";
-status("ثبت‌نام اولیه با موفقیت انجام شد. حساب شما اکنون در انتظار تأیید مدیر سامانه است. پس از تأیید می‌توانید وارد سامانه شوید.");
+status("گذرواژه با موفقیت ثبت یا به‌روزرسانی شد. اکنون می‌توانید با ایمیل و گذرواژه وارد سامانه شوید. اگر حساب شما در انتظار تأیید مدیر باشد، دسترسی پس از تأیید فعال خواهد شد.");
 await supabase.auth.signOut();
 });
 </script></body></html>
