@@ -49,6 +49,17 @@
       <div id="action-message" class="notice hidden"></div>
     </div>
     <div class="card">
+      <div class="topline"><h2>دعوت گلخانه‌دار</h2><span class="pill">ثبت‌نام با تأیید مدیر</span></div>
+      <p class="muted">دعوت‌نامه مستقل گلخانه‌دار ارسال می‌شود. پس از تعیین گذرواژه، حساب در وضعیت انتظار تأیید باقی می‌ماند.</p>
+      <label for="grower-email">ایمیل گلخانه‌دار</label>
+      <input id="grower-email" type="email" placeholder="grower@example.com">
+      <div class="actions"><button id="invite-grower">ارسال دعوت گلخانه‌دار</button></div>
+      <div id="grower-message" class="notice hidden"></div>
+      <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
+      <div class="table-wrap"><table><thead><tr><th>ایمیل / شناسه</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
+      <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
+    </div>
+    <div class="card">
       <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
       <div class="table-wrap"><table><thead><tr><th>کارشناس</th><th>ایمیل / شناسه</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
       <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
@@ -112,10 +123,39 @@
     await loadExperts();
   }
 
+
+  function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"غیرفعال"})[s]||s||"—";}
+  async function loadGrowers(){
+    const body=$("growers"); body.innerHTML='<tr><td colspan="4">در حال دریافت…</td></tr>';
+    const {data:profiles,error}=await supabase.from("user_profiles").select("id,account_status,created_at").order("created_at",{ascending:false});
+    if(error){body.innerHTML="";message("grower-message","دریافت حساب‌ها ناموفق بود: "+error.message,true);return;}
+    const ids=(profiles||[]).map(x=>x.id);
+    if(!ids.length){body.innerHTML="";show("growers-empty",true);return;}
+    const [{data:roles},{data:experts}] = await Promise.all([
+      supabase.from("user_roles").select("user_id,role_code").in("user_id",ids),
+      supabase.from("expert_profiles").select("user_id").in("user_id",ids)
+    ]);
+    const expertIds=new Set((experts||[]).map(x=>x.user_id));
+    const roleMap=new Map((roles||[]).map(x=>[x.user_id,x.role_code]));
+    const rows=profiles.filter(p=>!expertIds.has(p.id) && p.id!=="41b9b271-e818-4525-bfd0-6bc5f1c8a34a");
+    body.innerHTML=""; show("growers-empty",rows.length===0);
+    for(const p of rows){
+      const tr=document.createElement("tr");
+      for(const v of [p.id,growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const td=document.createElement("td");
+      if(p.account_status==="pending"){
+        const b=document.createElement("button");b.textContent="تأیید و فعال‌سازی";
+        b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.rpc("admin_activate_grower",{p_user_id:p.id});if(error){message("grower-message","فعال‌سازی انجام نشد: "+error.message,true);b.disabled=false;return;}message("grower-message","حساب گلخانه‌دار فعال شد.");await loadGrowers();});
+        td.appendChild(b);
+      }else td.textContent=p.account_status==="active"?"فعال":"—";
+      tr.appendChild(td);body.appendChild(tr);
+    }
+  }
+
   async function enterDashboard(){
     const ok=await requireAdmin();
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
-    if(ok) await loadExperts();
+    if(ok){ await loadExperts(); await loadGrowers(); }
   }
 
   $("login").addEventListener("click",async()=>{
@@ -138,7 +178,20 @@
     $("expert-email").value=""; $("professional-title").value=""; $("organization").value="";
     await loadExperts();
   });
-  $("refresh").addEventListener("click",loadExperts);
+
+  $("invite-grower").addEventListener("click",async()=>{
+    const email=$("grower-email").value.trim();
+    if(!email){message("grower-message","ایمیل گلخانه‌دار را وارد کنید.",true);return;}
+    $("invite-grower").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-invite-grower",{body:{email}});
+    $("invite-grower").disabled=false;
+    if(error){message("grower-message","ارسال دعوت ناموفق بود: "+error.message,true);return;}
+    message("grower-message",data?.message||"دعوت‌نامه گلخانه‌دار ارسال شد.");
+    $("grower-email").value=""; await loadGrowers();
+  });
+  $("refresh-growers").addEventListener("click",loadGrowers);
+
+    $("refresh").addEventListener("click",loadExperts);
   $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
   supabase.auth.onAuthStateChange((_event,session)=>{if(!session){show("dashboard",false);show("signout",false);show("login-card",true);}});
   await enterDashboard();
