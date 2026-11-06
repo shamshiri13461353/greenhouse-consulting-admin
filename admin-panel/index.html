@@ -250,7 +250,8 @@
   $("refresh-cases").addEventListener("click",async()=>{await loadCaseManagement();await loadReviewQueue();});
   $("refresh-reviews").addEventListener("click",loadReviewQueue);
   async function enterDashboard(){
-    const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;\n    const ok=await requireAdmin();
+    const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;
+    const ok=await requireAdmin();
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
     if(ok){ await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
   }
