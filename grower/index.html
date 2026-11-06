@@ -133,6 +133,10 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
      <div id="case-message-notice" class="notice hidden"></div>
     </form>
     <div class="divider"></div>
+    <h2>پرسش‌های تکمیلی کارشناس</h2>
+    <p class="muted">پرسش‌های ثبت‌شده توسط کارشناس در این بخش نمایش داده می‌شوند. پاسخ شما مستقیماً در همان پرونده ثبت خواهد شد.</p>
+    <div id="case-questions-list" class="empty">در حال دریافت پرسش‌ها…</div>
+    <div class="divider"></div>
     <h2>نتایج آزمایشگاهی مرتبط</h2>
     <div id="case-lab-list" class="empty">نتیجه آزمایشگاهی ثبت نشده است.</div>
     <div class="divider"></div>
@@ -308,7 +312,7 @@ async function openCase(id){
    if(error){alert("درخواست بازگشایی ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
   });actions.append(reopen);
  }
- await Promise.all([loadAttachments(id),loadCaseMessages(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ await Promise.all([loadAttachments(id),loadCaseMessages(id),loadCaseQuestions(id),loadCaseLabResults(id),loadFinalResponses(id)]);
  $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function loadAttachments(id){
@@ -332,6 +336,46 @@ async function loadCaseMessages(id){
  if(!data?.length){host.className="empty";host.textContent="هنوز پیام رسمی ثبت نشده است.";return;}
  host.className="";
  for(const m of data){const row=node("div","item"),who=node("strong","",m.sender_user_id===currentUser.id?"پیام شما":"پیام کارشناس / سامانه"),body=node("p","",m.message_text),date=node("div","meta",new Date(m.created_at).toLocaleString("fa-IR"));row.append(who,body,date);host.append(row);}
+}
+
+async function loadCaseQuestions(id){
+ const host=$("case-questions-list");host.replaceChildren();
+ const {data:questions,error}=await supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at");
+ if(error){host.className="empty";host.textContent="دریافت پرسش‌های کارشناس ناموفق بود: "+error.message;return;}
+ if(!questions?.length){host.className="empty";host.textContent="هنوز پرسش تکمیلی از سوی کارشناس ثبت نشده است.";return;}
+ const questionIds=questions.map(q=>q.id);
+ const {data:answers,error:answerError}=await supabase.from("case_answers").select("id,question_id,answer_text,created_at").in("question_id",questionIds).order("created_at");
+ if(answerError){host.className="empty";host.textContent="دریافت پاسخ‌های ثبت‌شده ناموفق بود: "+answerError.message;return;}
+ host.className="";
+ for(const q of questions){
+  const card=node("article","item");
+  card.append(node("h3","","پرسش کارشناس"),node("p","",q.question_text));
+  card.append(node("div","meta",(q.is_required?"پاسخ الزامی":"پاسخ اختیاری")+" · ثبت: "+new Date(q.created_at).toLocaleString("fa-IR")));
+  const questionAnswers=(answers||[]).filter(a=>a.question_id===q.id);
+  for(const answer of questionAnswers){
+   card.append(node("strong","","پاسخ شما"),node("p","",answer.answer_text),node("div","meta","ارسال: "+new Date(answer.created_at).toLocaleString("fa-IR")));
+  }
+  if(q.closed_at){
+   card.append(node("div","notice","این پرسش توسط کارشناس بسته شده است."));
+  }else if(!questionAnswers.length){
+   const form=node("form","");const label=node("label","","پاسخ به پرسش");const input=node("textarea","");input.required=true;input.maxLength=5000;input.placeholder="پاسخ خود را بنویسید…";
+   const actions=node("div","actions");const submit=node("button","","ارسال پاسخ");const status=node("div","notice hidden","");
+   actions.append(submit);form.append(label,input,actions,status);
+   form.addEventListener("submit",async ev=>{
+    ev.preventDefault();const answerText=input.value.trim();if(!answerText)return;
+    submit.disabled=true;
+    const {error}=await supabase.from("case_answers").insert({question_id:q.id,answered_by:currentUser.id,answer_text:answerText});
+    submit.disabled=false;
+    if(error){status.textContent="ارسال پاسخ ناموفق بود: "+error.message;status.classList.remove("hidden");status.classList.add("error");return;}
+    status.textContent="پاسخ شما با موفقیت ثبت شد.";status.classList.remove("hidden","error");
+    await loadCaseQuestions(id);
+   });
+   card.append(form);
+  }else{
+   card.append(node("div","notice","پاسخ شما ثبت شده و در انتظار بررسی کارشناس است."));
+  }
+  host.append(card);
+ }
 }
 
 async function loadCaseLabResults(id){
