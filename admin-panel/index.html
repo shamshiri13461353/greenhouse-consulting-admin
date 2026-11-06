@@ -56,12 +56,16 @@
       <div class="actions"><button id="invite-grower">ارسال دعوت گلخانه‌دار</button></div>
       <div id="grower-message" class="notice hidden"></div>
       <div style="border-top:1px solid #edf0ee;margin-top:20px;padding-top:16px">
-        <h2>ارسال لینک تعیین گذرواژه برای حساب موجود</h2>
-        <p class="muted">برای حساب گلخانه‌داری که قبلاً ایجاد شده، لینک تازه تعیین گذرواژه ارسال کنید.</p>
-        <label for="grower-recovery-email">ایمیل حساب گلخانه‌دار</label>
-        <input id="grower-recovery-email" type="email" placeholder="ایمیل حساب موجود">
-        <div class="actions"><button id="send-grower-recovery">ارسال لینک تعیین گذرواژه</button></div>
-        <div id="grower-recovery-message" class="notice hidden"></div>
+        <h2>تعیین مستقیم گذرواژه حساب موجود</h2>
+        <p class="muted">برای حساب گلخانه‌دار موجود، مدیر می‌تواند یک گذرواژه موقت تعیین کند. این عملیات بدون ارسال ایمیل انجام می‌شود و وضعیت تأیید حساب را تغییر نمی‌دهد. گذرواژه موقت را فقط از راه امن در اختیار صاحب حساب قرار دهید.</p>
+        <label for="grower-password-email">ایمیل حساب گلخانه‌دار</label>
+        <input id="grower-password-email" type="email" autocomplete="off" placeholder="ایمیل حساب موجود">
+        <label for="grower-temporary-password">گذرواژه موقت (حداقل ۱۲ نویسه)</label>
+        <input id="grower-temporary-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="گذرواژه موقت">
+        <label for="grower-temporary-password-confirm">تکرار گذرواژه موقت</label>
+        <input id="grower-temporary-password-confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="تکرار گذرواژه">
+        <div class="actions"><button id="set-grower-password">ثبت گذرواژه موقت</button></div>
+        <div id="grower-password-message" class="notice hidden"></div>
       </div>
       <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
       <div class="table-wrap"><table><thead><tr><th>ایمیل / شناسه</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
@@ -287,14 +291,21 @@
     message("grower-message",data?.message||"دعوت‌نامه گلخانه‌دار ارسال شد.");
     $("grower-email").value=""; await loadGrowers();
   });
-  $("send-grower-recovery").addEventListener("click",async()=>{
-    const email=$("grower-recovery-email").value.trim();
-    if(!email){message("grower-recovery-message","ایمیل حساب گلخانه‌دار را وارد کنید.",true);return;}
-    $("send-grower-recovery").disabled=true;
-    const {data,error}=await supabase.functions.invoke("admin-send-grower-recovery",{body:{email}});
-    $("send-grower-recovery").disabled=false;
-    if(error){message("grower-recovery-message","ارسال لینک ناموفق بود: "+error.message,true);return;}
-    message("grower-recovery-message",data?.message||"لینک تعیین گذرواژه ارسال شد.");
+  $("set-grower-password").addEventListener("click",async()=>{
+    const email=$("grower-password-email").value.trim();
+    const password=$("grower-temporary-password").value;
+    const confirmation=$("grower-temporary-password-confirm").value;
+    if(!email){message("grower-password-message","ایمیل حساب گلخانه‌دار را وارد کنید.",true);return;}
+    if(password.length<12){message("grower-password-message","گذرواژه موقت باید دست‌کم ۱۲ نویسه داشته باشد.",true);return;}
+    if(password!==confirmation){message("grower-password-message","گذرواژه و تکرار آن یکسان نیستند.",true);return;}
+    $("set-grower-password").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-set-grower-password",{body:{email,password}});
+    $("set-grower-password").disabled=false;
+    if(error){message("grower-password-message","تغییر گذرواژه ناموفق بود: "+error.message,true);return;}
+    message("grower-password-message",data?.message||"گذرواژه موقت ثبت شد.");
+    $("grower-temporary-password").value="";
+    $("grower-temporary-password-confirm").value="";
+    $("grower-password-email").value="";
   });
   $("refresh-growers").addEventListener("click",loadGrowers);
 
