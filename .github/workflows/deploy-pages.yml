@@ -28,6 +28,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Syntax-check admin portal
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          html = pathlib.Path("admin-panel/index.html").read_text()
+          scripts = re.findall(r'<script type="module">(.*?)</script>', html, re.S)
+          if len(scripts) != 1:
+              raise SystemExit("Expected exactly one admin module script")
+          pathlib.Path("/tmp/admin-panel.mjs").write_text(scripts[0])
+          PY
+          node --check /tmp/admin-panel.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Prepare site
