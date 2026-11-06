@@ -33,6 +33,7 @@ jobs:
           mkdir -p _site
           cp admin-panel/index.html _site/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
+          cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
           touch _site/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
