@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#123d35">
+<title>پنل گلخانه‌دار | سامانه مشاوره گلخانه</title>
+<style>
+:root{font-family:Tahoma,Arial,sans-serif;color:#18332c;background:#f3f7f5;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}header{background:#123d35;color:#fff;padding:20px max(16px,calc((100% - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:19px;margin:0 0 5px}header p{margin:0;color:#c5d8d1;font-size:12px}
+main{max-width:1100px;margin:24px auto;padding:0 16px}.card{background:#fff;border:1px solid #e1eae5;border-radius:15px;padding:20px;margin-bottom:16px;box-shadow:0 4px 18px #163d3010}
+h2{font-size:17px;margin:0 0 14px}.muted{font-size:13px;color:#62756d;line-height:1.9}
+label{display:block;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #cbd9d2;border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;background:#fff;color:#18332c}
+textarea{min-height:75px;resize:vertical}button{border:0;border-radius:9px;padding:11px 17px;background:#176b57;color:white;font:inherit;cursor:pointer}
+button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;line-height:1.8;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{font-size:12px;border-radius:20px;padding:5px 10px;background:#edf3ef;color:#3f6255}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tabs button{background:#e6efea;color:#255344}.tabs button.active{background:#176b57;color:#fff}
+.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}
+.empty{padding:22px;text-align:center;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}
+@media(max-width:650px){header{padding:16px}h1{font-size:16px}.card{padding:15px}main{margin:15px auto}.grid{grid-template-columns:1fr}.topline{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+ <div><h1>سامانه مشاوره تخصصی گلخانه</h1><p>پیوندگستر پارسان · پنل گلخانه‌دار</p></div>
+ <button id="logout" class="secondary hidden">خروج از حساب</button>
+</header>
+<main>
+ <section id="login-card" class="card">
+  <h2>ورود گلخانه‌دار</h2>
+  <p class="muted">با ایمیل و گذرواژه حساب فعال خود وارد شوید. دسترسی به اطلاعات فقط بر اساس مالکیت ثبت‌شده و مجوزهای پایگاه داده انجام می‌شود.</p>
+  <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="ایمیل ثبت‌شده">
+  <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
+  <div class="actions"><button id="login">ورود</button></div>
+  <div id="login-message" class="notice hidden"></div>
+ </section>
+ <section id="account-pending" class="card hidden">
+  <h2>حساب کاربری هنوز فعال نیست</h2><p id="pending-message" class="muted">برای استفاده از پنل، حساب باید توسط مدیر سامانه فعال شود.</p>
+  <div class="actions"><button id="pending-logout" class="secondary">خروج</button></div>
+ </section>
+ <section id="app" class="hidden">
+  <div class="card">
+   <div class="topline"><div><h2 id="welcome">پنل گلخانه‌دار</h2><p class="muted">مدیریت گلخانه‌ها و دوره‌های کشت ثبت‌شده در سامانه</p></div><span class="tag">حساب فعال</span></div>
+   <div id="profile-line" class="muted"></div>
+  </div>
+  <nav class="tabs">
+   <button class="active" data-tab="greenhouses-section">گلخانه‌های من</button>
+   <button data-tab="cycles-section">دوره‌های کشت</button>
+   <button data-tab="cases-section">پرونده‌های مشاوره</button>
+  </nav>
+  <section id="greenhouses-section" class="section active">
+   <div class="card">
+    <h2>ثبت گلخانه جدید</h2>
+    <form id="greenhouse-form">
+     <div class="grid">
+      <div><label for="gh-name">نام گلخانه *</label><input id="gh-name" required maxlength="120" placeholder="مثلاً گلخانه شماره یک"></div>
+      <div><label for="gh-city">شهر</label><input id="gh-city" maxlength="100"></div>
+      <div><label for="gh-province">استان / منطقه</label><input id="gh-province" maxlength="100"></div>
+      <div><label for="gh-area">مساحت (مترمربع)</label><input id="gh-area" type="number" min="0.01" step="0.01"></div>
+      <div><label for="gh-structure">نوع سازه</label><select id="gh-structure"><option value="">انتخاب نشده</option><option>پلاستیکی</option><option>شیشه‌ای</option><option>تونلی</option><option>سایر</option></select></div>
+      <div><label for="gh-system">سیستم کشت</label><select id="gh-system"><option value="">انتخاب نشده</option><option>خاکی</option><option>بدون خاک / هیدروپونیک</option><option>ترکیبی</option></select></div>
+     </div>
+     <label for="gh-address">نشانی یا توضیحات محل</label><textarea id="gh-address" maxlength="1000"></textarea>
+     <div class="actions"><button id="save-greenhouse" type="submit">ثبت گلخانه</button></div>
+     <div id="gh-message" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="card"><div class="topline"><h2>فهرست گلخانه‌ها</h2><button id="refresh-greenhouses" class="secondary">به‌روزرسانی</button></div><div id="greenhouse-list" class="empty">در حال دریافت اطلاعات…</div></div>
+  </section>
+  <section id="cycles-section" class="section">
+   <div class="card">
+    <h2>تعریف دوره کشت جدید</h2>
+    <form id="cycle-form">
+     <label for="cycle-greenhouse">گلخانه *</label><select id="cycle-greenhouse" required><option value="">ابتدا گلخانه را انتخاب کنید</option></select>
+     <div class="grid">
+      <div><label for="crop-name">محصول *</label><input id="crop-name" required maxlength="100" placeholder="مثلاً خیار"></div>
+      <div><label for="cultivar">رقم</label><input id="cultivar" maxlength="100"></div>
+      <div><label for="rootstock">پایه</label><input id="rootstock" maxlength="100"></div>
+      <div><label for="transplant-date">تاریخ انتقال نشا</label><input id="transplant-date" type="date"></div>
+      <div><label for="end-date">تاریخ پایان پیش‌بینی‌شده</label><input id="end-date" type="date"></div>
+      <div><label for="substrate">بستر کشت</label><input id="substrate" maxlength="150" placeholder="مثلاً کوکوپیت و پرلیت"></div>
+      <div><label for="density">تراکم بوته در مترمربع</label><input id="density" type="number" min="0.001" step="0.001"></div>
+     </div>
+     <label for="cycle-notes">توضیحات</label><textarea id="cycle-notes" maxlength="1500"></textarea>
+     <div class="actions"><button id="save-cycle" type="submit">ثبت دوره کشت</button></div>
+     <div id="cycle-message" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="card"><div class="topline"><h2>دوره‌های کشت ثبت‌شده</h2><button id="refresh-cycles" class="secondary">به‌روزرسانی</button></div><div id="cycle-list" class="empty">در حال دریافت اطلاعات…</div></div>
+  </section>
+
+  <section id="cases-section" class="section">
+   <div class="card">
+    <h2>ثبت درخواست مشاوره</h2>
+    <p class="muted">ابتدا اطلاعات مسئله را ثبت کنید. پس از ایجاد پیش‌نویس، می‌توانید مدارک را پیوست و پرونده را برای بررسی کارشناسی ارسال کنید.</p>
+    <form id="case-form">
+     <label for="case-cycle">دوره کشت مرتبط *</label><select id="case-cycle" required><option value="">انتخاب دوره کشت</option></select>
+     <label for="case-title">عنوان مسئله *</label><input id="case-title" required maxlength="180" placeholder="شرح کوتاه مشکل">
+     <div class="grid">
+      <div><label for="case-category">زمینه مسئله *</label><select id="case-category" required>
+       <option value="pests_diseases">آفات و بیماری‌ها</option><option value="nutrition">تغذیه گیاه</option><option value="environmental_stress">تنش‌های محیطی</option><option value="physiology">فیزیولوژی و رشد</option><option value="irrigation_water">آبیاری و کیفیت آب</option><option value="substrate_roots">بستر کشت و ریشه</option><option value="other">سایر موارد</option>
+      </select></div>
+      <div><label for="case-severity">شدت مشکل</label><select id="case-severity"><option value="">تعیین نشده</option><option value="1">۱ ـ خفیف</option><option value="2">۲ ـ کم</option><option value="3">۳ ـ متوسط</option><option value="4">۴ ـ شدید</option><option value="5">۵ ـ بسیار شدید</option></select></div>
+     </div>
+     <label for="case-description">شرح کامل مسئله *</label><textarea id="case-description" required maxlength="10000" placeholder="زمان شروع، علائم، پراکنش، اقدامات انجام‌شده و اطلاعاتی که به تشخیص کمک می‌کند…"></textarea>
+     <div class="actions"><button id="create-case" type="submit">ایجاد پیش‌نویس پرونده</button></div>
+     <div id="case-create-message" class="notice hidden"></div>
+    </form>
+   </div>
+   <div class="card"><div class="topline"><h2>پرونده‌های من</h2><button id="refresh-cases" class="secondary">به‌روزرسانی</button></div><div id="case-list" class="empty">در حال دریافت اطلاعات…</div></div>
+   <div id="case-detail" class="card hidden">
+    <div class="topline"><div><h2 id="case-detail-title">جزئیات پرونده</h2><div id="case-detail-meta" class="muted"></div></div><button id="close-case-detail" class="secondary">بستن جزئیات</button></div>
+    <div id="case-detail-actions" class="actions"></div>
+    <div class="divider"></div>
+    <h2>مدارک و تصاویر</h2>
+    <p class="muted">فایل‌های تصویری و PDF تا سقف ۱۰ مگابایت برای هر فایل قابل ارسال هستند.</p>
+    <form id="attachment-form">
+     <input id="case-files" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+     <label for="attachment-description">توضیح پیوست (اختیاری)</label><input id="attachment-description" maxlength="250">
+     <div class="actions"><button id="upload-files" type="submit">بارگذاری مدارک</button></div>
+     <div id="attachment-message" class="notice hidden"></div>
+    </form>
+    <div id="attachment-list" class="empty">هنوز مدرکی پیوست نشده است.</div>
+    <div class="divider"></div>
+    <h2>مکاتبات رسمی</h2>
+    <div id="case-message-list" class="empty">پیامی ثبت نشده است.</div>
+    <form id="case-message-form">
+     <label for="case-message-text">پیام به کارشناس / سامانه</label><textarea id="case-message-text" maxlength="5000" required placeholder="پیام خود را بنویسید…"></textarea>
+     <div class="actions"><button id="send-case-message" type="submit">ارسال پیام رسمی</button></div>
+     <div id="case-message-notice" class="notice hidden"></div>
+    </form>
+    <div class="divider"></div>
+    <h2>نتایج آزمایشگاهی مرتبط</h2>
+    <div id="case-lab-list" class="empty">نتیجه آزمایشگاهی ثبت نشده است.</div>
+    <div class="divider"></div>
+    <h2>پاسخ نهایی کارشناس</h2>
+    <div id="final-response-list" class="empty">هنوز پاسخ نهایی منتشرشده‌ای برای این پرونده وجود ندارد.</div>
+   </div>
+  </section>
+ </section>
+</main>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+const SUPABASE_URL="https://tnfunhkxnldrylwbxraf.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const $=id=>document.getElementById(id);
+let currentUser=null, greenhouses=[], cropCycles=[], activeCaseId=null;
+const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
+function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
+function clearNotice(id){$(id).classList.add("hidden");}
+function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"T00:00:00")):"—";}
+function node(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
+function renderGreenhouses(){
+ const host=$("greenhouse-list");host.replaceChildren();
+ if(!greenhouses.length){host.className="empty";host.textContent="هنوز گلخانه‌ای ثبت نشده است.";return;}
+ host.className="";
+ for(const gh of greenhouses){
+  const card=node("article","item"),title=node("h3","",gh.name);
+  const meta=node("div","meta",[
+   gh.city||gh.province?[gh.city,gh.province].filter(Boolean).join("، "):"موقعیت ثبت نشده",
+   gh.area_m2?new Intl.NumberFormat("fa-IR").format(gh.area_m2)+" مترمربع":"مساحت ثبت نشده",
+   gh.structure_type||"نوع سازه ثبت نشده",
+   gh.cultivation_system||"سیستم کشت ثبت نشده"
+  ].join(" · "));
+  card.append(title,meta);host.append(card);
+ }
+ const select=$("cycle-greenhouse");const selected=select.value;select.replaceChildren();
+ select.append(new Option("انتخاب گلخانه",""));
+ for(const gh of greenhouses)select.append(new Option(gh.name,gh.id));
+ if(greenhouses.some(g=>g.id===selected))select.value=selected;
+}
+async function loadGreenhouses(){
+ $("greenhouse-list").textContent="در حال دریافت اطلاعات…";
+ const {data,error}=await supabase.from("greenhouses").select("id,name,city,province,area_m2,structure_type,cultivation_system,created_at").eq("owner_user_id",currentUser.id).order("created_at",{ascending:false});
+ if(error){$("greenhouse-list").textContent="دریافت گلخانه‌ها ناموفق بود: "+error.message;return;}
+ greenhouses=data||[];renderGreenhouses();
+}
+async function loadCycles(){
+ const host=$("cycle-list");host.textContent="در حال دریافت اطلاعات…";
+ const {data,error}=await supabase.from("crop_cycles").select("id,greenhouse_id,crop_name,cultivar,rootstock,transplant_date,expected_end_date,substrate_type,plant_density_m2,status,created_at").order("created_at",{ascending:false});
+ if(error){host.textContent="دریافت دوره‌های کشت ناموفق بود: "+error.message;return;}
+ cropCycles=data||[];
+ const caseSelect=$("case-cycle");const oldCycle=caseSelect.value;caseSelect.replaceChildren(new Option("انتخاب دوره کشت",""));
+ for(const c of cropCycles){const gh=greenhouses.find(g=>g.id===c.greenhouse_id);caseSelect.append(new Option((gh?.name||"گلخانه")+" — "+c.crop_name+(c.cultivar?" / "+c.cultivar:""),c.id));}
+ if(cropCycles.some(c=>c.id===oldCycle))caseSelect.value=oldCycle;
+ host.replaceChildren();
+ if(!data?.length){host.className="empty";host.textContent="هنوز دوره کشتی ثبت نشده است.";return;}
+ host.className="";
+ const ghMap=new Map(greenhouses.map(g=>[g.id,g.name]));
+ for(const c of data){
+  const card=node("article","item"),title=node("h3","",c.crop_name+(c.cultivar?" · "+c.cultivar:""));
+  const status=({planned:"برنامه‌ریزی‌شده",active:"فعال",completed:"پایان‌یافته",cancelled:"لغوشده"})[c.status]||c.status;
+  const meta=node("div","meta",[
+   "گلخانه: "+(ghMap.get(c.greenhouse_id)||"—"),
+   "انتقال نشا: "+faDate(c.transplant_date),
+   "پایان پیش‌بینی‌شده: "+faDate(c.expected_end_date),
+   "پایه: "+(c.rootstock||"—"),
+   "بستر: "+(c.substrate_type||"—"),
+   "تراکم: "+(c.plant_density_m2?new Intl.NumberFormat("fa-IR").format(c.plant_density_m2)+" بوته/مترمربع":"—"),
+   "وضعیت: "+status
+  ].join(" · "));
+  card.append(title,meta);host.append(card);
+ }
+}
+async function refreshAll(){await loadGreenhouses();await loadCycles();}
+async function enter(){
+ const {data:{user},error}=await supabase.auth.getUser();
+ currentUser=user||null;
+ if(error||!user){show("login-card");show("app",false);show("account-pending",false);show("logout",false);return;}
+ const [{data:profile,error:pe},{data:role,error:re}]=await Promise.all([
+  supabase.from("user_profiles").select("first_name,last_name,phone,account_status").eq("id",user.id).maybeSingle(),
+  supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","grower").maybeSingle()
+ ]);
+ show("login-card",false);show("logout",true);
+ if(pe||re){show("account-pending");show("app",false);$("pending-message").textContent="بررسی وضعیت حساب انجام نشد. لطفاً بعداً تلاش کنید یا با مدیر سامانه تماس بگیرید.";return;}
+ if(profile?.account_status!=="active"||!role){
+  show("account-pending");show("app",false);
+  $("pending-message").textContent="حساب شما هنوز به‌عنوان گلخانه‌دار فعال نشده است. پس از بررسی مدیر سامانه، امکان ثبت گلخانه و دوره کشت فعال خواهد شد.";
+  return;
+ }
+ show("account-pending",false);show("app",true);
+ const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
+ $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
+ $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
+ await refreshAll();await loadCases();
+}
+$("login").addEventListener("click",async()=>{
+ clearNotice("login-message");$("login").disabled=true;
+ const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+ $("login").disabled=false;
+ if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
+ await enter();
+});
+async function logout(){await supabase.auth.signOut();currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}
+$("logout").addEventListener("click",logout);$("pending-logout").addEventListener("click",logout);
+$("greenhouse-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("gh-message");
+ const name=$("gh-name").value.trim();if(!name){notice("gh-message","نام گلخانه الزامی است.",true);return;}
+ const area=$("gh-area").value;
+ const payload={owner_user_id:currentUser.id,name,city:$("gh-city").value.trim()||null,province:$("gh-province").value.trim()||null,area_m2:area?Number(area):null,structure_type:$("gh-structure").value||null,cultivation_system:$("gh-system").value||null,address:$("gh-address").value.trim()||null};
+ $("save-greenhouse").disabled=true;
+ const {error}=await supabase.from("greenhouses").insert(payload);
+ $("save-greenhouse").disabled=false;
+ if(error){notice("gh-message","ثبت گلخانه ناموفق بود: "+error.message,true);return;}
+ notice("gh-message","گلخانه با موفقیت ثبت شد.");$("greenhouse-form").reset();await loadGreenhouses();
+});
+$("cycle-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("cycle-message");
+ if(!$("cycle-greenhouse").value){notice("cycle-message","یک گلخانه را انتخاب کنید.",true);return;}
+ const start=$("transplant-date").value,end=$("end-date").value;
+ if(start&&end&&end<start){notice("cycle-message","تاریخ پایان نمی‌تواند پیش از تاریخ انتقال نشا باشد.",true);return;}
+ const density=$("density").value;
+ const payload={greenhouse_id:$("cycle-greenhouse").value,crop_name:$("crop-name").value.trim(),cultivar:$("cultivar").value.trim()||null,rootstock:$("rootstock").value.trim()||null,transplant_date:start||null,expected_end_date:end||null,substrate_type:$("substrate").value.trim()||null,plant_density_m2:density?Number(density):null,notes:$("cycle-notes").value.trim()||null};
+ $("save-cycle").disabled=true;
+ const {error}=await supabase.from("crop_cycles").insert(payload);
+ $("save-cycle").disabled=false;
+ if(error){notice("cycle-message","ثبت دوره کشت ناموفق بود: "+error.message,true);return;}
+ notice("cycle-message","دوره کشت با موفقیت ثبت شد.");$("cycle-form").reset();await loadCycles();
+});
+$("refresh-greenhouses").addEventListener("click",loadGreenhouses);$("refresh-cycles").addEventListener("click",loadCycles);
+document.querySelectorAll("[data-tab]").forEach(btn=>btn.addEventListener("click",()=>{
+ document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b===btn));
+ document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===btn.dataset.tab));
+}));
+
+const statusLabels={draft:"پیش‌نویس",awaiting_information:"نیازمند اطلاعات تکمیلی",ready_for_review:"در انتظار بررسی",awaiting_quote_approval:"در انتظار تأیید هزینه",awaiting_payment:"در انتظار پرداخت",assigned:"ارجاع‌شده به کارشناس",under_review:"در حال بررسی",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده",reopened:"بازگشایی‌شده",cancelled:"لغوشده"};
+const categoryLabels={pests_diseases:"آفات و بیماری‌ها",nutrition:"تغذیه گیاه",environmental_stress:"تنش‌های محیطی",physiology:"فیزیولوژی و رشد",irrigation_water:"آبیاری و کیفیت آب",substrate_roots:"بستر کشت و ریشه",other:"سایر"};
+const safeName=s=>String(s||"").replace(/[\\/:*?"<>|]/g,"_").slice(0,100);
+async function loadCases(){
+ const host=$("case-list");host.textContent="در حال دریافت پرونده‌ها…";
+ const {data,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at,updated_at").eq("created_by",currentUser.id).order("created_at",{ascending:false});
+ if(error){host.textContent="دریافت پرونده‌ها ناموفق بود: "+error.message;return;}
+ host.replaceChildren();
+ if(!data?.length){host.className="empty";host.textContent="هنوز پرونده مشاوره‌ای ثبت نکرده‌اید.";return;}
+ host.className="";
+ for(const c of data){
+  const card=node("article","item"),top=node("div","topline"),title=node("h3","", "پرونده "+c.case_number+" ـ "+c.title),tag=node("span","tag",statusLabels[c.status]||c.status);
+  top.append(title,tag);
+  const cycle=cropCycles.find(x=>x.id===c.crop_cycle_id);
+  const meta=node("div","meta",(categoryLabels[c.problem_category]||c.problem_category)+" · "+(cycle?.crop_name||"دوره کشت")+" · "+faDate(c.created_at?.slice(0,10)));
+  const btn=node("button","secondary","مشاهده جزئیات");btn.type="button";btn.addEventListener("click",()=>openCase(c.id));
+  card.append(top,meta,btn);host.append(card);
+ }
+}
+async function openCase(id){
+ activeCaseId=id;show("case-detail",true);
+ $("case-detail-title").textContent="در حال بارگذاری پرونده…";
+ $("attachment-list").textContent="در حال دریافت…";$("case-message-list").textContent="در حال دریافت…";$("final-response-list").textContent="در حال دریافت…";
+ const {data:c,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at").eq("id",id).maybeSingle();
+ if(error||!c){$("case-detail-title").textContent="دریافت پرونده ناموفق بود";$("case-detail-meta").textContent=error?.message||"پرونده در دسترس نیست.";return;}
+ $("case-detail-title").textContent="پرونده "+c.case_number+" ـ "+c.title;
+ $("case-detail-meta").textContent=(statusLabels[c.status]||c.status)+" · "+(categoryLabels[c.problem_category]||c.problem_category)+" · شدت: "+(c.severity||"تعیین نشده")+"
+"+c.description;
+ const actions=$("case-detail-actions");actions.replaceChildren();
+ if(["draft","awaiting_information","reopened"].includes(c.status)){
+  const submit=node("button","","ارسال پرونده برای بررسی");submit.addEventListener("click",async()=>{
+   submit.disabled=true;const {error}=await supabase.rpc("submit_grower_case",{p_case_id:id});submit.disabled=false;
+   if(error){alert("ارسال پرونده ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
+  });actions.append(submit);
+ }
+ if(c.status==="closed"){
+  const reopen=node("button","secondary","درخواست بازگشایی پرونده");reopen.addEventListener("click",async()=>{
+   const reason=prompt("علت درخواست بازگشایی پرونده را بنویسید:");if(!reason?.trim())return;
+   const {error}=await supabase.rpc("reopen_case",{p_case_id:id,p_reason:reason.trim()});
+   if(error){alert("درخواست بازگشایی ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
+  });actions.append(reopen);
+ }
+ await Promise.all([loadAttachments(id),loadCaseMessages(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function loadAttachments(id){
+ const host=$("attachment-list");host.replaceChildren();
+ const {data,error}=await supabase.from("case_attachments").select("id,storage_bucket,storage_path,original_filename,mime_type,file_size_bytes,kind,description,created_at").eq("case_id",id).order("created_at");
+ if(error){host.textContent="دریافت فهرست مدارک ناموفق بود: "+error.message;return;}
+ if(!data?.length){host.className="empty";host.textContent="هنوز مدرکی پیوست نشده است.";return;}
+ host.className="";
+ for(const a of data){
+  const row=node("div","item"),name=node("strong","",a.original_filename),meta=node("div","meta",(a.kind==="photo"?"تصویر":a.kind==="lab_report"?"گزارش آزمایش":a.kind==="document"?"سند":"فایل")+" · "+Math.ceil((a.file_size_bytes||0)/1024)+" کیلوبایت"+(a.description?" · "+a.description:""));
+  const btn=node("button","secondary","دریافت فایل");btn.addEventListener("click",async()=>{
+   const {data:signed,error}=await supabase.storage.from(a.storage_bucket).createSignedUrl(a.storage_path,120);
+   if(error){alert("ساخت لینک دریافت ناموفق بود: "+error.message);return;}window.open(signed.signedUrl,"_blank","noopener");
+  });row.append(name,meta,btn);host.append(row);
+ }
+}
+async function loadCaseMessages(id){
+ const host=$("case-message-list");host.replaceChildren();
+ const {data,error}=await supabase.from("case_messages").select("id,sender_user_id,message_text,is_official,created_at").eq("case_id",id).eq("is_official",true).order("created_at");
+ if(error){host.textContent="دریافت مکاتبات ناموفق بود: "+error.message;return;}
+ if(!data?.length){host.className="empty";host.textContent="هنوز پیام رسمی ثبت نشده است.";return;}
+ host.className="";
+ for(const m of data){const row=node("div","item"),who=node("strong","",m.sender_user_id===currentUser.id?"پیام شما":"پیام کارشناس / سامانه"),body=node("p","",m.message_text),date=node("div","meta",new Date(m.created_at).toLocaleString("fa-IR"));row.append(who,body,date);host.append(row);}
+}
+
+async function loadCaseLabResults(id){
+ const host=$("case-lab-list");host.replaceChildren();
+ const {data:samples,error}=await supabase.from("lab_samples").select("id,sample_type,sampled_at,sampling_location,sampling_depth_cm,report_date,report_storage_path,notes,laboratory_id").eq("case_id",id).order("created_at");
+ if(error){host.textContent="دریافت نمونه‌های آزمایشگاهی ناموفق بود: "+error.message;return;}
+ if(!samples?.length){host.className="empty";host.textContent="هنوز نمونه یا نتیجه آزمایشگاهی به این پرونده متصل نشده است.";return;}
+ const ids=samples.map(s=>s.id);
+ const [resultsRes,labsRes]=await Promise.all([
+  supabase.from("lab_results").select("id,sample_id,analyte_id,value_numeric,unit_id,replicate_no,result_note").in("sample_id",ids).order("replicate_no"),
+  supabase.from("laboratories").select("id,name").eq("is_active",true)
+ ]);
+ if(resultsRes.error){host.textContent="دریافت نتایج آزمایش ناموفق بود: "+resultsRes.error.message;return;}
+ const results=resultsRes.data||[], analyteIds=[...new Set(results.map(r=>r.analyte_id))],unitIds=[...new Set(results.map(r=>r.unit_id))];
+ const [analytesRes,unitsRes]=await Promise.all([
+  analyteIds.length?supabase.from("analytes").select("id,title_fa").in("id",analyteIds):Promise.resolve({data:[],error:null}),
+  unitIds.length?supabase.from("units").select("id,title_fa").in("id",unitIds):Promise.resolve({data:[],error:null})
+ ]);
+ if(analytesRes.error||unitsRes.error){host.textContent="دریافت مشخصات واحدها یا شاخص‌ها ناموفق بود.";return;}
+ const analytes=new Map((analytesRes.data||[]).map(x=>[x.id,x.title_fa])),units=new Map((unitsRes.data||[]).map(x=>[x.id,x.title_fa])),labs=new Map((labsRes.data||[]).map(x=>[x.id,x.name]));
+ host.className="";
+ for(const sample of samples){
+  const card=node("article","item");
+  card.append(node("h3","","نمونه "+(sample.sample_type||"آزمایشگاهی")));
+  card.append(node("div","meta",[
+   "تاریخ نمونه‌برداری: "+faDate(sample.sampled_at),
+   "محل: "+(sample.sampling_location||"—"),
+   sample.sampling_depth_cm?"عمق: "+sample.sampling_depth_cm+" سانتی‌متر":"",
+   "آزمایشگاه: "+(labs.get(sample.laboratory_id)||"ثبت نشده"),
+   "تاریخ گزارش: "+faDate(sample.report_date)
+  ].filter(Boolean).join(" · ")));
+  if(sample.notes)card.append(node("p","",sample.notes));
+  const sampleResults=results.filter(r=>r.sample_id===sample.id);
+  if(sampleResults.length){
+   const table=node("div","item");
+   for(const result of sampleResults){
+    const line=node("div","meta",(analytes.get(result.analyte_id)||"شاخص آزمایش")+" : "+result.value_numeric+" "+(units.get(result.unit_id)||"")+(result.replicate_no>1?" · تکرار "+result.replicate_no:"")+(result.result_note?" · "+result.result_note:""));
+    table.append(line);
+   }
+   card.append(table);
+  }else card.append(node("div","meta","نتیجه عددی برای این نمونه ثبت نشده است."));
+  if(sample.report_storage_path){
+   const report=node("button","secondary","مشاهده فایل گزارش آزمایشگاه");
+   report.addEventListener("click",async()=>{
+    const {data:signed,error}=await supabase.storage.from("lab-reports").createSignedUrl(sample.report_storage_path,120);
+    if(error){alert("دریافت گزارش ناموفق بود: "+error.message);return;}window.open(signed.signedUrl,"_blank","noopener");
+   });card.append(report);
+  }
+  host.append(card);
+ }
+}
+
+async function loadFinalResponses(id){
+ const host=$("final-response-list");host.replaceChildren();
+ const {data,error}=await supabase.from("final_responses").select("id,version,response_text,recommendations,warnings,published_at").eq("case_id",id).eq("is_published",true).order("version",{ascending:false});
+ if(error){host.textContent="دریافت پاسخ نهایی ناموفق بود: "+error.message;return;}
+ if(!data?.length){host.className="empty";host.textContent="هنوز پاسخ نهایی تأیید و منتشرشده‌ای برای این پرونده وجود ندارد.";return;}
+ host.className="";
+ for(const r of data){const card=node("article","item"),title=node("h3","","پاسخ نهایی ـ نسخه "+r.version),body=node("p","",r.response_text),date=node("div","meta","تاریخ انتشار: "+new Date(r.published_at).toLocaleString("fa-IR"));card.append(title,body);
+  if(Array.isArray(r.recommendations)&&r.recommendations.length){card.append(node("strong","","توصیه‌ها"));for(const item of r.recommendations)card.append(node("p","",typeof item==="string"?item:JSON.stringify(item)));}
+  if(Array.isArray(r.warnings)&&r.warnings.length){card.append(node("strong","","هشدارها"));for(const item of r.warnings)card.append(node("p","",typeof item==="string"?item:JSON.stringify(item)));}
+  card.append(date);host.append(card);
+ }
+}
+$("case-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("case-create-message");
+ if(!cropCycles.some(c=>c.id===$("case-cycle").value)){notice("case-create-message","ابتدا باید یک دوره کشت ثبت کرده باشید.",true);return;}
+ const severity=$("case-severity").value;
+ $("create-case").disabled=true;
+ const {data,error}=await supabase.rpc("create_grower_case",{p_crop_cycle_id:$("case-cycle").value,p_title:$("case-title").value.trim(),p_problem_category:$("case-category").value,p_description:$("case-description").value.trim(),p_severity:severity?Number(severity):null});
+ $("create-case").disabled=false;
+ if(error){notice("case-create-message","ایجاد پرونده ناموفق بود: "+error.message,true);return;}
+ notice("case-create-message","پیش‌نویس پرونده ایجاد شد. اکنون می‌توانید مدارک را پیوست کنید و سپس پرونده را ارسال کنید.");
+ $("case-form").reset();await loadCases();await openCase(data);
+});
+$("attachment-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("attachment-message");
+ if(!activeCaseId)return;
+ const files=[...$("case-files").files];if(!files.length){notice("attachment-message","ابتدا فایل یا تصویر را انتخاب کنید.",true);return;}
+ if(files.some(f=>f.size>10*1024*1024)){notice("attachment-message","حجم هر فایل باید حداکثر ۱۰ مگابایت باشد.",true);return;}
+ const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
+ if(files.some(f=>!allowed.includes(f.type))){notice("attachment-message","فقط تصویر JPG، PNG، WebP و فایل PDF مجاز است.",true);return;}
+ $("upload-files").disabled=true;
+ for(const file of files){
+  const path=activeCaseId+"/"+crypto.randomUUID()+"_"+safeName(file.name);
+  const {error:uploadError}=await supabase.storage.from("case-files").upload(path,file,{contentType:file.type,upsert:false});
+  if(uploadError){notice("attachment-message","بارگذاری "+file.name+" ناموفق بود: "+uploadError.message,true);$("upload-files").disabled=false;return;}
+  const kind=file.type.startsWith("image/")?"photo":file.type==="application/pdf"?"document":"other";
+  const {error:metaError}=await supabase.from("case_attachments").insert({case_id:activeCaseId,uploaded_by:currentUser.id,storage_bucket:"case-files",storage_path:path,original_filename:file.name,mime_type:file.type,file_size_bytes:file.size,kind,description:$("attachment-description").value.trim()||null});
+  if(metaError){notice("attachment-message","فایل بارگذاری شد اما ثبت مشخصات آن ناموفق بود. لطفاً با پشتیبانی تماس بگیرید. "+metaError.message,true);$("upload-files").disabled=false;return;}
+ }
+ $("upload-files").disabled=false;$("attachment-form").reset();notice("attachment-message","مدارک با موفقیت بارگذاری شدند.");await loadAttachments(activeCaseId);
+});
+$("case-message-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("case-message-notice");if(!activeCaseId)return;
+ const message=$("case-message-text").value.trim();if(!message)return;
+ $("send-case-message").disabled=true;
+ const {error}=await supabase.from("case_messages").insert({case_id:activeCaseId,sender_user_id:currentUser.id,message_text:message,is_official:true});
+ $("send-case-message").disabled=false;
+ if(error){notice("case-message-notice","ارسال پیام ناموفق بود: "+error.message,true);return;}
+ $("case-message-text").value="";notice("case-message-notice","پیام رسمی ارسال شد.");await loadCaseMessages(activeCaseId);
+});
+$("refresh-cases").addEventListener("click",loadCases);
+$("close-case-detail").addEventListener("click",()=>{activeCaseId=null;show("case-detail",false);});
+
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}});
+await enter();
+</script>
+</body>
+</html>
