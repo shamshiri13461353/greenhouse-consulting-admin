@@ -55,6 +55,14 @@
       <input id="grower-email" type="email" placeholder="grower@example.com">
       <div class="actions"><button id="invite-grower">ارسال دعوت گلخانه‌دار</button></div>
       <div id="grower-message" class="notice hidden"></div>
+      <div style="border-top:1px solid #edf0ee;margin-top:20px;padding-top:16px">
+        <h2>ارسال لینک تعیین گذرواژه برای حساب موجود</h2>
+        <p class="muted">برای حساب گلخانه‌داری که قبلاً ایجاد شده، لینک تازه تعیین گذرواژه ارسال کنید.</p>
+        <label for="grower-recovery-email">ایمیل حساب گلخانه‌دار</label>
+        <input id="grower-recovery-email" type="email" placeholder="ایمیل حساب موجود">
+        <div class="actions"><button id="send-grower-recovery">ارسال لینک تعیین گذرواژه</button></div>
+        <div id="grower-recovery-message" class="notice hidden"></div>
+      </div>
       <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
       <div class="table-wrap"><table><thead><tr><th>ایمیل / شناسه</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
       <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
@@ -188,6 +196,15 @@
     if(error){message("grower-message","ارسال دعوت ناموفق بود: "+error.message,true);return;}
     message("grower-message",data?.message||"دعوت‌نامه گلخانه‌دار ارسال شد.");
     $("grower-email").value=""; await loadGrowers();
+  });
+  $("send-grower-recovery").addEventListener("click",async()=>{
+    const email=$("grower-recovery-email").value.trim();
+    if(!email){message("grower-recovery-message","ایمیل حساب گلخانه‌دار را وارد کنید.",true);return;}
+    $("send-grower-recovery").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-send-grower-recovery",{body:{email}});
+    $("send-grower-recovery").disabled=false;
+    if(error){message("grower-recovery-message","ارسال لینک ناموفق بود: "+error.message,true);return;}
+    message("grower-recovery-message",data?.message||"لینک تعیین گذرواژه ارسال شد.");
   });
   $("refresh-growers").addEventListener("click",loadGrowers);
 
