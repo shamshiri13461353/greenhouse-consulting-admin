@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#123d35"><title>پنل کارشناس | سامانه مشاوره گلخانه</title>
+<style>
+:root{font-family:Tahoma,Arial,sans-serif;color:#18332c;background:#f3f7f5}*{box-sizing:border-box}body{margin:0}header{background:#123d35;color:white;padding:18px max(16px,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:18px;margin:0 0 5px}header p{margin:0;color:#c5d8d1;font-size:12px}main{max-width:1100px;margin:24px auto;padding:0 16px}.card{background:white;border:1px solid #e1eae5;border-radius:15px;padding:19px;margin-bottom:16px;box-shadow:0 4px 18px #163d3010}h2{font-size:17px;margin:0 0 13px}h3{font-size:15px;margin:0 0 8px}.muted,.meta{font-size:12px;color:#62756d;line-height:2}label{display:block;font-size:13px;margin:11px 0 6px}input,textarea,select{width:100%;border:1px solid #cbd9d2;border-radius:9px;padding:11px;font:inherit;font-size:14px}textarea{min-height:95px}button{border:0;border-radius:9px;padding:10px 15px;background:#176b57;color:white;font:inherit;cursor:pointer}button.alt{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5}.hidden{display:none!important}.notice{padding:11px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.tabs button{background:#e6efea;color:#255344}.tabs button.active{background:#176b57;color:white}.item{border:1px solid #e2ebe6;border-radius:11px;padding:13px;margin:9px 0}.tag{display:inline-block;background:#edf3ef;color:#3f6255;border-radius:18px;padding:5px 9px;font-size:12px}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.empty{text-align:center;padding:20px;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}.divider{border-top:1px solid #e5ece8;margin:18px 0}
+@media(max-width:650px){header{padding:15px}main{margin:14px auto}.card{padding:15px}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>سامانه مشاوره تخصصی گلخانه</h1><p>پیوندگستر پارسان · پنل کارشناس</p></div><button id="logout" class="alt hidden">خروج</button></header>
+<main>
+<section id="login-card" class="card"><h2>ورود کارشناس</h2><p class="muted">ورود فقط برای کارشناسان دعوت‌شده، تأییدشده و فعال امکان‌پذیر است.</p><label>ایمیل</label><input id="email" type="email" autocomplete="username"><label>گذرواژه</label><input id="password" type="password" autocomplete="current-password"><div class="actions"><button id="login">ورود</button></div><div id="login-msg" class="notice hidden"></div></section>
+<section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
+<section id="app" class="hidden">
+<div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div></div>
+<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button></nav>
+<section id="invites" class="section active card"><div class="top"><h2>دعوت به همکاری در پرونده</h2><button class="alt" id="refresh-invites">به‌روزرسانی</button></div><div id="invite-list" class="empty">در حال دریافت…</div></section>
+<section id="assigned" class="section card"><div class="top"><h2>پرونده‌های ارجاع‌شده</h2><button class="alt" id="refresh-assigned">به‌روزرسانی</button></div><div id="assigned-list" class="empty">در حال دریافت…</div></section>
+<section id="detail" class="card hidden"><div class="top"><div><h2 id="case-title">جزئیات پرونده</h2><div id="case-meta" class="muted"></div></div><button id="close-detail" class="alt">بستن</button></div><div class="actions" id="case-actions"></div>
+<div class="divider"></div><h2>شرح مسئله گلخانه‌دار</h2><p id="case-description"></p>
+<div class="divider"></div><h2>مدارک و تصاویر</h2><div id="attachments" class="empty">—</div>
+<div class="divider"></div><h2>نتایج آزمایشگاهی</h2><div id="labs" class="empty">—</div>
+<div class="divider"></div><h2>مکاتبات رسمی</h2><div id="messages" class="empty">—</div><form id="message-form"><label>ارسال پیام رسمی</label><textarea id="message-text" maxlength="5000" required></textarea><div class="actions"><button>ارسال پیام</button></div><div id="message-msg" class="notice hidden"></div></form>
+<div class="divider"></div><h2>پرسش تکمیلی از گلخانه‌دار</h2><form id="question-form"><label>متن پرسش</label><textarea id="question-text" maxlength="4000" required></textarea><label><input id="question-required" type="checkbox" checked style="width:auto"> پاسخ به این پرسش الزامی است</label><div class="actions"><button>ثبت پرسش</button></div><div id="question-msg" class="notice hidden"></div></form><div id="questions" class="empty">—</div>
+<div class="divider"></div><h2>نظر تخصصی کارشناس (داخلی)</h2><p class="muted">این بخش یادداشت تخصصی پرونده است و به گلخانه‌دار نمایش داده نمی‌شود.</p><form id="opinion-form"><label>فرضیه‌های تشخیصی (هر مورد در یک خط)</label><textarea id="hypotheses" placeholder="فرضیه اول&#10;فرضیه دوم"></textarea><label>شواهد و داده‌های مورد اتکا</label><textarea id="evidence"></textarea><label>تحلیل تخصصی</label><textarea id="analysis" required></textarea><label>توصیه‌های تخصصی (هر مورد در یک خط)</label><textarea id="recommendations"></textarea><div class="actions"><button id="save-opinion">ذخیره نظر تخصصی</button></div><div id="opinion-msg" class="notice hidden"></div></form>
+<div id="final-draft-wrap" class="hidden"><div class="divider"></div><h2>تهیه پیش‌نویس پاسخ نهایی</h2><p class="muted">پیش‌نویس برای تأیید مسئول کارشناسی آماده می‌شود و در این مرحله برای گلخانه‌دار منتشر نخواهد شد.</p><form id="final-form"><label>متن پاسخ نهایی</label><textarea id="final-text" required></textarea><label>توصیه‌های اجرایی (هر مورد در یک خط)</label><textarea id="final-recommendations"></textarea><label>هشدارها (هر مورد در یک خط)</label><textarea id="final-warnings"></textarea><div class="actions"><button>ثبت پیش‌نویس برای تأیید</button></div><div id="final-msg" class="notice hidden"></div></form></div>
+</section></section></main>
+<script type="module">
+import{createClient}from"https://esm.sh/@supabase/supabase-js@2.58.0";
+const supabase=createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
+const $=id=>document.getElementById(id);let user=null,activeCase=null,activeAssignment=null,opinionId=null;
+const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
+function msg(id,text,error=false){$(id).textContent=text;$(id).classList.remove("hidden","error");if(error)$(id).classList.add("error");}
+function el(tag,cls,text){const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;}
+const statuses={ready_for_review:"در انتظار بررسی",assigned:"ارجاع‌شده",under_review:"در حال بررسی",awaiting_information:"در انتظار اطلاعات",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده"};
+async function verifyAndEnter(){
+ const {data:{user:u}}=await supabase.auth.getUser();user=u||null;
+ if(!user){show("login-card");show("app",false);show("blocked",false);show("logout",false);return;}
+ const [p,r,e]=await Promise.all([
+  supabase.from("user_profiles").select("first_name,last_name,account_status").eq("id",user.id).maybeSingle(),
+  supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","expert").maybeSingle(),
+  supabase.from("expert_profiles").select("professional_title,organization,invitation_status,is_verified").eq("user_id",user.id).maybeSingle()
+ ]);
+ show("login-card",false);show("logout",true);
+ if(p.error||r.error||e.error||p.data?.account_status!=="active"||!r.data||!e.data||e.data.invitation_status!=="accepted"||!e.data.is_verified){
+  show("blocked");show("app",false);$("blocked-msg").textContent="حساب باید دعوت را پذیرفته باشد، توسط مدیر تأیید شده باشد و وضعیت آن فعال باشد. در صورت نیاز با مدیر سامانه تماس بگیرید.";return;
+ }
+ show("blocked",false);show("app",true);
+ $("welcome").textContent=[p.data.first_name,p.data.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
+ $("profile").textContent=(e.data.professional_title||"کارشناس")+(e.data.organization?" · "+e.data.organization:"")+" · "+user.email;
+ await Promise.all([loadInvites(),loadAssigned()]);
+}
+async function loadInvites(){
+ const host=$("invite-list");host.textContent="در حال دریافت دعوت‌ها…";
+ const {data,error}=await supabase.from("case_assignments").select("id,case_id,is_lead,assigned_at,status").eq("expert_user_id",user.id).eq("status","invited").order("assigned_at",{ascending:false});
+ if(error){host.textContent="دریافت دعوت‌ها ناموفق بود: "+error.message;return;}
+ host.replaceChildren();if(!data?.length){host.className="empty";host.textContent="دعوت جدیدی ندارید.";return;}host.className="";
+ for(const a of data){const card=el("article","item"),title=el("h3","","دعوت به پرونده"+(a.is_lead?" · کارشناس مسئول":" · همکار تخصصی")),meta=el("div","meta","زمان ارجاع: "+new Date(a.assigned_at).toLocaleString("fa-IR")),actions=el("div","actions");
+ const accept=el("button","","پذیرش دعوت");accept.addEventListener("click",async()=>{accept.disabled=true;const {error}=await supabase.rpc("accept_case_assignment",{p_assignment_id:a.id});accept.disabled=false;if(error){alert("پذیرش ناموفق بود: "+error.message);return;}await loadInvites();await loadAssigned();});
+ const decline=el("button","alt","رد دعوت");decline.addEventListener("click",async()=>{decline.disabled=true;const {error}=await supabase.rpc("decline_case_assignment",{p_assignment_id:a.id});decline.disabled=false;if(error){alert("رد دعوت ناموفق بود: "+error.message);return;}await loadInvites();});
+ actions.append(accept,decline);card.append(title,meta,actions);host.append(card);}
+}
+async function loadAssigned(){
+ const host=$("assigned-list");host.textContent="در حال دریافت پرونده‌ها…";
+ const {data:as,error}=await supabase.from("case_assignments").select("id,case_id,is_lead,status,accepted_at").eq("expert_user_id",user.id).eq("status","active").order("accepted_at",{ascending:false});
+ if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
+ host.replaceChildren();if(!as?.length){host.className="empty";host.textContent="پرونده فعالی به شما ارجاع نشده است.";return;}host.className="";
+ const ids=as.map(a=>a.case_id);const {data:cs,error:ce}=await supabase.from("cases").select("id,case_number,title,problem_category,description,severity,status,created_at,crop_cycle_id").in("id",ids);
+ if(ce){host.textContent="دریافت اطلاعات پرونده‌ها ناموفق بود: "+ce.message;return;}
+ const map=new Map((cs||[]).map(c=>[c.id,c]));
+ for(const a of as){const c=map.get(a.case_id);if(!c)continue;const card=el("article","item"),top=el("div","top"),title=el("h3","", "پرونده "+c.case_number+" ـ "+c.title),tag=el("span","tag",statuses[c.status]||c.status),meta=el("div","meta",(a.is_lead?"کارشناس مسئول":"همکار")+" · شدت: "+(c.severity||"نامشخص")+" · "+new Date(c.created_at).toLocaleDateString("fa-IR")),btn=el("button","alt","بررسی پرونده");top.append(title,tag);btn.addEventListener("click",()=>openCase(c,a));card.append(top,meta,btn);host.append(card);}
+}
+async function openCase(c,a){
+ activeCase=c;activeAssignment=a;show("detail");$("case-title").textContent="پرونده "+c.case_number+" ـ "+c.title;$("case-meta").textContent=(statuses[c.status]||c.status)+" · "+(a.is_lead?"کارشناس مسئول":"همکار تخصصی")+" · شدت: "+(c.severity||"نامشخص");$("case-description").textContent=c.description;
+ const acts=$("case-actions");acts.replaceChildren();
+ if(a.is_lead&&c.status==="assigned"){const b=el("button","","شروع بررسی کارشناسی");b.addEventListener("click",async()=>{const {error}=await supabase.rpc("start_lead_case_review",{p_case_id:c.id});if(error){alert("تغییر وضعیت ناموفق بود: "+error.message);return;}await loadAssigned();c.status="under_review";await openCase(c,a);});acts.append(b);}
+ show("final-draft-wrap",a.is_lead);
+ await Promise.all([loadAttachments(c.id),loadLabs(c.id),loadMessages(c.id),loadQuestions(c.id),loadOpinion(c.id),loadExistingFinalDraft(c.id)]);
+ $("detail").scrollIntoView({behavior:"smooth"});
+}
+async function loadAttachments(id){
+ const host=$("attachments");host.replaceChildren();const {data,error}=await supabase.from("case_attachments").select("storage_bucket,storage_path,original_filename,mime_type,created_at").eq("case_id",id).order("created_at");
+ if(error){host.textContent=error.message;return;}if(!data?.length){host.className="empty";host.textContent="مدرکی ثبت نشده است.";return;}host.className="";
+ for(const f of data){const row=el("div","item",f.original_filename),b=el("button","alt","دریافت فایل");b.addEventListener("click",async()=>{const {data:s,error}=await supabase.storage.from(f.storage_bucket).createSignedUrl(f.storage_path,120);if(error){alert(error.message);return;}window.open(s.signedUrl,"_blank","noopener");});row.append(b);host.append(row);}
+}
+async function loadLabs(id){
+ const host=$("labs");host.replaceChildren();const {data:ss,error}=await supabase.from("lab_samples").select("id,sample_type,sampled_at,sampling_location,report_date,report_storage_path,notes,laboratory_id").eq("case_id",id);
+ if(error){host.textContent=error.message;return;}if(!ss?.length){host.className="empty";host.textContent="نتیجه آزمایشگاهی ثبت نشده است.";return;}
+ const ids=ss.map(s=>s.id);const {data:rs,error:re}=await supabase.from("lab_results").select("sample_id,analyte_id,value_numeric,unit_id,replicate_no,result_note").in("sample_id",ids);
+ if(re){host.textContent=re.message;return;}const aid=[...new Set(rs.map(x=>x.analyte_id))],uid=[...new Set(rs.map(x=>x.unit_id))];
+ const [ar,ur]=await Promise.all([aid.length?supabase.from("analytes").select("id,title_fa").in("id",aid):Promise.resolve({data:[]}),uid.length?supabase.from("units").select("id,title_fa").in("id",uid):Promise.resolve({data:[]})]);
+ const am=new Map((ar.data||[]).map(x=>[x.id,x.title_fa])),um=new Map((ur.data||[]).map(x=>[x.id,x.title_fa]));host.className="";
+ for(const s of ss){const card=el("div","item"),heading=el("h3","", "نمونه "+s.sample_type+" · "+(s.sampling_location||"محل نامشخص"));card.append(heading,el("div","meta","نمونه‌برداری: "+(s.sampled_at||"—")+" · گزارش: "+(s.report_date||"—")));
+  for(const x of rs.filter(x=>x.sample_id===s.id))card.append(el("div","meta",(am.get(x.analyte_id)||"شاخص")+" : "+x.value_numeric+" "+(um.get(x.unit_id)||"")+(x.result_note?" · "+x.result_note:"")));
+  if(s.report_storage_path){const b=el("button","alt","فایل گزارش");b.addEventListener("click",async()=>{const {data:d,error}=await supabase.storage.from("lab-reports").createSignedUrl(s.report_storage_path,120);if(error){alert(error.message);return;}window.open(d.signedUrl,"_blank","noopener");});card.append(b);}host.append(card);}
+}
+async function loadMessages(id){const host=$("messages");host.replaceChildren();const {data,error}=await supabase.from("case_messages").select("sender_user_id,message_text,created_at").eq("case_id",id).eq("is_official",true).order("created_at");if(error){host.textContent=error.message;return;}if(!data?.length){host.className="empty";host.textContent="پیامی ثبت نشده است.";return;}host.className="";for(const m of data){const c=el("div","item"),who=el("strong","",m.sender_user_id===user.id?"شما":"گلخانه‌دار / سامانه"),body=el("p","",m.message_text),date=el("div","meta",new Date(m.created_at).toLocaleString("fa-IR"));c.append(who,body,date);host.append(c);}}
+$("message-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!activeCase)return;const {error}=await supabase.from("case_messages").insert({case_id:activeCase.id,sender_user_id:user.id,message_text:$("message-text").value.trim(),is_official:true});if(error){msg("message-msg",error.message,true);return;}$("message-text").value="";msg("message-msg","پیام ارسال شد.");await loadMessages(activeCase.id);});
+async function loadQuestions(id){const host=$("questions");host.replaceChildren();const {data:qs,error}=await supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at");if(error){host.textContent=error.message;return;}if(!qs?.length){host.className="empty";host.textContent="پرسش تکمیلی ثبت نشده است.";return;}host.className="";for(const q of qs){const card=el("div","item"),title=el("strong","",q.question_text),meta=el("div","meta",q.is_required?"پاسخ الزامی":"پاسخ اختیاری");card.append(title,meta);const {data:ans}=await supabase.from("case_answers").select("answer_text,created_at").eq("question_id",q.id).order("created_at");for(const a of ans||[])card.append(el("p","",a.answer_text));host.append(card);}}
+$("question-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!activeCase)return;const {error}=await supabase.from("case_questions").insert({case_id:activeCase.id,asked_by:user.id,question_text:$("question-text").value.trim(),is_required:$("question-required").checked});if(error){msg("question-msg",error.message,true);return;}$("question-text").value="";msg("question-msg","پرسش برای گلخانه‌دار ثبت شد.");await loadQuestions(activeCase.id);});
+async function loadOpinion(id){opinionId=null;const {data,error}=await supabase.from("expert_opinions").select("id,hypotheses,evidence_summary,analysis_text,recommendations,is_draft").eq("case_id",id).eq("expert_user_id",user.id).order("updated_at",{ascending:false}).limit(1).maybeSingle();if(error&&error.code!=="PGRST116"){msg("opinion-msg",error.message,true);return;}if(!data){$("opinion-form").reset();return;}opinionId=data.id;$("hypotheses").value=(data.hypotheses||[]).join("\n");$("evidence").value=data.evidence_summary||"";$("analysis").value=data.analysis_text||"";$("recommendations").value=(data.recommendations||[]).join("\n");}
+function lines(id){return $(id).value.split("\n").map(x=>x.trim()).filter(Boolean);}
+$("opinion-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!activeCase)return;const payload={case_id:activeCase.id,expert_user_id:user.id,hypotheses:lines("hypotheses"),evidence_summary:$("evidence").value.trim()||null,analysis_text:$("analysis").value.trim(),recommendations:lines("recommendations"),is_draft:true};let result;if(opinionId)result=await supabase.from("expert_opinions").update(payload).eq("id",opinionId);else result=await supabase.from("expert_opinions").insert(payload).select("id").single();if(result.error){msg("opinion-msg","ذخیره نظر ناموفق بود: "+result.error.message,true);return;}if(result.data?.id)opinionId=result.data.id;msg("opinion-msg","نظر تخصصی داخلی ذخیره شد.");});
+async function loadExistingFinalDraft(id){if(!activeAssignment?.is_lead)return;const {data}=await supabase.from("final_responses").select("id,version,response_text,recommendations,warnings").eq("case_id",id).eq("is_published",false).order("version",{ascending:false}).limit(1).maybeSingle();if(data){$("final-text").value=data.response_text;$("final-recommendations").value=(data.recommendations||[]).join("\n");$("final-warnings").value=(data.warnings||[]).join("\n");$("final-form").dataset.draftId=data.id;}else{$("final-form").reset();delete $("final-form").dataset.draftId;}}
+$("final-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!activeCase||!activeAssignment?.is_lead)return;const form=$("final-form"),draftId=form.dataset.draftId;const payload={response_text:$("final-text").value.trim(),recommendations:lines("final-recommendations"),warnings:lines("final-warnings")};if(draftId){const {error}=await supabase.from("final_responses").update(payload).eq("id",draftId);if(error){msg("final-msg","ذخیره پیش‌نویس ناموفق بود: "+error.message,true);return;}}else{const {data:existing,error:readErr}=await supabase.from("final_responses").select("version").eq("case_id",activeCase.id).order("version",{ascending:false}).limit(1);if(readErr){msg("final-msg",readErr.message,true);return;}const version=(existing?.[0]?.version||0)+1;const {data,error}=await supabase.from("final_responses").insert({...payload,case_id:activeCase.id,version,prepared_by:user.id,is_published:false}).select("id").single();if(error){msg("final-msg","ثبت پیش‌نویس ناموفق بود: "+error.message,true);return;}form.dataset.draftId=data.id;}msg("final-msg","پیش‌نویس پاسخ نهایی برای بررسی و تأیید مسئول کارشناسی ذخیره شد.");});
+$("close-detail").addEventListener("click",()=>show("detail",false));
+async function logout(){await supabase.auth.signOut();user=null;show("app",false);show("blocked",false);show("logout",false);show("login-card",true);}
+$("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
+$("login").addEventListener("click",async()=>{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error){msg("login-msg",error.message,true);return;}await verifyAndEnter();});
+$("refresh-invites").addEventListener("click",loadInvites);$("refresh-assigned").addEventListener("click",loadAssigned);
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));}));
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
+await verifyAndEnter();
+</script></body></html>
