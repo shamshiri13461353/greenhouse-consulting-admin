@@ -293,8 +293,7 @@ async function openCase(id){
  const {data:c,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at").eq("id",id).maybeSingle();
  if(error||!c){$("case-detail-title").textContent="دریافت پرونده ناموفق بود";$("case-detail-meta").textContent=error?.message||"پرونده در دسترس نیست.";return;}
  $("case-detail-title").textContent="پرونده "+c.case_number+" ـ "+c.title;
- $("case-detail-meta").textContent=(statusLabels[c.status]||c.status)+" · "+(categoryLabels[c.problem_category]||c.problem_category)+" · شدت: "+(c.severity||"تعیین نشده")+"
-"+c.description;
+ $("case-detail-meta").textContent=(statusLabels[c.status]||c.status)+" · "+(categoryLabels[c.problem_category]||c.problem_category)+" · شدت: "+(c.severity||"تعیین نشده")+"\\n"+c.description;
  const actions=$("case-detail-actions");actions.replaceChildren();
  if(["draft","awaiting_information","reopened"].includes(c.status)){
   const submit=node("button","","ارسال پرونده برای بررسی");submit.addEventListener("click",async()=>{
