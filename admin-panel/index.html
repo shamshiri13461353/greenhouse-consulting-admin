@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123d35">
+  <title>پنل مدیریت سامانه مشاوره گلخانه</title>
+  <style>
+    :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}
+    *{box-sizing:border-box}body{margin:0}header{background:#123d35;color:#fff;padding:22px max(18px,calc((100% - 1080px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}
+    h1{font-size:20px;margin:0 0 6px}header p{margin:0;color:#c8d9d4;font-size:13px}
+    main{max-width:1080px;margin:28px auto;padding:0 16px}.card{background:white;border:1px solid #e1e9e6;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 3px 14px #173b3010}
+    h2{font-size:17px;margin:0 0 16px}.muted{color:#63736e;font-size:13px;line-height:1.8}
+    label{display:block;font-size:13px;margin:12px 0 6px}input{width:100%;padding:12px;border:1px solid #ccd8d3;border-radius:9px;font:inherit;background:#fff}
+    button{font:inherit;border:0;border-radius:9px;padding:11px 16px;cursor:pointer;background:#176b57;color:#fff}button.secondary{background:#e9f1ee;color:#174b3e}button.danger{background:#8b3434}button:disabled{opacity:.45;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
+    .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf5f1;color:#174b3e;margin:12px 0;font-size:13px;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8b2828}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{font-size:12px;padding:5px 9px;border-radius:99px;background:#edf2ef;color:#40534d}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #edf0ee;vertical-align:middle}th{color:#65746e;font-weight:600}
+    .table-wrap{overflow-x:auto}.empty{text-align:center;padding:24px;color:#687771;font-size:13px}
+    @media(max-width:680px){.grid{grid-template-columns:1fr}header{padding:18px}.card{padding:15px}main{margin:16px auto}h1{font-size:17px}}
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>پنل مدیریت سامانه مشاوره گلخانه</h1><p>پیوندگستر پارسان · مدیریت کارشناسان</p></div>
+  <button id="signout" class="secondary hidden">خروج</button>
+</header>
+<main>
+  <section id="login-card" class="card">
+    <h2>ورود مدیر سامانه</h2>
+    <p class="muted">با ایمیل و گذرواژه حساب مدیریتی فعال خود وارد شوید. دسترسی مدیریتی در سمت سرور و پایگاه داده نیز کنترل می‌شود.</p>
+    <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="مدیر سامانه">
+    <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
+    <div class="actions"><button id="login">ورود</button></div>
+    <div id="login-message" class="notice hidden"></div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="card">
+      <div class="topline"><h2>دعوت کارشناس جدید</h2><span class="pill">فقط توسط مدیر</span></div>
+      <p class="muted">دعوت‌نامه از طریق Supabase Auth به ایمیل واردشده ارسال می‌شود. پس از پذیرش دعوت، مدیر باید مشخصات کارشناس را بررسی و تأیید کند.</p>
+      <div class="grid">
+        <div><label for="expert-email">ایمیل کارشناس *</label><input id="expert-email" type="email" placeholder="expert@example.com"></div>
+        <div><label for="professional-title">عنوان حرفه‌ای</label><input id="professional-title" placeholder="مثلاً کارشناس تغذیه گیاه"></div>
+        <div><label for="organization">سازمان / محل فعالیت</label><input id="organization" placeholder="نام سازمان یا شرکت"></div>
+      </div>
+      <div class="actions"><button id="invite">ارسال دعوت‌نامه</button><button id="refresh" class="secondary">به‌روزرسانی فهرست</button></div>
+      <div id="action-message" class="notice hidden"></div>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
+      <div class="table-wrap"><table><thead><tr><th>کارشناس</th><th>ایمیل / شناسه</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
+      <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
+      <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+
+  const SUPABASE_URL = "https://tnfunhkxnldrylwbxraf.supabase.co";
+  // کلید publishable عمومی است؛ هرگز service_role یا secret key را اینجا قرار ندهید.
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+  function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
+  function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
+
+  async function requireAdmin(){
+    const {data:{user},error}=await supabase.auth.getUser();
+    if(error || !user) return false;
+    const [{data:profile},{data:role}] = await Promise.all([
+      supabase.from("user_profiles").select("account_status").eq("id",user.id).maybeSingle(),
+      supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","admin").maybeSingle()
+    ]);
+    if(profile?.account_status!=="active" || !role){ await supabase.auth.signOut(); return false; }
+    return true;
+  }
+
+  async function loadExperts(){
+    $("experts").innerHTML = '<tr><td colspan="5">در حال دریافت اطلاعات…</td></tr>';
+    $("empty").classList.add("hidden");
+    const {data,error}=await supabase.from("expert_profiles")
+      .select("user_id,professional_title,organization,invitation_status,is_verified,created_at,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)")
+      .order("created_at",{ascending:false});
+    if(error){ $("experts").innerHTML=""; message("action-message","دریافت فهرست کارشناسان ناموفق بود: "+error.message,true); return; }
+    $("count").textContent = new Intl.NumberFormat("fa-IR").format(data.length)+" کارشناس";
+    $("experts").innerHTML="";
+    $("empty").classList.toggle("hidden",data.length!==0);
+    for(const e of data){
+      const p=e.user_profiles||{};
+      const tr=document.createElement("tr");
+      const name=[p.first_name,p.last_name].filter(Boolean).join(" ") || e.professional_title || "بدون نام";
+      const cells=[name,e.user_id,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
+      for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const td=document.createElement("td");
+      if(e.invitation_status==="accepted" && !e.is_verified){
+        const b=document.createElement("button"); b.textContent="تأیید کارشناس";
+        b.addEventListener("click",()=>approve(e.user_id,b)); td.appendChild(b);
+      }else{td.textContent=e.is_verified?"فعال":"—";}
+      tr.appendChild(td); $("experts").appendChild(tr);
+    }
+  }
+
+  async function approve(userId,button){
+    button.disabled=true;
+    const {error}=await supabase.rpc("admin_approve_expert",{p_user_id:userId});
+    if(error){message("action-message","تأیید کارشناس انجام نشد: "+error.message,true);button.disabled=false;return;}
+    message("action-message","کارشناس با موفقیت تأیید و فعال شد.");
+    await loadExperts();
+  }
+
+  async function enterDashboard(){
+    const ok=await requireAdmin();
+    show("login-card",!ok); show("dashboard",ok); show("signout",ok);
+    if(ok) await loadExperts();
+  }
+
+  $("login").addEventListener("click",async()=>{
+    $("login").disabled=true;
+    const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+    $("login").disabled=false;
+    if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
+    await enterDashboard();
+  });
+  $("invite").addEventListener("click",async()=>{
+    const email=$("expert-email").value.trim();
+    if(!email){message("action-message","ایمیل کارشناس را وارد کنید.",true);return;}
+    $("invite").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-invite-expert",{body:{
+      email,professional_title:$("professional-title").value.trim(),organization:$("organization").value.trim()
+    }});
+    $("invite").disabled=false;
+    if(error){message("action-message","ارسال دعوت‌نامه ناموفق بود: "+error.message,true);return;}
+    message("action-message",data?.message || "دعوت‌نامه ارسال شد.");
+    $("expert-email").value=""; $("professional-title").value=""; $("organization").value="";
+    await loadExperts();
+  });
+  $("refresh").addEventListener("click",loadExperts);
+  $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
+  supabase.auth.onAuthStateChange((_event,session)=>{if(!session){show("dashboard",false);show("signout",false);show("login-card",true);}});
+  await enterDashboard();
+</script>
+</body>
+</html>
