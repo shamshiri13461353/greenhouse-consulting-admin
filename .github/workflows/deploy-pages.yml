@@ -1,10 +1,12 @@
-name: Deploy admin panel to GitHub Pages
+name: Deploy admin, grower and expert portals to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
       - "admin-panel/**"
+      - "grower/**"
+      - "expert/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -30,10 +32,12 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site
+          mkdir -p _site/grower _site/expert
           cp admin-panel/index.html _site/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
+          cp grower/index.html _site/grower/index.html
+          cp expert/index.html _site/expert/index.html
           touch _site/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
