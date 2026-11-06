@@ -214,7 +214,7 @@
     if(!caseId||!leadId){message("assignment-message","پرونده و کارشناس مسئول را انتخاب کنید.",true);return;}
     if(helperId&&helperId===leadId){message("assignment-message","کارشناس مسئول و همکار باید متفاوت باشند.",true);return;}
     const c=adminCases.find(x=>x.id===caseId);
-    if(!c||!["ready_for_review","reopened"].includes(c.status)){message("assignment-message","در این نسخه فقط پرونده‌های آماده بررسی یا بازگشایی‌شده قابل ارجاع هستند.",true);return;}
+    if(!c||c.status!=="ready_for_review"){message("assignment-message","در این نسخه فقط پرونده‌های دارای وضعیت «آماده بررسی» قابل ارجاع هستند.",true);return;}
     const {data:existing,error:readError}=await supabase.from("case_assignments").select("expert_user_id,is_lead,status").eq("case_id",caseId).in("status",["invited","active"]);
     if(readError){message("assignment-message",readError.message,true);return;}
     if((existing||[]).some(x=>x.is_lead)){message("assignment-message","برای این پرونده از قبل دعوت یا ارجاع کارشناس مسئول وجود دارد. ابتدا دعوت قبلی را لغو کنید یا وضعیت آن را بررسی کنید.",true);await loadSelectedAssignments();return;}
