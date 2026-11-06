@@ -11,7 +11,7 @@
     h1{font-size:20px;margin:0 0 6px}header p{margin:0;color:#c8d9d4;font-size:13px}
     main{max-width:1080px;margin:28px auto;padding:0 16px}.card{background:white;border:1px solid #e1e9e6;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 3px 14px #173b3010}
     h2{font-size:17px;margin:0 0 16px}.muted{color:#63736e;font-size:13px;line-height:1.8}
-    label{display:block;font-size:13px;margin:12px 0 6px}input{width:100%;padding:12px;border:1px solid #ccd8d3;border-radius:9px;font:inherit;background:#fff}
+    label{display:block;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #ccd8d3;border-radius:9px;font:inherit;background:#fff}select{min-height:44px} .divider{border-top:1px solid #edf0ee;margin:18px 0} .review-item{border:1px solid #e3ebe7;border-radius:10px;padding:13px;margin:9px 0;white-space:pre-wrap;line-height:1.9;font-size:13px} .review-item h3{font-size:14px;margin:0 0 8px}
     button{font:inherit;border:0;border-radius:9px;padding:11px 16px;cursor:pointer;background:#176b57;color:#fff}button.secondary{background:#e9f1ee;color:#174b3e}button.danger{background:#8b3434}button:disabled{opacity:.45;cursor:not-allowed}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
     .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf5f1;color:#174b3e;margin:12px 0;font-size:13px;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8b2828}
@@ -72,6 +72,24 @@
       <div class="table-wrap"><table><thead><tr><th>کارشناس</th><th>ایمیل / شناسه</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
       <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
       <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>مدیریت پرونده‌ها و ارجاع کارشناسی</h2><button id="refresh-cases" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">پرونده‌های آماده بررسی را انتخاب کنید و یک کارشناس مسئول و در صورت نیاز همکار تخصصی تعیین کنید. دعوت پس از ثبت، در پنل کارشناس نمایش داده می‌شود؛ ارجاع قطعی پس از پذیرش کارشناس انجام می‌شود.</p>
+      <label for="case-select">پرونده آماده ارجاع</label><select id="case-select"><option value="">در حال دریافت پرونده‌ها…</option></select>
+      <div class="grid">
+        <div><label for="lead-select">کارشناس مسئول *</label><select id="lead-select"><option value="">انتخاب کارشناس مسئول</option></select></div>
+        <div><label for="helper-select">همکار تخصصی (اختیاری)</label><select id="helper-select"><option value="">بدون همکار</option></select></div>
+      </div>
+      <div class="actions"><button id="assign-case">ارسال دعوت ارجاع</button></div>
+      <div id="assignment-message" class="notice hidden"></div>
+      <div class="divider"></div><h3>ارجاعات پرونده انتخاب‌شده</h3><div id="case-assignments" class="empty">ابتدا پرونده را انتخاب کنید.</div>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>نظارت بر نظر کارشناسی و پاسخ‌های نهایی</h2><button id="refresh-reviews" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">مدیر می‌تواند محتوای نظر تخصصی و پیش‌نویس پاسخ را بررسی و بر روند کار نظارت کند. مطابق قاعده مصوب سامانه، تأیید نهایی و انتشار پاسخ بر عهده کارشناس مسئول پرونده است؛ مدیر در این بخش پاسخ را منتشر نمی‌کند.</p>
+      <div class="divider"></div><h3>پیش‌نویس‌های منتشرنشده</h3><div id="draft-review-list" class="empty">در حال دریافت…</div>
+      <div class="divider"></div><h3>آخرین نظرهای تخصصی</h3><div id="opinion-review-list" class="empty">در حال دریافت…</div>
     </div>
   </section>
 </main>
@@ -160,10 +178,81 @@
     }
   }
 
+  const caseLabels={ready_for_review:"آماده ارجاع",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار بررسی پاسخ",under_review:"در حال بررسی",assigned:"ارجاع‌شده",awaiting_information:"در انتظار اطلاعات",answered:"پاسخ داده‌شده",closed:"بسته‌شده"};
+  let adminUser=null,adminCases=[],adminExperts=[];
+  async function loadCaseManagement(){
+    const [cr,er]=await Promise.all([
+      supabase.from("cases").select("id,case_number,title,problem_category,severity,status,created_at,created_by,crop_cycle_id").order("created_at",{ascending:false}).limit(150),
+      supabase.from("expert_profiles").select("user_id,professional_title,organization,is_verified,invitation_status,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)").order("created_at",{ascending:false})
+    ]);
+    if(cr.error){message("assignment-message","دریافت پرونده‌ها ناموفق بود: "+cr.error.message,true);return;}
+    if(er.error){message("assignment-message","دریافت کارشناسان ناموفق بود: "+er.error.message,true);return;}
+    adminCases=cr.data||[];
+    adminExperts=(er.data||[]).filter(x=>x.is_verified&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
+    const cs=$("case-select"),ls=$("lead-select"),hs=$("helper-select");
+    cs.replaceChildren(new Option("انتخاب پرونده",""));
+    for(const c of adminCases){const op=new Option("پرونده "+c.case_number+" · "+c.title+" · "+(caseLabels[c.status]||c.status),c.id);cs.add(op);}
+    ls.replaceChildren(new Option("انتخاب کارشناس مسئول",""));hs.replaceChildren(new Option("بدون همکار",""));
+    for(const e of adminExperts){const name=[e.user_profiles?.first_name,e.user_profiles?.last_name].filter(Boolean).join(" ")||e.professional_title||"کارشناس";const label=name+" · "+(e.professional_title||"");ls.add(new Option(label,e.user_id));hs.add(new Option(label,e.user_id));}
+    await loadSelectedAssignments();
+  }
+  async function loadSelectedAssignments(){
+    const id=$("case-select").value,host=$("case-assignments");host.replaceChildren();
+    if(!id){host.className="empty";host.textContent="ابتدا پرونده را انتخاب کنید.";return;}
+    const {data,error}=await supabase.from("case_assignments").select("id,expert_user_id,is_lead,status,assigned_at,accepted_at").eq("case_id",id).order("assigned_at",{ascending:false});
+    if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
+    if(!data?.length){host.className="empty";host.textContent="هنوز ارجاعی برای این پرونده ثبت نشده است.";return;}
+    host.className="";
+    for(const a of data){const expert=adminExperts.find(x=>x.user_id===a.expert_user_id),name=[expert?.user_profiles?.first_name,expert?.user_profiles?.last_name].filter(Boolean).join(" ")||expert?.professional_title||a.expert_user_id;
+      const row=document.createElement("div");row.className="review-item";const title=document.createElement("strong");title.textContent=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+name+" · "+({invited:"دعوت‌شده",active:"فعال",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"}[a.status]||a.status);row.append(title);
+      if(a.status==="invited"){const b=document.createElement("button");b.className="danger";b.textContent="لغو دعوت";b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.from("case_assignments").update({status:"revoked",revoked_at:new Date().toISOString()}).eq("id",a.id).eq("status","invited");if(error){message("assignment-message","لغو دعوت ناموفق بود: "+error.message,true);b.disabled=false;return;}message("assignment-message","دعوت لغو شد.");await loadSelectedAssignments();});row.append(document.createElement("br"),b);}
+      host.append(row);
+    }
+  }
+  async function assignSelectedCase(){
+    const caseId=$("case-select").value,leadId=$("lead-select").value,helperId=$("helper-select").value;
+    if(!caseId||!leadId){message("assignment-message","پرونده و کارشناس مسئول را انتخاب کنید.",true);return;}
+    if(helperId&&helperId===leadId){message("assignment-message","کارشناس مسئول و همکار باید متفاوت باشند.",true);return;}
+    const c=adminCases.find(x=>x.id===caseId);
+    if(!c||!["ready_for_review","reopened"].includes(c.status)){message("assignment-message","در این نسخه فقط پرونده‌های آماده بررسی یا بازگشایی‌شده قابل ارجاع هستند.",true);return;}
+    const {data:existing,error:readError}=await supabase.from("case_assignments").select("expert_user_id,is_lead,status").eq("case_id",caseId).in("status",["invited","active"]);
+    if(readError){message("assignment-message",readError.message,true);return;}
+    if((existing||[]).some(x=>x.is_lead)){message("assignment-message","برای این پرونده از قبل دعوت یا ارجاع کارشناس مسئول وجود دارد. ابتدا دعوت قبلی را لغو کنید یا وضعیت آن را بررسی کنید.",true);await loadSelectedAssignments();return;}
+    if(helperId&&(existing||[]).some(x=>x.expert_user_id===helperId)){message("assignment-message","این کارشناس هم‌اکنون برای همین پرونده دعوت یا فعال شده است.",true);return;}
+    const rows=[{case_id:caseId,expert_user_id:leadId,assigned_by:adminUser.id,is_lead:true,status:"invited"}];
+    if(helperId)rows.push({case_id:caseId,expert_user_id:helperId,assigned_by:adminUser.id,is_lead:false,status:"invited"});
+    $("assign-case").disabled=true;
+    const {error}=await supabase.from("case_assignments").insert(rows);
+    $("assign-case").disabled=false;
+    if(error){message("assignment-message","ثبت ارجاع ناموفق بود: "+error.message,true);return;}
+    message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId+"?"?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
+    $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();
+  }
+  async function loadReviewQueue(){
+    const [fr,op]=await Promise.all([
+      supabase.from("final_responses").select("id,case_id,version,prepared_by,response_text,recommendations,warnings,created_at").eq("is_published",false).order("created_at",{ascending:false}).limit(60),
+      supabase.from("expert_opinions").select("id,case_id,expert_user_id,hypotheses,evidence_summary,analysis_text,recommendations,updated_at").order("updated_at",{ascending:false}).limit(60)
+    ]);
+    const [draftHost,opHost]=[$("draft-review-list"),$("opinion-review-list")];
+    draftHost.replaceChildren();opHost.replaceChildren();
+    if(fr.error){draftHost.textContent="دریافت پیش‌نویس‌ها ناموفق بود: "+fr.error.message;}else if(!fr.data?.length){draftHost.className="empty";draftHost.textContent="پیش‌نویس منتشرنشده‌ای وجود ندارد.";}else{
+      draftHost.className="";
+      for(const d of fr.data){const c=adminCases.find(x=>x.id===d.case_id),name=adminExperts.find(x=>x.user_id===d.prepared_by);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;const p=document.createElement("p");p.textContent=d.response_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="تهیه‌کننده: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||d.prepared_by)+" · "+new Date(d.created_at).toLocaleString("fa-IR");box.append(h,meta,p);
+        if(d.recommendations?.length){const r=document.createElement("p");r.textContent="توصیه‌ها: "+d.recommendations.join("، ");box.append(r);}if(d.warnings?.length){const w=document.createElement("p");w.textContent="هشدارها: "+d.warnings.join("، ");box.append(w);}draftHost.append(box);}
+    }
+    if(op.error){opHost.textContent="دریافت نظرهای تخصصی ناموفق بود: "+op.error.message;}else if(!op.data?.length){opHost.className="empty";opHost.textContent="نظر تخصصی ثبت نشده است.";}else{
+      opHost.className="";
+      for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExperts.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
+    }
+  }
+  $("case-select").addEventListener("change",loadSelectedAssignments);
+  $("assign-case").addEventListener("click",assignSelectedCase);
+  $("refresh-cases").addEventListener("click",async()=>{await loadCaseManagement();await loadReviewQueue();});
+  $("refresh-reviews").addEventListener("click",loadReviewQueue);
   async function enterDashboard(){
-    const ok=await requireAdmin();
+    const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;\n    const ok=await requireAdmin();
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
-    if(ok){ await loadExperts(); await loadGrowers(); }
+    if(ok){ await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
   }
 
   $("login").addEventListener("click",async()=>{
