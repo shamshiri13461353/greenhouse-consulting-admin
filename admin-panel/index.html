@@ -225,7 +225,7 @@
     const {error}=await supabase.from("case_assignments").insert(rows);
     $("assign-case").disabled=false;
     if(error){message("assignment-message","ثبت ارجاع ناموفق بود: "+error.message,true);return;}
-    message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId+"?"?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
+    message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
     $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();
   }
   async function loadReviewQueue(){
