@@ -74,7 +74,8 @@ async function openCase(c,a){
  const acts=$("case-actions");acts.replaceChildren();
  if(a.is_lead&&c.status==="assigned"){const b=el("button","","شروع بررسی کارشناسی");b.addEventListener("click",async()=>{const {error}=await supabase.rpc("start_lead_case_review",{p_case_id:c.id});if(error){alert("تغییر وضعیت ناموفق بود: "+error.message);return;}await loadAssigned();c.status="under_review";await openCase(c,a);});acts.append(b);}
  show("final-draft-wrap",a.is_lead);
- await Promise.all([loadAttachments(c.id),loadLabs(c.id),loadMessages(c.id),loadQuestions(c.id),loadOpinion(c.id),loadExistingFinalDraft(c.id)]);
+ await loadMessages(c.id);
+ await Promise.all([loadAttachments(c.id),loadLabs(c.id),loadQuestions(c.id),loadOpinion(c.id),loadExistingFinalDraft(c.id)]);
  startCaseAutoRefresh(c.id);
  $("detail").scrollIntoView({behavior:"smooth"});
 }
