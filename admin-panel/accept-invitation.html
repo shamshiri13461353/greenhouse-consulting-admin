@@ -23,6 +23,10 @@
     <p>برای تکمیل ثبت‌نام کارشناسی که از طرف سامانه مشاوره گلخانه دعوت شده‌اید، یک گذرواژه برای حساب خود تعیین کنید. پس از پذیرش دعوت، حساب شما برای بررسی و تأیید مدیر ارسال می‌شود.</p>
     <div id="form-area" class="hidden">
       <form id="accept-form">
+        <label for="first-name">نام</label>
+        <input id="first-name" type="text" maxlength="80" autocomplete="given-name" required placeholder="نام">
+        <label for="last-name">نام خانوادگی</label>
+        <input id="last-name" type="text" maxlength="80" autocomplete="family-name" required placeholder="نام خانوادگی">
         <label for="password">گذرواژه جدید</label>
         <input id="password" type="password" minlength="8" autocomplete="new-password" required placeholder="حداقل ۸ نویسه">
         <label for="password2">تکرار گذرواژه</label>
@@ -63,9 +67,28 @@
   $("accept-form").addEventListener("submit",async event=>{
     event.preventDefault();
     const password=$("password").value;
+    const firstName=$("first-name").value.trim();
+    const lastName=$("last-name").value.trim();
+    if(!firstName || !lastName){showStatus("وارد کردن نام و نام خانوادگی الزامی است.",true);return;}
+    if(firstName.length>80 || lastName.length>80){showStatus("نام و نام خانوادگی نمی‌توانند بیش از ۸۰ نویسه باشند.",true);return;}
     if(password.length<8){showStatus("گذرواژه باید دست‌کم ۸ نویسه داشته باشد.",true);return;}
     if(password!==$("password2").value){showStatus("گذرواژه و تکرار آن یکسان نیستند.",true);return;}
     $("submit").disabled=true;
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError || !user){
+      $("submit").disabled=false;
+      showStatus("دریافت اطلاعات حساب ناموفق بود. لطفاً صفحه را دوباره باز کنید.",true);return;
+    }
+    const {data:profile,error:profileError}=await supabase
+      .from("user_profiles")
+      .update({first_name:firstName,last_name:lastName})
+      .eq("id",user.id)
+      .select("id")
+      .maybeSingle();
+    if(profileError || !profile){
+      $("submit").disabled=false;
+      showStatus("ثبت نام و نام خانوادگی انجام نشد. لطفاً دوباره تلاش کنید.\n"+(profileError?.message||"پروفایل کاربری پیدا نشد."),true);return;
+    }
     const {error}=await supabase.auth.updateUser({password});
     $("submit").disabled=false;
     if(error){showStatus("ثبت گذرواژه انجام نشد: "+error.message,true);return;}
