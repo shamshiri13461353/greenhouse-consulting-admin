@@ -153,7 +153,7 @@ const SUPABASE_URL="https://tnfunhkxnldrylwbxraf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=id=>document.getElementById(id);
-let currentUser=null, greenhouses=[], cropCycles=[], activeCaseId=null;
+let currentUser=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
@@ -240,7 +240,11 @@ $("login").addEventListener("click",async()=>{
  if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
  await enter();
 });
-async function logout(){await supabase.auth.signOut();currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}
+function stopCaseMessageAutoRefresh(){if(caseMessageRefreshTimer){clearInterval(caseMessageRefreshTimer);caseMessageRefreshTimer=null;}caseMessageRefreshCaseId=null;}
+async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseMessages(id);}finally{caseMessageRefreshBusy=false;}}
+function startCaseMessageAutoRefresh(id){stopCaseMessageAutoRefresh();caseMessageRefreshCaseId=id;caseMessageRefreshTimer=setInterval(refreshCaseMessages,20000);}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshCaseMessages();});
+async function logout(){stopCaseMessageAutoRefresh();await supabase.auth.signOut();currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}
 $("logout").addEventListener("click",logout);$("pending-logout").addEventListener("click",logout);
 $("greenhouse-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("gh-message");
@@ -292,7 +296,7 @@ async function loadCases(){
  }
 }
 async function openCase(id){
- activeCaseId=id;show("case-detail",true);
+ stopCaseMessageAutoRefresh();activeCaseId=id;show("case-detail",true);
  $("case-detail-title").textContent="در حال بارگذاری پرونده…";
  $("attachment-list").textContent="در حال دریافت…";$("case-message-list").textContent="در حال دریافت…";$("final-response-list").textContent="در حال دریافت…";
  const {data:c,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at").eq("id",id).maybeSingle();
@@ -313,7 +317,9 @@ async function openCase(id){
    if(error){alert("درخواست بازگشایی ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
   });actions.append(reopen);
  }
- await Promise.all([loadAttachments(id),loadCaseMessages(id),loadCaseQuestions(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ await loadCaseMessages(id);
+ await Promise.all([loadAttachments(id),loadCaseQuestions(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ startCaseMessageAutoRefresh(id);
  $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function loadAttachments(id){
@@ -480,7 +486,7 @@ $("case-message-form").addEventListener("submit",async ev=>{
  $("case-message-text").value="";notice("case-message-notice","پیام رسمی ارسال شد.");await loadCaseMessages(activeCaseId);
 });
 $("refresh-cases").addEventListener("click",loadCases);
-$("close-case-detail").addEventListener("click",()=>{activeCaseId=null;show("case-detail",false);});
+$("close-case-detail").addEventListener("click",()=>{stopCaseMessageAutoRefresh();activeCaseId=null;show("case-detail",false);});
 
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}});
 await enter();
