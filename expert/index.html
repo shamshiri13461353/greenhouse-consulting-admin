@@ -22,8 +22,9 @@
 <div class="divider"></div><h2>نظر تخصصی کارشناس (داخلی)</h2><p class="muted">این بخش یادداشت تخصصی پرونده است و به گلخانه‌دار نمایش داده نمی‌شود.</p><form id="opinion-form"><label>فرضیه‌های تشخیصی (هر مورد در یک خط)</label><textarea id="hypotheses" placeholder="فرضیه اول&#10;فرضیه دوم"></textarea><label>شواهد و داده‌های مورد اتکا</label><textarea id="evidence"></textarea><label>تحلیل تخصصی</label><textarea id="analysis" required></textarea><label>توصیه‌های تخصصی (هر مورد در یک خط)</label><textarea id="recommendations"></textarea><div class="actions"><button id="save-opinion">ذخیره نظر تخصصی</button></div><div id="opinion-msg" class="notice hidden"></div></form>
 <div id="final-draft-wrap" class="hidden"><div class="divider"></div><h2>تهیه پیش‌نویس پاسخ نهایی</h2><p class="muted">پیش‌نویس برای تأیید مسئول کارشناسی آماده می‌شود و در این مرحله برای گلخانه‌دار منتشر نخواهد شد.</p><form id="final-form"><label>متن پاسخ نهایی</label><textarea id="final-text" required></textarea><label>توصیه‌های اجرایی (هر مورد در یک خط)</label><textarea id="final-recommendations"></textarea><label>هشدارها (هر مورد در یک خط)</label><textarea id="final-warnings"></textarea><div class="actions"><button>ثبت پیش‌نویس برای تأیید</button><button type="button" id="publish-final">تأیید و انتشار پاسخ نهایی</button></div><div id="final-msg" class="notice hidden"></div></form></div>
 </section></section></main>
+<script src="./supabase.js"></script>
 <script type="module">
-import{createClient}from"https://esm.sh/@supabase/supabase-js@2.58.0";
+const createClient = window.supabase.createClient;
 const supabase=createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
 const $=id=>document.getElementById(id);let user=null,activeCase=null,activeAssignment=null,opinionId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
