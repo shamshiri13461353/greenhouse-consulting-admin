@@ -146,8 +146,9 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   </section>
  </section>
 </main>
+<script src="./supabase.js"></script>
 <script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+const createClient = window.supabase.createClient;
 const SUPABASE_URL="https://tnfunhkxnldrylwbxraf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
