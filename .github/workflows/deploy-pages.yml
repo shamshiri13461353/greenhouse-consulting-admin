@@ -1,4 +1,4 @@
-name: Deploy admin, grower and expert portals to GitHub Pages
+name: Deploy admin, grower, expert and mobile portals to GitHub Pages
 
 on:
   push:
@@ -7,6 +7,8 @@ on:
       - "admin-panel/**"
       - "grower/**"
       - "expert/**"
+      - "mobile/**"
+      - "sw.js"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -28,7 +30,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Syntax-check all portal modules
+      - name: Syntax-check all portal modules and service worker
         run: |
           python3 - <<'PY'
           import re, pathlib
@@ -36,6 +38,7 @@ jobs:
               "admin-panel/index.html": "admin-panel",
               "grower/index.html": "grower",
               "expert/index.html": "expert",
+              "mobile/index.html": "mobile",
           }
           for source, name in portals.items():
               html = pathlib.Path(source).read_text()
@@ -47,6 +50,9 @@ jobs:
           node --check /tmp/admin-panel.mjs
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
+          node --check /tmp/mobile.mjs
+          node --check sw.js
+          python3 -m json.tool mobile/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
         run: |
           TGZ="$(npm pack --silent @supabase/supabase-js@2.58.0 --pack-destination /tmp)"
@@ -57,12 +63,16 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/grower _site/expert
+          mkdir -p _site/grower _site/expert _site/mobile/icons
           cp admin-panel/index.html _site/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
           cp grower/index.html _site/grower/index.html
           cp expert/index.html _site/expert/index.html
+          cp mobile/index.html _site/mobile/index.html
+          cp mobile/manifest.webmanifest _site/mobile/manifest.webmanifest
+          cp mobile/icons/icon.svg _site/mobile/icons/icon.svg
+          cp sw.js _site/sw.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
