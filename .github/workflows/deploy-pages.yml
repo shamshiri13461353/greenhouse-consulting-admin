@@ -39,6 +39,12 @@ jobs:
           pathlib.Path("/tmp/admin-panel.mjs").write_text(scripts[0])
           PY
           node --check /tmp/admin-panel.mjs
+      - name: Download pinned Supabase browser bundle
+        run: |
+          TGZ="$(npm pack --silent @supabase/supabase-js@2.58.0 --pack-destination /tmp)"
+          mkdir -p /tmp/supabase-sdk
+          tar -xzf "/tmp/$TGZ" -C /tmp/supabase-sdk
+          test -s /tmp/supabase-sdk/package/dist/umd/supabase.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Prepare site
@@ -49,6 +55,9 @@ jobs:
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
           cp grower/index.html _site/grower/index.html
           cp expert/index.html _site/expert/index.html
+          cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
+          cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
+          cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
           touch _site/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
