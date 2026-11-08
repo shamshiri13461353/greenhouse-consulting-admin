@@ -68,12 +68,12 @@
         <div id="grower-password-message" class="notice hidden"></div>
       </div>
       <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
-      <div class="table-wrap"><table><thead><tr><th>ایمیل / شناسه</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
       <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
     </div>
     <div class="card">
       <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
-      <div class="table-wrap"><table><thead><tr><th>کارشناس</th><th>ایمیل / شناسه</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>عنوان تخصصی / سازمان</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
       <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
       <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
     </div>
@@ -134,7 +134,8 @@
       const p=e.user_profiles||{};
       const tr=document.createElement("tr");
       const name=[p.first_name,p.last_name].filter(Boolean).join(" ") || e.professional_title || "بدون نام";
-      const cells=[name,e.user_id,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
+      const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ") || "—";
+      const cells=[name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
       for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
       const td=document.createElement("td");
       if(e.invitation_status==="accepted" && !e.is_verified){
@@ -157,7 +158,7 @@
   function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"غیرفعال"})[s]||s||"—";}
   async function loadGrowers(){
     const body=$("growers"); body.innerHTML='<tr><td colspan="4">در حال دریافت…</td></tr>';
-    const {data:profiles,error}=await supabase.from("user_profiles").select("id,account_status,created_at").order("created_at",{ascending:false});
+    const {data:profiles,error}=await supabase.from("user_profiles").select("id,first_name,last_name,account_status,created_at").order("created_at",{ascending:false});
     if(error){body.innerHTML="";message("grower-message","دریافت حساب‌ها ناموفق بود: "+error.message,true);return;}
     const ids=(profiles||[]).map(x=>x.id);
     if(!ids.length){body.innerHTML="";show("growers-empty",true);return;}
@@ -171,7 +172,8 @@
     body.innerHTML=""; show("growers-empty",rows.length===0);
     for(const p of rows){
       const tr=document.createElement("tr");
-      for(const v of [p.id,growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const displayName=[p.first_name,p.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";
+      for(const v of [displayName,growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
       const td=document.createElement("td");
       if(p.account_status==="pending"){
         const b=document.createElement("button");b.textContent="تأیید و فعال‌سازی";
@@ -183,19 +185,20 @@
   }
 
   const caseLabels={ready_for_review:"آماده ارجاع",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار بررسی پاسخ",under_review:"در حال بررسی",assigned:"ارجاع‌شده",awaiting_information:"در انتظار اطلاعات",answered:"پاسخ داده‌شده",closed:"بسته‌شده"};
-  let adminUser=null,adminCases=[],adminExperts=[];
+  let adminUser=null,adminCases=[],adminExperts=[],adminExpertDirectory=[];
   async function loadCaseManagement(){
     const [cr,er]=await Promise.all([
-      supabase.from("cases").select("id,case_number,title,problem_category,severity,status,created_at,created_by,crop_cycle_id").order("created_at",{ascending:false}).limit(150),
+      supabase.from("cases").select("id,case_number,title,problem_category,severity,status,created_at,created_by,crop_cycle_id,user_profiles!cases_created_by_fkey(first_name,last_name)").order("created_at",{ascending:false}).limit(150),
       supabase.from("expert_profiles").select("user_id,professional_title,organization,is_verified,invitation_status,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)").order("created_at",{ascending:false})
     ]);
     if(cr.error){message("assignment-message","دریافت پرونده‌ها ناموفق بود: "+cr.error.message,true);return;}
     if(er.error){message("assignment-message","دریافت کارشناسان ناموفق بود: "+er.error.message,true);return;}
     adminCases=cr.data||[];
-    adminExperts=(er.data||[]).filter(x=>x.is_verified&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
+    adminExpertDirectory=er.data||[];
+    adminExperts=adminExpertDirectory.filter(x=>x.is_verified&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
     const cs=$("case-select"),ls=$("lead-select"),hs=$("helper-select");
     cs.replaceChildren(new Option("انتخاب پرونده",""));
-    for(const c of adminCases){const op=new Option("پرونده "+c.case_number+" · "+c.title+" · "+(caseLabels[c.status]||c.status),c.id);cs.add(op);}
+    for(const c of adminCases){const growerName=[c.user_profiles?.first_name,c.user_profiles?.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";const op=new Option("پرونده "+c.case_number+" · "+c.title+" · گلخانه‌دار: "+growerName+" · "+(caseLabels[c.status]||c.status),c.id);cs.add(op);}
     ls.replaceChildren(new Option("انتخاب کارشناس مسئول",""));hs.replaceChildren(new Option("بدون همکار",""));
     for(const e of adminExperts){const name=[e.user_profiles?.first_name,e.user_profiles?.last_name].filter(Boolean).join(" ")||e.professional_title||"کارشناس";const label=name+" · "+(e.professional_title||"");ls.add(new Option(label,e.user_id));hs.add(new Option(label,e.user_id));}
     await loadSelectedAssignments();
@@ -207,7 +210,7 @@
     if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
     if(!data?.length){host.className="empty";host.textContent="هنوز ارجاعی برای این پرونده ثبت نشده است.";return;}
     host.className="";
-    for(const a of data){const expert=adminExperts.find(x=>x.user_id===a.expert_user_id),name=[expert?.user_profiles?.first_name,expert?.user_profiles?.last_name].filter(Boolean).join(" ")||expert?.professional_title||a.expert_user_id;
+    for(const a of data){const expert=adminExpertDirectory.find(x=>x.user_id===a.expert_user_id),name=[expert?.user_profiles?.first_name,expert?.user_profiles?.last_name].filter(Boolean).join(" ")||expert?.professional_title||"نام ثبت نشده";
       const row=document.createElement("div");row.className="review-item";const title=document.createElement("strong");title.textContent=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+name+" · "+({invited:"دعوت‌شده",active:"فعال",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"}[a.status]||a.status);row.append(title);
       if(a.status==="invited"){const b=document.createElement("button");b.className="danger";b.textContent="لغو دعوت";b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.from("case_assignments").update({status:"revoked",revoked_at:new Date().toISOString()}).eq("id",a.id).eq("status","invited");if(error){message("assignment-message","لغو دعوت ناموفق بود: "+error.message,true);b.disabled=false;return;}message("assignment-message","دعوت لغو شد.");await loadSelectedAssignments();});row.append(document.createElement("br"),b);}
       host.append(row);
@@ -241,12 +244,12 @@
     draftHost.replaceChildren();opHost.replaceChildren();
     if(fr.error){draftHost.textContent="دریافت پیش‌نویس‌ها ناموفق بود: "+fr.error.message;}else if(!fr.data?.length){draftHost.className="empty";draftHost.textContent="پیش‌نویس منتشرنشده‌ای وجود ندارد.";}else{
       draftHost.className="";
-      for(const d of fr.data){const c=adminCases.find(x=>x.id===d.case_id),name=adminExperts.find(x=>x.user_id===d.prepared_by);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;const p=document.createElement("p");p.textContent=d.response_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="تهیه‌کننده: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||d.prepared_by)+" · "+new Date(d.created_at).toLocaleString("fa-IR");box.append(h,meta,p);
+      for(const d of fr.data){const c=adminCases.find(x=>x.id===d.case_id),name=adminExpertDirectory.find(x=>x.user_id===d.prepared_by);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;const p=document.createElement("p");p.textContent=d.response_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="تهیه‌کننده: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||name?.professional_title||"نام ثبت نشده")+" · "+new Date(d.created_at).toLocaleString("fa-IR");box.append(h,meta,p);
         if(d.recommendations?.length){const r=document.createElement("p");r.textContent="توصیه‌ها: "+d.recommendations.join("، ");box.append(r);}if(d.warnings?.length){const w=document.createElement("p");w.textContent="هشدارها: "+d.warnings.join("، ");box.append(w);}draftHost.append(box);}
     }
     if(op.error){opHost.textContent="دریافت نظرهای تخصصی ناموفق بود: "+op.error.message;}else if(!op.data?.length){opHost.className="empty";opHost.textContent="نظر تخصصی ثبت نشده است.";}else{
       opHost.className="";
-      for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExperts.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
+      for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExpertDirectory.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
     }
   }
   $("case-select").addEventListener("change",loadSelectedAssignments);
