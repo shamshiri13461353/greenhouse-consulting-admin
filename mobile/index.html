@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#123d35">
+  <meta name="description" content="دسترسی همراه به پنل گلخانه‌دار، کارشناس و مدیریت سامانه مشاوره گلخانه">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <title>سامانه مشاوره گلخانه</title>
+  <style>
+    :root{font-family:Tahoma,Arial,sans-serif;color:#17352d;background:#f2f6f4;font-synthesis:none}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#e7f0ec 0,#f5f7f6 310px)}
+    header{background:#123d35;color:#fff;padding:26px 18px 34px;text-align:center}
+    .brand{width:66px;height:66px;margin:0 auto 14px;border-radius:20px;background:#ffffff18;display:grid;place-items:center}
+    .brand img{width:48px;height:48px}
+    h1{font-size:21px;margin:0 0 8px}
+    header p{font-size:13px;color:#c8d9d4;margin:0;line-height:1.9}
+    main{width:min(720px,calc(100% - 28px));margin:-17px auto 30px}
+    .intro,.role{background:#fff;border:1px solid #e0e9e5;border-radius:16px;box-shadow:0 5px 20px #153b3010}
+    .intro{padding:17px 18px;margin-bottom:14px}
+    .intro h2{font-size:16px;margin:0 0 8px}
+    .intro p{font-size:12px;line-height:2;color:#64766e;margin:0}
+    .roles{display:grid;gap:12px}
+    .role{display:flex;align-items:center;gap:14px;padding:17px;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
+    .role:active{transform:scale(.99)}
+    .role:focus-visible,.install:focus-visible{outline:3px solid #72b5a0;outline-offset:3px}
+    .symbol{width:48px;height:48px;flex:0 0 48px;border-radius:14px;background:#eaf3ef;color:#176b57;display:grid;place-items:center;font-size:24px}
+    .role-copy{flex:1;min-width:0}
+    .role h3{font-size:15px;margin:0 0 5px}
+    .role p{font-size:11px;color:#6b7b74;line-height:1.8;margin:0}
+    .arrow{font-size:21px;color:#82948c}
+    .install-wrap{text-align:center;margin:18px 0 10px}
+    .install{display:none;border:0;border-radius:10px;background:#176b57;color:#fff;padding:12px 22px;font:inherit;font-size:13px;cursor:pointer}
+    .install.visible{display:inline-block}
+    .help{text-align:center;font-size:11px;line-height:1.9;color:#73837c;margin:12px 10px}
+    footer{text-align:center;font-size:11px;color:#89968f;padding:8px 12px 24px}
+    @media(min-width:560px){.roles{grid-template-columns:1fr 1fr}.role:last-child{grid-column:1/-1}.role:last-child .role-copy{max-width:80%}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><img src="./icons/icon.svg" alt=""></div>
+    <h1>سامانه مشاوره تخصصی گلخانه</h1>
+    <p>پیوندگستر پارسان</p>
+  </header>
+  <main>
+    <section class="intro">
+      <h2>ورود به سامانه</h2>
+      <p>نقش خود را انتخاب کنید. برای ورود، از همان حساب کاربری و گذرواژه فعلی سامانه استفاده می‌شود؛ نیازی به ثبت‌نام مجدد نیست.</p>
+    </section>
+    <nav class="roles" aria-label="انتخاب پنل">
+      <a class="role" href="../grower/">
+        <span class="symbol" aria-hidden="true">🌱</span>
+        <span class="role-copy"><h3>پنل گلخانه‌دار</h3><p>ثبت و پیگیری پرونده‌ها، ارسال مدارک و مکاتبه با کارشناس</p></span>
+        <span class="arrow" aria-hidden="true">‹</span>
+      </a>
+      <a class="role" href="../expert/">
+        <span class="symbol" aria-hidden="true">🔬</span>
+        <span class="role-copy"><h3>پنل کارشناس</h3><p>مدیریت ارجاعات، بررسی پرونده‌ها و پاسخ‌گویی تخصصی</p></span>
+        <span class="arrow" aria-hidden="true">‹</span>
+      </a>
+      <a class="role" href="../">
+        <span class="symbol" aria-hidden="true">⚙️</span>
+        <span class="role-copy"><h3>پنل مدیریت</h3><p>مدیریت حساب‌ها، کارشناسان و ارجاع پرونده‌ها</p></span>
+        <span class="arrow" aria-hidden="true">‹</span>
+      </a>
+    </nav>
+    <div class="install-wrap"><button id="install-app" class="install" type="button">نصب سامانه روی گوشی</button></div>
+    <p class="help">برای نصب، در مرورگر گوشی گزینه «افزودن به صفحه اصلی» یا «نصب برنامه» را انتخاب کنید.</p>
+    <p class="help">این نسخه برای ورود و دریافت اطلاعات به اینترنت نیاز دارد. اطلاعات پرونده‌ها و پیام‌ها روی گوشی ذخیره آفلاین نمی‌شوند.</p>
+  </main>
+  <footer>نسخه همراه سامانه مشاوره گلخانه · پیوندگستر پارسان</footer>
+  <script type="module">
+    const installButton = document.getElementById("install-app");
+    let installPrompt = null;
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      installPrompt = event;
+      installButton.classList.add("visible");
+    });
+    installButton.addEventListener("click", async () => {
+      if (!installPrompt) return;
+      installButton.disabled = true;
+      await installPrompt.prompt();
+      installPrompt = null;
+      installButton.disabled = false;
+      installButton.classList.remove("visible");
+    });
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(error => {
+          console.error("ثبت سرویس‌ورکر ناموفق بود:", error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
