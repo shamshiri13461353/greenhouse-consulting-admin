@@ -28,17 +28,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Syntax-check admin portal
+      - name: Syntax-check all portal modules
         run: |
           python3 - <<'PY'
           import re, pathlib
-          html = pathlib.Path("admin-panel/index.html").read_text()
-          scripts = re.findall(r'<script type="module">(.*?)</script>', html, re.S)
-          if len(scripts) != 1:
-              raise SystemExit("Expected exactly one admin module script")
-          pathlib.Path("/tmp/admin-panel.mjs").write_text(scripts[0])
+          portals = {
+              "admin-panel/index.html": "admin-panel",
+              "grower/index.html": "grower",
+              "expert/index.html": "expert",
+          }
+          for source, name in portals.items():
+              html = pathlib.Path(source).read_text()
+              scripts = re.findall(r'<script type="module">(.*?)</script>', html, re.S)
+              if len(scripts) != 1:
+                  raise SystemExit(f"Expected exactly one module script in {source}")
+              pathlib.Path(f"/tmp/{name}.mjs").write_text(scripts[0])
           PY
           node --check /tmp/admin-panel.mjs
+          node --check /tmp/grower.mjs
+          node --check /tmp/expert.mjs
       - name: Download pinned Supabase browser bundle
         run: |
           TGZ="$(npm pack --silent @supabase/supabase-js@2.58.0 --pack-destination /tmp)"
