@@ -482,7 +482,11 @@ $("case-message-form").addEventListener("submit",async ev=>{
  $("send-case-message").disabled=true;
  const {error}=await supabase.from("case_messages").insert({case_id:activeCaseId,sender_user_id:currentUser.id,message_text:message,is_official:true});
  $("send-case-message").disabled=false;
- if(error){notice("case-message-notice","ارسال پیام ناموفق بود: "+error.message,true);return;}
+ if(error){
+  console.error("[case_messages insert]",{message:error.message,code:error.code,details:error.details,hint:error.hint,status:error.status});
+  const diagnostic=[error.message,error.code?("کد: "+error.code):"",error.details?("جزئیات: "+error.details):"",error.hint?("راهنما: "+error.hint):""].filter(Boolean).join(" | ");
+  notice("case-message-notice","ارسال پیام ناموفق بود: "+diagnostic,true);return;
+ }
  $("case-message-text").value="";notice("case-message-notice","پیام رسمی ارسال شد.");await loadCaseMessages(activeCaseId);
 });
 $("refresh-cases").addEventListener("click",loadCases);
