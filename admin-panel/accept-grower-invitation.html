@@ -17,6 +17,10 @@ button:disabled{opacity:.5;cursor:wait}.notice{padding:12px;border-radius:9px;ba
 <p>برای پذیرش دعوت‌نامه یا بازیابی گذرواژه، ابتدا اعتبار لینک را با انتخاب دکمه زیر تأیید کنید. بازشدن این صفحه به‌تنهایی لینک را مصرف نمی‌کند. حساب گلخانه‌دار پس از تأیید مدیر سامانه فعال خواهد شد.</p>
 <div id="verify-area" class="hidden"><button id="verify" type="button">تأیید لینک و ادامه</button></div>
 <div id="form-area" class="hidden"><form id="accept-form">
+<div id="name-fields">
+<label for="first-name">نام</label><input id="first-name" type="text" maxlength="80" autocomplete="given-name" required placeholder="نام">
+<label for="last-name">نام خانوادگی</label><input id="last-name" type="text" maxlength="80" autocomplete="family-name" required placeholder="نام خانوادگی">
+</div>
 <label for="password">گذرواژه جدید</label><input id="password" type="password" minlength="8" autocomplete="new-password" required placeholder="حداقل ۸ نویسه">
 <label for="password2">تکرار گذرواژه</label><input id="password2" type="password" minlength="8" autocomplete="new-password" required>
 <button id="submit" type="submit">ثبت گذرواژه</button>
@@ -28,7 +32,14 @@ import {createClient} from "https://esm.sh/@supabase/supabase-js@2.58.0";
 const supabase=createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
 const $=id=>document.getElementById(id);
 function status(t,error=false){$("status").textContent=t;$("status").classList.toggle("error",error);}
-function showForm(){ $("verify-area").classList.add("hidden"); $("form-area").classList.remove("hidden"); status("لینک تأیید شد. اکنون گذرواژه جدید را تعیین کنید."); }
+function showForm(){
+  $("verify-area").classList.add("hidden");
+  $("form-area").classList.remove("hidden");
+  $("name-fields").classList.toggle("hidden", flowType !== "invite");
+  status(flowType === "invite"
+    ? "دعوت‌نامه تأیید شد. نام، نام خانوادگی و گذرواژه را وارد کنید."
+    : "لینک تأیید شد. اکنون گذرواژه جدید را تعیین کنید.");
+}
 const params=new URLSearchParams(location.search);
 const tokenHash=params.get("token_hash");
 const flowType=params.get("type");
@@ -52,9 +63,33 @@ $("verify").addEventListener("click",async()=>{
 });
 $("accept-form").addEventListener("submit",async e=>{
   e.preventDefault();const a=$("password").value,b=$("password2").value;
+  const firstName=$("first-name").value.trim(),lastName=$("last-name").value.trim();
+  if(flowType==="invite" && (!firstName || !lastName)){
+    status("وارد کردن نام و نام خانوادگی الزامی است.",true);return;
+  }
+  if(firstName.length>80 || lastName.length>80){
+    status("نام و نام خانوادگی نمی‌توانند بیش از ۸۰ نویسه باشند.",true);return;
+  }
   if(a.length<8){status("گذرواژه باید دست‌کم ۸ نویسه داشته باشد.",true);return;}
   if(a!==b){status("گذرواژه و تکرار آن یکسان نیستند.",true);return;}
   $("submit").disabled=true;
+  if(flowType==="invite"){
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError || !user){
+      $("submit").disabled=false;
+      status("دریافت اطلاعات حساب ناموفق بود. لطفاً صفحه را دوباره باز کنید.",true);return;
+    }
+    const {data:profile,error:profileError}=await supabase
+      .from("user_profiles")
+      .update({first_name:firstName,last_name:lastName})
+      .eq("id",user.id)
+      .select("id")
+      .maybeSingle();
+    if(profileError || !profile){
+      $("submit").disabled=false;
+      status("ثبت نام و نام خانوادگی انجام نشد. لطفاً دوباره تلاش کنید.\n"+(profileError?.message||"پروفایل کاربری پیدا نشد."),true);return;
+    }
+  }
   const {error}=await supabase.auth.updateUser({password:a});
   $("submit").disabled=false;
   if(error){status("ثبت گذرواژه انجام نشد: "+error.message,true);return;}
