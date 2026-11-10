@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123d35">
+  <title>پنل مدیریت سامانه مشاوره گلخانه</title>
+  <style>
+    :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}
+    *{box-sizing:border-box}body{margin:0}header{background:#123d35;color:#fff;padding:22px max(18px,calc((100% - 1080px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}
+    h1{font-size:20px;margin:0 0 6px}header p{margin:0;color:#c8d9d4;font-size:13px}
+    main{max-width:1080px;margin:28px auto;padding:0 16px}.card{background:white;border:1px solid #e1e9e6;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 3px 14px #173b3010}
+    h2{font-size:17px;margin:0 0 16px}.muted{color:#63736e;font-size:13px;line-height:1.8}
+    label{display:block;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #ccd8d3;border-radius:9px;font:inherit;background:#fff}select{min-height:44px} .divider{border-top:1px solid #edf0ee;margin:18px 0} .review-item{border:1px solid #e3ebe7;border-radius:10px;padding:13px;margin:9px 0;white-space:pre-wrap;line-height:1.9;font-size:13px} .review-item h3{font-size:14px;margin:0 0 8px}
+    button{font:inherit;border:0;border-radius:9px;padding:11px 16px;cursor:pointer;background:#176b57;color:#fff}button.secondary{background:#e9f1ee;color:#174b3e}button.danger{background:#8b3434}button:disabled{opacity:.45;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
+    .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf5f1;color:#174b3e;margin:12px 0;font-size:13px;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8b2828}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{font-size:12px;padding:5px 9px;border-radius:99px;background:#edf2ef;color:#40534d}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #edf0ee;vertical-align:middle}th{color:#65746e;font-weight:600}
+    .table-wrap{overflow-x:auto}.empty{text-align:center;padding:24px;color:#687771;font-size:13px}
+    @media(max-width:680px){.grid{grid-template-columns:1fr}header{padding:18px}.card{padding:15px}main{margin:16px auto}h1{font-size:17px}}
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>پنل مدیریت سامانه مشاوره گلخانه</h1><p>پیوندگستر پارسان · مدیریت کارشناسان</p></div>
+  <button id="signout" class="secondary hidden">خروج</button>
+</header>
+<main>
+  <section id="login-card" class="card">
+    <h2>ورود مدیر سامانه</h2>
+    <p class="muted">با ایمیل و گذرواژه حساب مدیریتی فعال خود وارد شوید. دسترسی مدیریتی در سمت سرور و پایگاه داده نیز کنترل می‌شود.</p>
+    <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="مدیر سامانه">
+    <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
+    <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
+    <div id="login-message" class="notice hidden"></div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="card">
+      <div class="topline"><h2>دعوت کارشناس جدید</h2><span class="pill">فقط توسط مدیر</span></div>
+      <p class="muted">دعوت‌نامه از طریق Supabase Auth به ایمیل واردشده ارسال می‌شود. پس از پذیرش دعوت، مدیر باید مشخصات کارشناس را بررسی و تأیید کند.</p>
+      <div class="grid">
+        <div><label for="expert-email">ایمیل کارشناس *</label><input id="expert-email" type="email" placeholder="expert@example.com"></div>
+        <div><label for="professional-title">عنوان حرفه‌ای</label><input id="professional-title" placeholder="مثلاً کارشناس تغذیه گیاه"></div>
+        <div><label for="organization">سازمان / محل فعالیت</label><input id="organization" placeholder="نام سازمان یا شرکت"></div>
+      </div>
+      <div class="actions"><button id="invite">ارسال دعوت‌نامه</button><button id="refresh" class="secondary">به‌روزرسانی فهرست</button></div>
+      <div id="action-message" class="notice hidden"></div>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>دعوت گلخانه‌دار</h2><span class="pill">ثبت‌نام با تأیید مدیر</span></div>
+      <p class="muted">دعوت‌نامه مستقل گلخانه‌دار ارسال می‌شود. پس از تعیین گذرواژه، حساب در وضعیت انتظار تأیید باقی می‌ماند.</p>
+      <label for="grower-email">ایمیل گلخانه‌دار</label>
+      <input id="grower-email" type="email" placeholder="grower@example.com">
+      <div class="actions"><button id="invite-grower">ارسال دعوت گلخانه‌دار</button></div>
+      <div id="grower-message" class="notice hidden"></div>
+      <div style="border-top:1px solid #edf0ee;margin-top:20px;padding-top:16px">
+        <h2>تعیین مستقیم گذرواژه حساب موجود</h2>
+        <p class="muted">برای حساب گلخانه‌دار موجود، مدیر می‌تواند یک گذرواژه موقت تعیین کند. این عملیات بدون ارسال ایمیل انجام می‌شود و وضعیت تأیید حساب را تغییر نمی‌دهد. گذرواژه موقت را فقط از راه امن در اختیار صاحب حساب قرار دهید.</p>
+        <label for="grower-password-email">ایمیل حساب گلخانه‌دار</label>
+        <input id="grower-password-email" type="email" autocomplete="off" placeholder="ایمیل حساب موجود">
+        <label for="grower-temporary-password">گذرواژه موقت (حداقل ۱۲ نویسه)</label>
+        <input id="grower-temporary-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="گذرواژه موقت">
+        <label for="grower-temporary-password-confirm">تکرار گذرواژه موقت</label>
+        <input id="grower-temporary-password-confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="تکرار گذرواژه">
+        <div class="actions"><button id="set-grower-password">ثبت گذرواژه موقت</button></div>
+        <div id="grower-password-message" class="notice hidden"></div>
+      </div>
+      <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
+      <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>عنوان تخصصی / سازمان</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
+      <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
+      <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>مدیریت پرونده‌ها و ارجاع کارشناسی</h2><button id="refresh-cases" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">پرونده‌های آماده بررسی را انتخاب کنید و یک کارشناس مسئول و در صورت نیاز همکار تخصصی تعیین کنید. دعوت پس از ثبت، در پنل کارشناس نمایش داده می‌شود؛ ارجاع قطعی پس از پذیرش کارشناس انجام می‌شود.</p>
+      <label for="case-select">پرونده آماده ارجاع</label><select id="case-select"><option value="">در حال دریافت پرونده‌ها…</option></select>
+      <div class="grid">
+        <div><label for="lead-select">کارشناس مسئول *</label><select id="lead-select"><option value="">انتخاب کارشناس مسئول</option></select></div>
+        <div><label for="helper-select">همکار تخصصی (اختیاری)</label><select id="helper-select"><option value="">بدون همکار</option></select></div>
+      </div>
+      <div class="actions"><button id="assign-case">ارسال دعوت ارجاع</button></div>
+      <div id="assignment-message" class="notice hidden"></div>
+      <div class="divider"></div><h3>ارجاعات پرونده انتخاب‌شده</h3><div id="case-assignments" class="empty">ابتدا پرونده را انتخاب کنید.</div>
+    </div>
+    <div class="card">
+      <div class="topline"><h2>نظارت بر نظر کارشناسی و پاسخ‌های نهایی</h2><button id="refresh-reviews" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">مدیر می‌تواند محتوای نظر تخصصی و پیش‌نویس پاسخ را بررسی و بر روند کار نظارت کند. مطابق قاعده مصوب سامانه، تأیید نهایی و انتشار پاسخ بر عهده کارشناس مسئول پرونده است؛ مدیر در این بخش پاسخ را منتشر نمی‌کند.</p>
+      <div class="divider"></div><h3>پیش‌نویس‌های منتشرنشده</h3><div id="draft-review-list" class="empty">در حال دریافت…</div>
+      <div class="divider"></div><h3>آخرین نظرهای تخصصی</h3><div id="opinion-review-list" class="empty">در حال دریافت…</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+
+  const SUPABASE_URL = "https://tnfunhkxnldrylwbxraf.supabase.co";
+  // کلید publishable عمومی است؛ هرگز service_role یا secret key را اینجا قرار ندهید.
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+  function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
+  function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
+
+  async function requireAdmin(){
+    const {data:{user},error}=await supabase.auth.getUser();
+    if(error || !user) return false;
+    const [{data:profile},{data:role}] = await Promise.all([
+      supabase.from("user_profiles").select("account_status").eq("id",user.id).maybeSingle(),
+      supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","admin").maybeSingle()
+    ]);
+    if(profile?.account_status!=="active" || !role){ await supabase.auth.signOut(); return false; }
+    return true;
+  }
+
+  async function loadExperts(){
+    $("experts").innerHTML = '<tr><td colspan="5">در حال دریافت اطلاعات…</td></tr>';
+    $("empty").classList.add("hidden");
+    const {data,error}=await supabase.from("expert_profiles")
+      .select("user_id,professional_title,organization,invitation_status,is_verified,created_at,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)")
+      .order("created_at",{ascending:false});
+    if(error){ $("experts").innerHTML=""; message("action-message","دریافت فهرست کارشناسان ناموفق بود: "+error.message,true); return; }
+    $("count").textContent = new Intl.NumberFormat("fa-IR").format(data.length)+" کارشناس";
+    $("experts").innerHTML="";
+    $("empty").classList.toggle("hidden",data.length!==0);
+    for(const e of data){
+      const p=e.user_profiles||{};
+      const tr=document.createElement("tr");
+      const name=[p.first_name,p.last_name].filter(Boolean).join(" ") || e.professional_title || "بدون نام";
+      const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ") || "—";
+      const cells=[name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
+      for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const td=document.createElement("td");
+      if(e.invitation_status==="accepted" && !e.is_verified){
+        const b=document.createElement("button"); b.textContent="تأیید کارشناس";
+        b.addEventListener("click",()=>approve(e.user_id,b)); td.appendChild(b);
+      }else{td.textContent=e.is_verified?"فعال":"—";}
+      tr.appendChild(td); $("experts").appendChild(tr);
+    }
+  }
+
+  async function approve(userId,button){
+    button.disabled=true;
+    const {error}=await supabase.rpc("admin_approve_expert",{p_user_id:userId});
+    if(error){message("action-message","تأیید کارشناس انجام نشد: "+error.message,true);button.disabled=false;return;}
+    message("action-message","کارشناس با موفقیت تأیید و فعال شد.");
+    await loadExperts();
+  }
+
+
+  function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"غیرفعال"})[s]||s||"—";}
+  async function loadGrowers(){
+    const body=$("growers"); body.innerHTML='<tr><td colspan="4">در حال دریافت…</td></tr>';
+    const {data:profiles,error}=await supabase.from("user_profiles").select("id,first_name,last_name,account_status,created_at").order("created_at",{ascending:false});
+    if(error){body.innerHTML="";message("grower-message","دریافت حساب‌ها ناموفق بود: "+error.message,true);return;}
+    const ids=(profiles||[]).map(x=>x.id);
+    if(!ids.length){body.innerHTML="";show("growers-empty",true);return;}
+    const [{data:roles},{data:experts}] = await Promise.all([
+      supabase.from("user_roles").select("user_id,role_code").in("user_id",ids),
+      supabase.from("expert_profiles").select("user_id").in("user_id",ids)
+    ]);
+    const expertIds=new Set((experts||[]).map(x=>x.user_id));
+    const roleMap=new Map((roles||[]).map(x=>[x.user_id,x.role_code]));
+    const rows=profiles.filter(p=>!expertIds.has(p.id) && p.id!=="41b9b271-e818-4525-bfd0-6bc5f1c8a34a");
+    body.innerHTML=""; show("growers-empty",rows.length===0);
+    for(const p of rows){
+      const tr=document.createElement("tr");
+      const displayName=[p.first_name,p.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";
+      for(const v of [displayName,growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const td=document.createElement("td");
+      if(p.account_status==="pending"){
+        const b=document.createElement("button");b.textContent="تأیید و فعال‌سازی";
+        b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.rpc("admin_activate_grower",{p_user_id:p.id});if(error){message("grower-message","فعال‌سازی انجام نشد: "+error.message,true);b.disabled=false;return;}message("grower-message","حساب گلخانه‌دار فعال شد.");await loadGrowers();});
+        td.appendChild(b);
+      }else td.textContent=p.account_status==="active"?"فعال":"—";
+      tr.appendChild(td);body.appendChild(tr);
+    }
+  }
+
+  const caseLabels={ready_for_review:"آماده ارجاع",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار بررسی پاسخ",under_review:"در حال بررسی",assigned:"ارجاع‌شده",awaiting_information:"در انتظار اطلاعات",answered:"پاسخ داده‌شده",closed:"بسته‌شده"};
+  let adminUser=null,adminCases=[],adminExperts=[],adminExpertDirectory=[];
+  async function loadCaseManagement(){
+    const [cr,er]=await Promise.all([
+      supabase.from("cases").select("id,case_number,title,problem_category,severity,status,created_at,created_by,crop_cycle_id,user_profiles!cases_created_by_fkey(first_name,last_name)").order("created_at",{ascending:false}).limit(150),
+      supabase.from("expert_profiles").select("user_id,professional_title,organization,is_verified,invitation_status,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)").order("created_at",{ascending:false})
+    ]);
+    if(cr.error){message("assignment-message","دریافت پرونده‌ها ناموفق بود: "+cr.error.message,true);return;}
+    if(er.error){message("assignment-message","دریافت کارشناسان ناموفق بود: "+er.error.message,true);return;}
+    adminCases=cr.data||[];
+    adminExpertDirectory=er.data||[];
+    adminExperts=adminExpertDirectory.filter(x=>x.is_verified&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
+    const cs=$("case-select"),ls=$("lead-select"),hs=$("helper-select");
+    cs.replaceChildren(new Option("انتخاب پرونده",""));
+    for(const c of adminCases){const growerName=[c.user_profiles?.first_name,c.user_profiles?.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";const op=new Option("پرونده "+c.case_number+" · "+c.title+" · گلخانه‌دار: "+growerName+" · "+(caseLabels[c.status]||c.status),c.id);cs.add(op);}
+    ls.replaceChildren(new Option("انتخاب کارشناس مسئول",""));hs.replaceChildren(new Option("بدون همکار",""));
+    for(const e of adminExperts){const name=[e.user_profiles?.first_name,e.user_profiles?.last_name].filter(Boolean).join(" ")||e.professional_title||"کارشناس";const label=name+" · "+(e.professional_title||"");ls.add(new Option(label,e.user_id));hs.add(new Option(label,e.user_id));}
+    await loadSelectedAssignments();
+  }
+  async function loadSelectedAssignments(){
+    const id=$("case-select").value,host=$("case-assignments");host.replaceChildren();
+    if(!id){host.className="empty";host.textContent="ابتدا پرونده را انتخاب کنید.";return;}
+    const {data,error}=await supabase.from("case_assignments").select("id,expert_user_id,is_lead,status,assigned_at,accepted_at").eq("case_id",id).order("assigned_at",{ascending:false});
+    if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
+    if(!data?.length){host.className="empty";host.textContent="هنوز ارجاعی برای این پرونده ثبت نشده است.";return;}
+    host.className="";
+    for(const a of data){const expert=adminExpertDirectory.find(x=>x.user_id===a.expert_user_id),name=[expert?.user_profiles?.first_name,expert?.user_profiles?.last_name].filter(Boolean).join(" ")||expert?.professional_title||"نام ثبت نشده";
+      const row=document.createElement("div");row.className="review-item";const title=document.createElement("strong");title.textContent=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+name+" · "+({invited:"دعوت‌شده",active:"فعال",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"}[a.status]||a.status);row.append(title);
+      if(a.status==="invited"){const b=document.createElement("button");b.className="danger";b.textContent="لغو دعوت";b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.from("case_assignments").update({status:"revoked",revoked_at:new Date().toISOString()}).eq("id",a.id).eq("status","invited");if(error){message("assignment-message","لغو دعوت ناموفق بود: "+error.message,true);b.disabled=false;return;}message("assignment-message","دعوت لغو شد.");await loadSelectedAssignments();});row.append(document.createElement("br"),b);}
+      host.append(row);
+    }
+  }
+  async function assignSelectedCase(){
+    const caseId=$("case-select").value,leadId=$("lead-select").value,helperId=$("helper-select").value;
+    if(!caseId||!leadId){message("assignment-message","پرونده و کارشناس مسئول را انتخاب کنید.",true);return;}
+    if(helperId&&helperId===leadId){message("assignment-message","کارشناس مسئول و همکار باید متفاوت باشند.",true);return;}
+    const c=adminCases.find(x=>x.id===caseId);
+    if(!c||c.status!=="ready_for_review"){message("assignment-message","در این نسخه فقط پرونده‌های دارای وضعیت «آماده بررسی» قابل ارجاع هستند.",true);return;}
+    const {data:existing,error:readError}=await supabase.from("case_assignments").select("expert_user_id,is_lead,status").eq("case_id",caseId).in("status",["invited","active"]);
+    if(readError){message("assignment-message",readError.message,true);return;}
+    if((existing||[]).some(x=>x.is_lead)){message("assignment-message","برای این پرونده از قبل دعوت یا ارجاع کارشناس مسئول وجود دارد. ابتدا دعوت قبلی را لغو کنید یا وضعیت آن را بررسی کنید.",true);await loadSelectedAssignments();return;}
+    if(helperId&&(existing||[]).some(x=>x.expert_user_id===helperId)){message("assignment-message","این کارشناس هم‌اکنون برای همین پرونده دعوت یا فعال شده است.",true);return;}
+    const rows=[{case_id:caseId,expert_user_id:leadId,assigned_by:adminUser.id,is_lead:true,status:"invited"}];
+    if(helperId)rows.push({case_id:caseId,expert_user_id:helperId,assigned_by:adminUser.id,is_lead:false,status:"invited"});
+    $("assign-case").disabled=true;
+    const {error}=await supabase.from("case_assignments").insert(rows);
+    $("assign-case").disabled=false;
+    if(error){message("assignment-message","ثبت ارجاع ناموفق بود: "+error.message,true);return;}
+    message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
+    $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();
+  }
+  async function loadReviewQueue(){
+    const [fr,op]=await Promise.all([
+      supabase.from("final_responses").select("id,case_id,version,prepared_by,response_text,recommendations,warnings,created_at").eq("is_published",false).order("created_at",{ascending:false}).limit(60),
+      supabase.from("expert_opinions").select("id,case_id,expert_user_id,hypotheses,evidence_summary,analysis_text,recommendations,updated_at").order("updated_at",{ascending:false}).limit(60)
+    ]);
+    const [draftHost,opHost]=[$("draft-review-list"),$("opinion-review-list")];
+    draftHost.replaceChildren();opHost.replaceChildren();
+    if(fr.error){draftHost.textContent="دریافت پیش‌نویس‌ها ناموفق بود: "+fr.error.message;}else if(!fr.data?.length){draftHost.className="empty";draftHost.textContent="پیش‌نویس منتشرنشده‌ای وجود ندارد.";}else{
+      draftHost.className="";
+      for(const d of fr.data){const c=adminCases.find(x=>x.id===d.case_id),name=adminExpertDirectory.find(x=>x.user_id===d.prepared_by);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;const p=document.createElement("p");p.textContent=d.response_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="تهیه‌کننده: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||name?.professional_title||"نام ثبت نشده")+" · "+new Date(d.created_at).toLocaleString("fa-IR");box.append(h,meta,p);
+        if(d.recommendations?.length){const r=document.createElement("p");r.textContent="توصیه‌ها: "+d.recommendations.join("، ");box.append(r);}if(d.warnings?.length){const w=document.createElement("p");w.textContent="هشدارها: "+d.warnings.join("، ");box.append(w);}draftHost.append(box);}
+    }
+    if(op.error){opHost.textContent="دریافت نظرهای تخصصی ناموفق بود: "+op.error.message;}else if(!op.data?.length){opHost.className="empty";opHost.textContent="نظر تخصصی ثبت نشده است.";}else{
+      opHost.className="";
+      for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExpertDirectory.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
+    }
+  }
+  $("case-select").addEventListener("change",loadSelectedAssignments);
+  $("assign-case").addEventListener("click",assignSelectedCase);
+  $("refresh-cases").addEventListener("click",async()=>{await loadCaseManagement();await loadReviewQueue();});
+  $("refresh-reviews").addEventListener("click",loadReviewQueue);
+  async function enterDashboard(){
+    const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;
+    const ok=await requireAdmin();
+    show("login-card",!ok); show("dashboard",ok); show("signout",ok);
+    if(ok){ await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
+  }
+
+  $("login").addEventListener("click",async()=>{
+    $("login").disabled=true;
+    const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+    $("login").disabled=false;
+    if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
+    await enterDashboard();
+  });
+  $("forgot-password").addEventListener("click",async()=>{
+    const email=$("email").value.trim();
+    if(!email){message("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
+    if(!$("email").checkValidity()){message("login-message","قالب ایمیل واردشده معتبر نیست.",true);$("email").focus();return;}
+    const button=$("forgot-password");button.disabled=true;
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://shamshiri13461353.github.io/greenhouse-consulting-admin/management/accept-grower-invitation.html"});
+    button.disabled=false;
+    if(error){message("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید. "+error.message,true);return;}
+    message("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");
+  });
+  $("invite").addEventListener("click",async()=>{
+    const email=$("expert-email").value.trim();
+    if(!email){message("action-message","ایمیل کارشناس را وارد کنید.",true);return;}
+    $("invite").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-invite-expert",{body:{
+      email,professional_title:$("professional-title").value.trim(),organization:$("organization").value.trim()
+    }});
+    $("invite").disabled=false;
+    if(error){message("action-message","ارسال دعوت‌نامه ناموفق بود: "+error.message,true);return;}
+    message("action-message",data?.message || "دعوت‌نامه ارسال شد.");
+    $("expert-email").value=""; $("professional-title").value=""; $("organization").value="";
+    await loadExperts();
+  });
+
+  $("invite-grower").addEventListener("click",async()=>{
+    const email=$("grower-email").value.trim();
+    if(!email){message("grower-message","ایمیل گلخانه‌دار را وارد کنید.",true);return;}
+    $("invite-grower").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-invite-grower",{body:{email}});
+    $("invite-grower").disabled=false;
+    if(error){message("grower-message","ارسال دعوت ناموفق بود: "+error.message,true);return;}
+    message("grower-message",data?.message||"دعوت‌نامه گلخانه‌دار ارسال شد.");
+    $("grower-email").value=""; await loadGrowers();
+  });
+  $("set-grower-password").addEventListener("click",async()=>{
+    const email=$("grower-password-email").value.trim();
+    const password=$("grower-temporary-password").value;
+    const confirmation=$("grower-temporary-password-confirm").value;
+    if(!email){message("grower-password-message","ایمیل حساب گلخانه‌دار را وارد کنید.",true);return;}
+    if(password.length<12){message("grower-password-message","گذرواژه موقت باید دست‌کم ۱۲ نویسه داشته باشد.",true);return;}
+    if(password!==confirmation){message("grower-password-message","گذرواژه و تکرار آن یکسان نیستند.",true);return;}
+    $("set-grower-password").disabled=true;
+    const {data,error}=await supabase.functions.invoke("admin-set-grower-password",{body:{email,password}});
+    $("set-grower-password").disabled=false;
+    if(error){message("grower-password-message","تغییر گذرواژه ناموفق بود: "+error.message,true);return;}
+    message("grower-password-message",data?.message||"گذرواژه موقت ثبت شد.");
+    $("grower-temporary-password").value="";
+    $("grower-temporary-password-confirm").value="";
+    $("grower-password-email").value="";
+  });
+  $("refresh-growers").addEventListener("click",loadGrowers);
+
+    $("refresh").addEventListener("click",loadExperts);
+  $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
+  supabase.auth.onAuthStateChange((_event,session)=>{if(!session){show("dashboard",false);show("signout",false);show("login-card",true);}});
+  await enterDashboard();
+</script>
+</body>
+</html>
