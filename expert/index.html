@@ -58,15 +58,34 @@ async function loadInvites(){
  const decline=el("button","alt","رد دعوت");decline.addEventListener("click",async()=>{decline.disabled=true;const {error}=await supabase.rpc("decline_case_assignment",{p_assignment_id:a.id});decline.disabled=false;if(error){alert("رد دعوت ناموفق بود: "+error.message);return;}await loadInvites();});
  actions.append(accept,decline);card.append(title,meta,actions);host.append(card);}
 }
+let assignedListLoading=false;
 async function loadAssigned(){
- const host=$("assigned-list");host.textContent="در حال دریافت پرونده‌ها…";
- const {data:as,error}=await supabase.from("case_assignments").select("id,case_id,is_lead,status,accepted_at").eq("expert_user_id",user.id).eq("status","active").order("accepted_at",{ascending:false});
- if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
- host.replaceChildren();if(!as?.length){host.className="empty";host.textContent="پرونده فعالی به شما ارجاع نشده است.";return;}host.className="";
- const ids=as.map(a=>a.case_id);const {data:cs,error:ce}=await supabase.from("cases").select("id,case_number,title,problem_category,description,severity,status,created_at,crop_cycle_id").in("id",ids);
- if(ce){host.textContent="دریافت اطلاعات پرونده‌ها ناموفق بود: "+ce.message;return;}
- const map=new Map((cs||[]).map(c=>[c.id,c]));
- for(const a of as){const c=map.get(a.case_id);if(!c)continue;const card=el("article","item"),top=el("div","top"),title=el("h3","", "پرونده "+c.case_number+" ـ "+c.title),tag=el("span","tag",statuses[c.status]||c.status),meta=el("div","meta",(a.is_lead?"کارشناس مسئول":"همکار")+" · شدت: "+(c.severity||"نامشخص")+" · "+new Date(c.created_at).toLocaleDateString("fa-IR")),btn=el("button","alt","بررسی پرونده");top.append(title,tag);btn.addEventListener("click",()=>openCase(c,a));card.append(top,meta,btn);host.append(card);}
+ const host=$("assigned-list");
+ if(assignedListLoading)return;
+ assignedListLoading=true;host.textContent="در حال دریافت پرونده‌ها…";
+ try{
+  const {data:as,error}=await supabase.from("case_assignments").select("id,case_id,is_lead,status,accepted_at").eq("expert_user_id",user.id).eq("status","active").order("accepted_at",{ascending:false});
+  if(error){host.textContent="دریافت ارجاعات ناموفق بود: "+error.message;return;}
+  const uniqueAssignments=new Map();
+  for(const a of (as||[])){
+   const previous=uniqueAssignments.get(a.case_id);
+   if(!previous||(!previous.is_lead&&a.is_lead))uniqueAssignments.set(a.case_id,a);
+  }
+  const assignments=[...uniqueAssignments.values()];
+  host.replaceChildren();
+  if(!assignments.length){host.className="empty";host.textContent="پرونده فعالی به شما ارجاع نشده است.";return;}
+  host.className="";
+  const ids=assignments.map(a=>a.case_id);
+  const {data:cs,error:ce}=await supabase.from("cases").select("id,case_number,title,problem_category,description,severity,status,created_at,crop_cycle_id").in("id",ids);
+  if(ce){host.textContent="دریافت اطلاعات پرونده‌ها ناموفق بود: "+ce.message;return;}
+  const map=new Map((cs||[]).map(c=>[c.id,c]));
+  for(const a of assignments){
+   const c=map.get(a.case_id);if(!c)continue;
+   const card=el("article","item"),top=el("div","top"),title=el("h3","","پرونده "+c.case_number+" ـ "+c.title),tag=el("span","tag",statuses[c.status]||c.status),meta=el("div","meta",(a.is_lead?"کارشناس مسئول":"همکار")+" · شدت: "+(c.severity||"نامشخص")+" · "+new Date(c.created_at).toLocaleDateString("fa-IR")),btn=el("button","alt","بررسی پرونده");
+   top.append(title,tag);btn.addEventListener("click",()=>openCase(c,a));card.append(top,meta,btn);host.append(card);
+  }
+ }catch(e){host.textContent="دریافت ارجاعات ناموفق بود: "+(e?.message||"خطای نامشخص");}
+ finally{assignedListLoading=false;}
 }
 async function openCase(c,a){
  stopCaseAutoRefresh();
