@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "admin-panel/**"
+      - "management/**"
       - "grower/**"
       - "expert/**"
       - "mobile/**"
@@ -63,10 +64,13 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/grower _site/expert _site/mobile/icons
+          mkdir -p _site/management _site/grower _site/expert _site/mobile/icons
           cp admin-panel/index.html _site/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
+          cp management/index.html _site/management/index.html
+          cp management/accept-invitation.html _site/management/accept-invitation.html
+          cp management/accept-grower-invitation.html _site/management/accept-grower-invitation.html
           cp grower/index.html _site/grower/index.html
           cp expert/index.html _site/expert/index.html
           cp mobile/index.html _site/mobile/index.html
