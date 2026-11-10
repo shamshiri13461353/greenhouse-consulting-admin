@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#123d35"><title>تکمیل دسترسی گلخانه‌دار</title>
+<meta name="theme-color" content="#123d35"><title>تعیین یا بازنشانی گذرواژه</title>
 <style>
 :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}*{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
@@ -13,8 +13,8 @@ button{margin-top:18px;font:inherit;border:0;border-radius:9px;padding:12px 18px
 button:disabled{opacity:.5;cursor:wait}.notice{padding:12px;border-radius:9px;background:#edf5f1;color:#174b3e;margin-top:16px;font-size:13px;line-height:1.9;white-space:pre-wrap}
 .error{background:#fff0ef;color:#8b2828}.hidden{display:none!important}
 </style></head><body><main><section class="card">
-<h1>تکمیل دسترسی گلخانه‌دار</h1>
-<p>برای پذیرش دعوت‌نامه یا بازیابی گذرواژه، ابتدا اعتبار لینک را با انتخاب دکمه زیر تأیید کنید. بازشدن این صفحه به‌تنهایی لینک را مصرف نمی‌کند. حساب گلخانه‌دار پس از تأیید مدیر سامانه فعال خواهد شد.</p>
+<h1 id="page-title">تعیین یا بازنشانی گذرواژه</h1>
+<p id="page-description">برای ادامه، اعتبار لینک ارسالی به ایمیل خود را با انتخاب دکمه زیر تأیید کنید. بازشدن این صفحه به‌تنهایی لینک را مصرف نمی‌کند.</p>
 <div id="verify-area" class="hidden"><button id="verify" type="button">تأیید لینک و ادامه</button></div>
 <div id="form-area" class="hidden"><form id="accept-form">
 <div id="name-fields">
@@ -43,6 +43,16 @@ function showForm(){
 const params=new URLSearchParams(location.search);
 const tokenHash=params.get("token_hash");
 const flowType=params.get("type");
+if(flowType==="invite"){
+  $("page-title").textContent="تکمیل دعوت‌نامه گلخانه‌دار";
+  $("page-description").textContent="برای پذیرش دعوت‌نامه گلخانه‌دار، ابتدا اعتبار لینک را با انتخاب دکمه زیر تأیید کنید. بازشدن این صفحه به‌تنهایی لینک را مصرف نمی‌کند. حساب پس از تأیید مدیر سامانه فعال خواهد شد.";
+}else if(flowType==="recovery"){
+  $("page-title").textContent="بازنشانی گذرواژه";
+  $("page-description").textContent="برای بازنشانی گذرواژه، ابتدا اعتبار لینک ارسالی به ایمیل خود را با انتخاب دکمه زیر تأیید کنید. سپس گذرواژه جدید را تعیین خواهید کرد.";
+}else{
+  $("page-title").textContent="تغییر گذرواژه";
+  $("page-description").textContent="برای تعیین گذرواژه جدید، اطلاعات خواسته‌شده را وارد کنید.";
+}
 if(tokenHash && (flowType==="invite" || flowType==="recovery")){
   $("verify-area").classList.remove("hidden");
   status(flowType==="invite"?"دعوت‌نامه آماده تأیید است. برای ادامه دکمه را انتخاب کنید.":"درخواست بازیابی گذرواژه آماده تأیید است. برای ادامه دکمه را انتخاب کنید.");
