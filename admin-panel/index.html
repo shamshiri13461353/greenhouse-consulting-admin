@@ -32,7 +32,7 @@
     <p class="muted">با ایمیل و گذرواژه حساب مدیریتی فعال خود وارد شوید. دسترسی مدیریتی در سمت سرور و پایگاه داده نیز کنترل می‌شود.</p>
     <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="مدیر سامانه">
     <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
-    <div class="actions"><button id="login">ورود</button></div>
+    <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
     <div id="login-message" class="notice hidden"></div>
   </section>
 
@@ -269,6 +269,16 @@
     $("login").disabled=false;
     if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
     await enterDashboard();
+  });
+  $("forgot-password").addEventListener("click",async()=>{
+    const email=$("email").value.trim();
+    if(!email){message("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
+    if(!$("email").checkValidity()){message("login-message","قالب ایمیل واردشده معتبر نیست.",true);$("email").focus();return;}
+    const button=$("forgot-password");button.disabled=true;
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://shamshiri13461353.github.io/greenhouse-consulting-admin/accept-grower-invitation.html"});
+    button.disabled=false;
+    if(error){message("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید. "+error.message,true);return;}
+    message("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");
   });
   $("invite").addEventListener("click",async()=>{
     const email=$("expert-email").value.trim();
