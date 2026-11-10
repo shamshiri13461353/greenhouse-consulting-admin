@@ -35,7 +35,10 @@ function status(t,error=false){$("status").textContent=t;$("status").classList.t
 function showForm(){
   $("verify-area").classList.add("hidden");
   $("form-area").classList.remove("hidden");
-  $("name-fields").classList.toggle("hidden", flowType !== "invite");
+  const isInvite = flowType === "invite";
+  $("name-fields").classList.toggle("hidden", !isInvite);
+  $("first-name").required = isInvite;
+  $("last-name").required = isInvite;
   status(flowType === "invite"
     ? "دعوت‌نامه تأیید شد. نام، نام خانوادگی و گذرواژه را وارد کنید."
     : "لینک تأیید شد. اکنون گذرواژه جدید را تعیین کنید.");
