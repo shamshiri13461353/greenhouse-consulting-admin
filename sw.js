@@ -1,4 +1,4 @@
-const CACHE_NAME = "greenhouse-mobile-shell-v1";
+const CACHE_NAME = "greenhouse-mobile-shell-v2";
 const MOBILE_PATH = new URL("mobile/", self.registration.scope).pathname;
 const SHELL_URLS = [
   new URL("mobile/", self.registration.scope).href,
