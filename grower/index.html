@@ -34,7 +34,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   <p class="muted">با ایمیل و گذرواژه حساب فعال خود وارد شوید. دسترسی به اطلاعات فقط بر اساس مالکیت ثبت‌شده و مجوزهای پایگاه داده انجام می‌شود.</p>
   <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="ایمیل ثبت‌شده">
   <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
-  <div class="actions"><button id="login">ورود</button></div>
+  <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
   <div id="login-message" class="notice hidden"></div>
  </section>
  <section id="account-pending" class="card hidden">
@@ -239,6 +239,16 @@ $("login").addEventListener("click",async()=>{
  $("login").disabled=false;
  if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
  await enter();
+});
+$("forgot-password").addEventListener("click",async()=>{
+ const email=$("email").value.trim();
+ if(!email){notice("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
+ if(!$("email").checkValidity()){notice("login-message","قالب ایمیل واردشده معتبر نیست.",true);$("email").focus();return;}
+ const button=$("forgot-password");button.disabled=true;
+ const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://shamshiri13461353.github.io/greenhouse-consulting-admin/accept-grower-invitation.html"});
+ button.disabled=false;
+ if(error){notice("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید. "+error.message,true);return;}
+ notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");
 });
 function stopCaseMessageAutoRefresh(){if(caseMessageRefreshTimer){clearInterval(caseMessageRefreshTimer);caseMessageRefreshTimer=null;}caseMessageRefreshCaseId=null;}
 async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseMessages(id);}finally{caseMessageRefreshBusy=false;}}
