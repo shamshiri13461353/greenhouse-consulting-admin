@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123d35">
+  <title>پذیرش دعوت کارشناس</title>
+  <style>
+    :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
+    main{width:min(100%,520px)}.card{background:#fff;border:1px solid #e1e9e6;border-radius:16px;padding:24px;box-shadow:0 4px 18px #173b3010}
+    h1{font-size:20px;margin:0 0 12px;color:#123d35}p{font-size:14px;line-height:2;color:#52645e}
+    label{display:block;font-size:13px;margin:16px 0 7px}input{width:100%;padding:13px;border:1px solid #ccd8d3;border-radius:9px;font:inherit}
+    button{margin-top:18px;font:inherit;border:0;border-radius:9px;padding:12px 18px;background:#176b57;color:#fff;cursor:pointer}
+    button:disabled{opacity:.5;cursor:wait}.notice{padding:12px;border-radius:9px;background:#edf5f1;color:#174b3e;margin-top:16px;font-size:13px;line-height:1.9;white-space:pre-wrap}
+    .error{background:#fff0ef;color:#8b2828}.hidden{display:none!important}.muted{font-size:12px;color:#718079}
+  </style>
+</head>
+<body>
+<main>
+  <section class="card">
+    <h1>پذیرش دعوت همکاری</h1>
+    <p>برای تکمیل ثبت‌نام کارشناسی که از طرف سامانه مشاوره گلخانه دعوت شده‌اید، یک گذرواژه برای حساب خود تعیین کنید. پس از پذیرش دعوت، حساب شما برای بررسی و تأیید مدیر ارسال می‌شود.</p>
+    <div id="form-area" class="hidden">
+      <form id="accept-form">
+        <label for="first-name">نام</label>
+        <input id="first-name" type="text" maxlength="80" autocomplete="given-name" required placeholder="نام">
+        <label for="last-name">نام خانوادگی</label>
+        <input id="last-name" type="text" maxlength="80" autocomplete="family-name" required placeholder="نام خانوادگی">
+        <label for="password">گذرواژه جدید</label>
+        <input id="password" type="password" minlength="8" autocomplete="new-password" required placeholder="حداقل ۸ نویسه">
+        <label for="password2">تکرار گذرواژه</label>
+        <input id="password2" type="password" minlength="8" autocomplete="new-password" required placeholder="گذرواژه را دوباره وارد کنید">
+        <button id="submit" type="submit">ثبت گذرواژه و پذیرش دعوت</button>
+      </form>
+      <button id="retry" class="hidden" type="button">تلاش دوباره برای ثبت پذیرش</button>
+    </div>
+    <p id="status" class="notice">در حال بررسی اعتبار دعوت‌نامه…</p>
+    <p class="muted">اگر این دعوت را انتظار نداشته‌اید، صفحه را ببندید و با مدیر سامانه تماس بگیرید.</p>
+  </section>
+</main>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+  const supabase = createClient(
+    "https://tnfunhkxnldrylwbxraf.supabase.co",
+    "sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH"
+  );
+  const $ = id => document.getElementById(id);
+  function showStatus(text,error=false){
+    $("status").textContent=text;
+    $("status").classList.toggle("error",error);
+  }
+  async function acceptInvitation(){
+    $("retry").disabled=true;
+    const {error}=await supabase.rpc("expert_accept_invitation");
+    $("retry").disabled=false;
+    if(error){
+      showStatus("گذرواژه ثبت شد، اما پذیرش دعوت کامل نشد. می‌توانید یک بار دیگر تلاش کنید.\n"+error.message,true);
+      $("retry").classList.remove("hidden");
+      return;
+    }
+    $("form-area").classList.add("hidden");
+    showStatus("دعوت شما با موفقیت پذیرفته شد. حساب شما اکنون در انتظار بررسی و تأیید مدیر سامانه است. پس از تأیید، می‌توانید وارد سامانه شوید.");
+    await supabase.auth.signOut();
+  }
+  $("retry").addEventListener("click",acceptInvitation);
+  $("accept-form").addEventListener("submit",async event=>{
+    event.preventDefault();
+    const password=$("password").value;
+    const firstName=$("first-name").value.trim();
+    const lastName=$("last-name").value.trim();
+    if(!firstName || !lastName){showStatus("وارد کردن نام و نام خانوادگی الزامی است.",true);return;}
+    if(firstName.length>80 || lastName.length>80){showStatus("نام و نام خانوادگی نمی‌توانند بیش از ۸۰ نویسه باشند.",true);return;}
+    if(password.length<8){showStatus("گذرواژه باید دست‌کم ۸ نویسه داشته باشد.",true);return;}
+    if(password!==$("password2").value){showStatus("گذرواژه و تکرار آن یکسان نیستند.",true);return;}
+    $("submit").disabled=true;
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError || !user){
+      $("submit").disabled=false;
+      showStatus("دریافت اطلاعات حساب ناموفق بود. لطفاً صفحه را دوباره باز کنید.",true);return;
+    }
+    const {data:profile,error:profileError}=await supabase
+      .from("user_profiles")
+      .update({first_name:firstName,last_name:lastName})
+      .eq("id",user.id)
+      .select("id")
+      .maybeSingle();
+    if(profileError || !profile){
+      $("submit").disabled=false;
+      showStatus("ثبت نام و نام خانوادگی انجام نشد. لطفاً دوباره تلاش کنید.\n"+(profileError?.message||"پروفایل کاربری پیدا نشد."),true);return;
+    }
+    const {error}=await supabase.auth.updateUser({password});
+    $("submit").disabled=false;
+    if(error){showStatus("ثبت گذرواژه انجام نشد: "+error.message,true);return;}
+    $("password").value="";$("password2").value="";
+    await acceptInvitation();
+  });
+  const {data:{session},error}=await supabase.auth.getSession();
+  if(error){showStatus("بررسی نشست ناموفق بود: "+error.message,true);}
+  else if(session?.user){
+    $("form-area").classList.remove("hidden");
+    showStatus("دعوت‌نامه معتبر است. لطفاً گذرواژه خود را تعیین کنید.");
+  }else{
+    const params=new URLSearchParams(location.hash.slice(1));
+    const errorDescription=params.get("error_description");
+    showStatus(errorDescription ? "اعتبارسنجی دعوت‌نامه ناموفق بود: "+errorDescription : "نشست معتبر دعوت پیدا نشد. لطفاً از لینک کامل و جدید دعوت‌نامه استفاده کنید یا از مدیر بخواهید دعوت را دوباره ارسال کند.",true);
+  }
+</script>
+</body>
+</html>
