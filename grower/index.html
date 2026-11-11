@@ -254,7 +254,7 @@ function stopCaseMessageAutoRefresh(){if(caseMessageRefreshTimer){clearInterval(
 async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseMessages(id);}finally{caseMessageRefreshBusy=false;}}
 function startCaseMessageAutoRefresh(id){stopCaseMessageAutoRefresh();caseMessageRefreshCaseId=id;caseMessageRefreshTimer=setInterval(refreshCaseMessages,20000);}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshCaseMessages();});
-async function logout(){stopCaseMessageAutoRefresh();await supabase.auth.signOut();currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}
+async function logout(){stopCaseMessageAutoRefresh();const {error}=await supabase.auth.signOut();if(error){alert("خروج از حساب انجام نشد. لطفاً دوباره تلاش کنید.");return;}location.replace("../users/");}
 $("logout").addEventListener("click",logout);$("pending-logout").addEventListener("click",logout);
 $("greenhouse-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("gh-message");
