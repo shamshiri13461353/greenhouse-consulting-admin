@@ -9,6 +9,7 @@ on:
       - "grower/**"
       - "expert/**"
       - "mobile/**"
+      - "users/**"
       - "sw.js"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -40,6 +41,7 @@ jobs:
               "grower/index.html": "grower",
               "expert/index.html": "expert",
               "mobile/index.html": "mobile",
+              "users/index.html": "users",
           }
           for source, name in portals.items():
               html = pathlib.Path(source).read_text()
@@ -52,6 +54,7 @@ jobs:
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
+          node --check /tmp/users.mjs
           node --check sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
@@ -64,7 +67,7 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/management _site/grower _site/expert _site/mobile/icons
+          mkdir -p _site/management _site/grower _site/expert _site/mobile/icons _site/users
           cp admin-panel/index.html _site/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
@@ -74,9 +77,11 @@ jobs:
           cp grower/index.html _site/grower/index.html
           cp expert/index.html _site/expert/index.html
           cp mobile/index.html _site/mobile/index.html
+          cp users/index.html _site/users/index.html
           cp mobile/manifest.webmanifest _site/mobile/manifest.webmanifest
           cp mobile/icons/icon.svg _site/mobile/icons/icon.svg
           cp sw.js _site/sw.js
+          cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/users/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
