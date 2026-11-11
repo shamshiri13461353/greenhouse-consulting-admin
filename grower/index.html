@@ -245,7 +245,7 @@ $("forgot-password").addEventListener("click",async()=>{
  if(!email){notice("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
  if(!$("email").checkValidity()){notice("login-message","قالب ایمیل واردشده معتبر نیست.",true);$("email").focus();return;}
  const button=$("forgot-password");button.disabled=true;
- const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://shamshiri13461353.github.io/greenhouse-consulting-admin/accept-grower-invitation.html"});
+ const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://app.peyvandgostar.com/accept-grower-invitation.html"});
  button.disabled=false;
  if(error){notice("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید. "+error.message,true);return;}
  notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");

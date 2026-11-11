@@ -86,6 +86,7 @@ jobs:
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
           touch _site/.nojekyll
+          printf '%s\n' 'app.peyvandgostar.com' > _site/CNAME
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
