@@ -36,9 +36,9 @@ footer{text-align:center;padding:18px;color:#74847d;font-size:11px}
 </section>
 </main>
 <footer>دسترسی به اطلاعات بر اساس نقش و مجوزهای ثبت‌شده در سامانه کنترل می‌شود.</footer>
+<script src="./supabase.js"></script>
 <script type="module">
-import {createClient} from "https://esm.sh/@supabase/supabase-js@2.58.0";
-const supabase=createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
+const supabase=window.supabase.createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
 const $=id=>document.getElementById(id);
 let availableRoles=[];
 function notice(text,error=false){const el=$("message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
@@ -46,16 +46,19 @@ function show(id,on=true){$(id).classList.toggle("hidden",!on);}
 function go(role){location.replace(role==="expert"?"../expert/":"../grower/");}
 async function resolveUser(user){
  show("login-card",false);show("role-card",false);
- const [{data:profile,error:pe},{data:roles,error:re},{data:expert,error:ee}]=await Promise.all([
+ const [{data:profile,error:pe},{data:roles,error:re}]=await Promise.all([
   supabase.from("user_profiles").select("account_status").eq("id",user.id).maybeSingle(),
-  supabase.from("user_roles").select("role_code").eq("user_id",user.id).in("role_code",["expert","grower"]),
-  supabase.from("expert_profiles").select("invitation_status,is_verified").eq("user_id",user.id).maybeSingle()
+  supabase.from("user_roles").select("role_code").eq("user_id",user.id).in("role_code",["expert","grower"])
  ]);
- if(pe||re||ee){show("login-card");notice("بررسی سطح دسترسی انجام نشد. اتصال را بررسی و دوباره تلاش کنید.",true);return;}
+ if(pe||re){show("login-card");notice("بررسی سطح دسترسی انجام نشد. اتصال را بررسی و دوباره تلاش کنید.",true);return;}
  if(profile?.account_status!=="active"){show("login-card");notice("وضعیت حساب شما فعال نیست. برای پیگیری با مدیر سامانه تماس بگیرید.",true);return;}
  availableRoles=(roles||[]).map(x=>x.role_code);
- if(availableRoles.includes("expert")&&(!expert||expert.invitation_status!=="accepted"||!expert.is_verified)){
-  availableRoles=availableRoles.filter(x=>x!=="expert");
+ if(availableRoles.includes("expert")){
+  const {data:expert,error:ee}=await supabase.from("expert_profiles").select("invitation_status,is_verified").eq("user_id",user.id).maybeSingle();
+  if(ee){show("login-card");notice("بررسی مجوز کارشناسی انجام نشد. لطفاً دوباره تلاش کنید.",true);return;}
+  if(!expert||expert.invitation_status!=="accepted"||expert.is_verified!==true){
+   availableRoles=availableRoles.filter(x=>x!=="expert");
+  }
  }
  if(availableRoles.length===0){show("login-card");notice("برای این حساب نقش فعال کارشناس یا گلخانه‌دار پیدا نشد. لطفاً با مدیر سامانه تماس بگیرید.",true);return;}
  if(availableRoles.length===1){go(availableRoles[0]);return;}
