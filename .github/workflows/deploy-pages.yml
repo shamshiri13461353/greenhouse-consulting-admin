@@ -41,6 +41,7 @@ jobs:
               "grower/index.html": "grower",
               "expert/index.html": "expert",
               "mobile/index.html": "mobile",
+              "users/index.html": "users",
           }
           for source, name in portals.items():
               html = pathlib.Path(source).read_text()
@@ -53,6 +54,7 @@ jobs:
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
+          node --check /tmp/users.mjs
           node --check sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
