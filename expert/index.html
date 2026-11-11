@@ -129,7 +129,16 @@ async function loadExistingFinalDraft(id){if(!activeAssignment?.is_lead)return;c
 $("final-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!activeCase||!activeAssignment?.is_lead)return;const form=$("final-form"),draftId=form.dataset.draftId;const payload={response_text:$("final-text").value.trim(),recommendations:lines("final-recommendations"),warnings:lines("final-warnings")};if(draftId){const {error}=await supabase.from("final_responses").update(payload).eq("id",draftId);if(error){msg("final-msg","ذخیره پیش‌نویس ناموفق بود: "+error.message,true);return;}}else{const {data:existing,error:readErr}=await supabase.from("final_responses").select("version").eq("case_id",activeCase.id).order("version",{ascending:false}).limit(1);if(readErr){msg("final-msg",readErr.message,true);return;}const version=(existing?.[0]?.version||0)+1;const {data,error}=await supabase.from("final_responses").insert({...payload,case_id:activeCase.id,version,prepared_by:user.id,is_published:false}).select("id").single();if(error){msg("final-msg","ثبت پیش‌نویس ناموفق بود: "+error.message,true);return;}form.dataset.draftId=data.id;}msg("final-msg","پیش‌نویس پاسخ نهایی برای بررسی و تأیید مسئول کارشناسی ذخیره شد.");show("publish-final",true);});
 $("publish-final").addEventListener("click",async()=>{const draftId=$("final-form").dataset.draftId;if(!activeCase||!activeAssignment?.is_lead)return;if(!draftId){alert("ابتدا پیش‌نویس پاسخ نهایی را ثبت کنید یا دوباره پرونده را باز کنید تا پیش‌نویس ذخیره‌شده بارگذاری شود.");return;}if(!confirm("با انتشار پاسخ، نتیجه برای گلخانه‌دار قابل مشاهده می‌شود و پس از انتشار قابل ویرایش نخواهد بود. آیا از صحت متن، توصیه‌ها و هشدارها اطمینان دارید؟"))return;const btn=$("publish-final");btn.disabled=true;const {data,error}=await supabase.from("final_responses").update({is_published:true,approved_by:user.id}).eq("id",draftId).eq("is_published",false).select("id,published_at").single();btn.disabled=false;if(error){msg("final-msg","انتشار پاسخ ناموفق بود: "+error.message,true);return;}if(!data){msg("final-msg","پیش‌نویس قابل انتشار پیدا نشد؛ صفحه را تازه‌سازی کنید.",true);return;}msg("final-msg","پاسخ نهایی با موفقیت منتشر شد و برای گلخانه‌دار قابل مشاهده است.");show("publish-final",false);$("final-form").querySelectorAll("textarea,button").forEach(x=>x.disabled=true);activeCase.status="answered";$("case-meta").textContent="پاسخ داده‌شده · کارشناس مسئول · شدت: "+(activeCase.severity||"نامشخص");await loadAssigned();});
 $("close-detail").addEventListener("click",()=>{stopCaseAutoRefresh();show("detail",false);});
-async function logout(){stopCaseAutoRefresh();await supabase.auth.signOut();user=null;show("app",false);show("blocked",false);show("logout",false);show("login-card",true);}
+async function logout(){
+  stopCaseMessageAutoRefresh();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    alert("خروج از حساب انجام نشد: " + error.message);
+    return;
+  }
+  currentUser = null;
+  location.replace("../users/");
+}{stopCaseAutoRefresh();await supabase.auth.signOut();user=null;show("app",false);show("blocked",false);show("logout",false);show("login-card",true);}
 $("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
 $("login").addEventListener("click",async()=>{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error){msg("login-msg",error.message,true);return;}await verifyAndEnter();});
 $("forgot-password").addEventListener("click",async()=>{
