@@ -130,12 +130,18 @@ $("final-form").addEventListener("submit",async ev=>{ev.preventDefault();if(!act
 $("publish-final").addEventListener("click",async()=>{const draftId=$("final-form").dataset.draftId;if(!activeCase||!activeAssignment?.is_lead)return;if(!draftId){alert("ابتدا پیش‌نویس پاسخ نهایی را ثبت کنید یا دوباره پرونده را باز کنید تا پیش‌نویس ذخیره‌شده بارگذاری شود.");return;}if(!confirm("با انتشار پاسخ، نتیجه برای گلخانه‌دار قابل مشاهده می‌شود و پس از انتشار قابل ویرایش نخواهد بود. آیا از صحت متن، توصیه‌ها و هشدارها اطمینان دارید؟"))return;const btn=$("publish-final");btn.disabled=true;const {data,error}=await supabase.from("final_responses").update({is_published:true,approved_by:user.id}).eq("id",draftId).eq("is_published",false).select("id,published_at").single();btn.disabled=false;if(error){msg("final-msg","انتشار پاسخ ناموفق بود: "+error.message,true);return;}if(!data){msg("final-msg","پیش‌نویس قابل انتشار پیدا نشد؛ صفحه را تازه‌سازی کنید.",true);return;}msg("final-msg","پاسخ نهایی با موفقیت منتشر شد و برای گلخانه‌دار قابل مشاهده است.");show("publish-final",false);$("final-form").querySelectorAll("textarea,button").forEach(x=>x.disabled=true);activeCase.status="answered";$("case-meta").textContent="پاسخ داده‌شده · کارشناس مسئول · شدت: "+(activeCase.severity||"نامشخص");await loadAssigned();});
 $("close-detail").addEventListener("click",()=>{stopCaseAutoRefresh();show("detail",false);});
 async function logout(){
-  stopCaseMessageAutoRefresh();
+  stopCaseAutoRefresh();
+
   const { error } = await supabase.auth.signOut();
+
   if (error) {
     alert("خروج از حساب انجام نشد: " + error.message);
     return;
   }
+
+  user = null;
+  location.replace("../users/");
+}
   currentUser = null;
   location.replace("../users/");
 }{stopCaseAutoRefresh();await supabase.auth.signOut();user=null;show("app",false);show("blocked",false);show("logout",false);show("login-card",true);}
