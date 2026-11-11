@@ -142,9 +142,6 @@ async function logout(){
   user = null;
   location.replace("../users/");
 }
-  currentUser = null;
-  location.replace("../users/");
-}{stopCaseAutoRefresh();await supabase.auth.signOut();user=null;show("app",false);show("blocked",false);show("logout",false);show("login-card",true);}
 $("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
 $("login").addEventListener("click",async()=>{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error){msg("login-msg",error.message,true);return;}await verifyAndEnter();});
 $("forgot-password").addEventListener("click",async()=>{
