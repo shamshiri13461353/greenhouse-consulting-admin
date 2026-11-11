@@ -1,0 +1,31 @@
+name: Validate unified user portal
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "users/**"
+      - ".github/workflows/validate-user-portal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check unified portal module syntax
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          html = pathlib.Path("users/index.html").read_text()
+          scripts = re.findall(r'<script type="module">(.*?)</script>', html, re.S)
+          if len(scripts) != 1:
+              raise SystemExit("Expected exactly one module script in users/index.html")
+          pathlib.Path("/tmp/users.mjs").write_text(scripts[0])
+          if '<script src="./supabase.js"></script>' not in html:
+              raise SystemExit("Pinned local Supabase client bundle is not referenced")
+          PY
+          node --check /tmp/users.mjs
