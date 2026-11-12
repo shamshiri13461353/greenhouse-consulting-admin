@@ -152,7 +152,25 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 const createClient = window.supabase.createClient;
 const SUPABASE_URL="https://tnfunhkxnldrylwbxraf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
-const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+// محدودکردن زمان انتظار درخواست‌ها برای جلوگیری از قفل شدن دکمه ورود روی اینترنت موبایل
+const fetchWithTimeout=(input,init={})=>{
+ const controller=new AbortController(),originalSignal=init.signal;
+ const forwardAbort=()=>controller.abort();
+ if(originalSignal){if(originalSignal.aborted)controller.abort();else originalSignal.addEventListener("abort",forwardAbort,{once:true});}
+ const timer=setTimeout(()=>controller.abort(),25000);
+ return fetch(input,{...init,signal:controller.signal}).finally(()=>{
+  clearTimeout(timer);originalSignal?.removeEventListener("abort",forwardAbort);
+ });
+};
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+ global:{fetch:fetchWithTimeout},
+ auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+});
+function withLoginTimeout(promise,label="ارتباط با سرور"){
+ let timer;
+ const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+" بیش از ۱۵ ثانیه طول کشید. اتصال اینترنت یا دسترسی به سرور را بررسی کنید.")),15000);});
+ return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
 const $=id=>document.getElementById(id);
 let currentUser=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
@@ -234,13 +252,28 @@ async function enter(){
  $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
  await refreshAll();await loadCases();
 }
-$("login").addEventListener("click",async()=>{
- clearNotice("login-message");$("login").disabled=true;
- const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
- $("login").disabled=false;
- if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
- await enter();
-});
+async function performGrowerLogin(){
+ const button=$("login"),email=$("email").value.trim(),password=$("password").value;
+ clearNotice("login-message");
+ if(!email||!password){notice("login-message","ایمیل و گذرواژه را وارد کنید.",true);return;}
+ button.disabled=true;
+ notice("login-message","در حال بررسی اطلاعات ورود…");
+ try{
+  const {data,error}=await withLoginTimeout(
+   supabase.auth.signInWithPassword({email,password}),
+   "بررسی ایمیل و گذرواژه"
+  );
+  if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
+  await withLoginTimeout(enter(),"بررسی دسترسی حساب گلخانه‌دار");
+ }catch(error){
+  console.error("Grower login failed",error);
+  notice("login-message","ارتباط با سامانه هنگام ورود برقرار نشد: "+(error?.message||"خطای نامشخص")+". اتصال اینترنت را بررسی و دوباره تلاش کنید.",true);
+ }finally{
+  button.disabled=false;
+ }
+}
+$("login").addEventListener("click",performGrowerLogin);
+$("password").addEventListener("keydown",event=>{if(event.key==="Enter")performGrowerLogin();});
 $("forgot-password").addEventListener("click",async()=>{
  const email=$("email").value.trim();
  if(!email){notice("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
