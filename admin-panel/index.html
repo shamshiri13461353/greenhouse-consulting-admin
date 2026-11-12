@@ -1,31 +1,19 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#123b32"><meta name="description" content="نصب نسخه همراه پنل مدیریت پیوندگستر پارسان">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml">
-<title>نصب اپلیکیشن مدیریت | پیوندگستر پارسان</title>
-<style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f6f4;color:#18332c;font-family:Tahoma,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:22px}
-main{width:min(100%,440px);background:#fff;border-radius:24px;padding:30px 24px;text-align:center;box-shadow:0 12px 40px #153b3020}
-.logo{width:92px;height:92px;margin:0 auto 18px;border-radius:24px;display:grid;place-items:center;background:#123b32;color:white;font-size:38px;font-weight:bold}
-h1{font-size:22px;margin:8px 0 12px}p{font-size:14px;line-height:2;color:#52645e;margin:8px 0 20px}
-button{width:100%;border:0;border-radius:13px;background:#17634e;color:#fff;font-size:16px;font-weight:bold;padding:15px;cursor:pointer}
-.note{font-size:12px;color:#75847e;margin-top:18px}#status{margin-top:14px;color:#17634e;font-size:13px;line-height:1.9}
-.appframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
-body.launched{padding:0;background:#fff}body.launched main{display:none}body.launched .appframe{display:block}
-</style></head>
-<body><main><div class="logo">م</div><h1>اپلیکیشن مدیریت سامانه</h1>
-<p>نسخه مستقل مدیر سامانه پیوندگستر پارسان</p><button id="install" type="button">نصب اپلیکیشن مدیریت</button>
-<div id="status">برای نصب، دکمه بالا را انتخاب کنید.</div>
-<div class="note">این نسخه مخصوص مدیر سامانه است و با نسخه گلخانه‌دار و کارشناس تفاوت دارد.</div></main>
-<iframe class="appframe" id="admin" title="پنل مدیریت" src="/" allow="clipboard-read; clipboard-write"></iframe>
-<script>
-let installPrompt=null;const btn=document.getElementById('install');const status=document.getElementById('status');
-function launch(){document.body.classList.add('launched');document.getElementById('admin').src='/';}
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
-btn.addEventListener('click',async()=>{if(installPrompt){installPrompt.prompt();const choice=await installPrompt.userChoice;status.textContent=choice.outcome==='accepted'?'درخواست نصب پذیرفته شد. پس از نصب، آیکون مدیریت را باز کنید.':'نصب انجام نشد؛ هر زمان خواستید دوباره تلاش کنید.';installPrompt=null;}else{status.textContent='در منوی مرورگر گزینه «افزودن به صفحه اصلی» یا «Install app» را انتخاب کنید.';}});
-window.addEventListener('appinstalled',()=>{status.textContent='اپلیکیشن مدیریت نصب شد.';});
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));}
-if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone){launch();}
-</script></body></html>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123d35">
+  <title>پنل مدیریت سامانه مشاوره گلخانه</title>
+  <style>
+    :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}
+    *{box-sizing:border-box}body{margin:0}header{background:#123d35;color:#fff;padding:22px max(18px,calc((100% - 1080px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    header h1{font-size:20px;margin:0}main{max-width:1080px;margin:30px auto;padding:0 18px}.card{background:#fff;border-radius:16px;padding:22px;box-shadow:0 5px 20px #123d3510;margin-bottom:18px}
+    input,button{font:inherit;border-radius:9px;padding:12px;border:1px solid #ccd8d3}button{background:#17634e;color:#fff;border:0;cursor:pointer;font-weight:bold}input{width:100%;margin:8px 0 14px}label{display:block;font-size:14px}
+  </style>
+</head>
+<body>
+<header><h1>پنل مدیریت سامانه مشاوره گلخانه</h1></header>
+<main><section class="card"><h2>ورود مدیر سامانه</h2><p>برای ورود، از فرم ورود مدیریت استفاده کنید.</p><div id="app"></div></section></main>
+</body>
+</html>
