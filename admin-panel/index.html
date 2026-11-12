@@ -109,7 +109,24 @@
   const SUPABASE_URL = "https://tnfunhkxnldrylwbxraf.supabase.co";
   // کلید publishable عمومی است؛ هرگز service_role یا secret key را اینجا قرار ندهید.
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
-  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  // جلوگیری از معطل ماندن بی‌نهایت درخواست‌ها، به‌ویژه روی اینترنت موبایل
+  const fetchWithTimeout = (input, init = {}) => {
+    const controller = new AbortController();
+    const originalSignal = init.signal;
+    const forwardAbort = () => controller.abort();
+    if (originalSignal) {
+      if (originalSignal.aborted) controller.abort();
+      else originalSignal.addEventListener("abort", forwardAbort, { once: true });
+    }
+    const timer = setTimeout(() => controller.abort(), 25000);
+    return fetch(input, { ...init, signal: controller.signal }).finally(() => {
+      clearTimeout(timer);
+      originalSignal?.removeEventListener("abort", forwardAbort);
+    });
+  };
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    global: { fetch: fetchWithTimeout }
+  });
   const $ = (id) => document.getElementById(id);
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
@@ -380,7 +397,14 @@
     $("refresh").addEventListener("click",loadExperts);
   $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
   supabase.auth.onAuthStateChange((_event,session)=>{if(!session){show("dashboard",false);show("signout",false);show("login-card",true);}});
-  await enterDashboard();
+  try {
+    await enterDashboard();
+  } catch (error) {
+    console.error("Admin session check failed", error);
+    show("login-card", true);
+    show("dashboard", false);
+    message("login-message", "بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. " + (error?.name === "AbortError" ? "مهلت ارتباط با سرور تمام شد." : (error?.message || "")), true);
+  }
 </script>
 </body>
 </html>
