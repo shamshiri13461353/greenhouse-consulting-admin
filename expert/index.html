@@ -233,7 +233,7 @@ async function syncPushStatus(userId){
   enable.textContent="فعال‌سازی اعلان‌ها";return;
  }
  try{
-  const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
+  const registration=await navigator.serviceWorker.register("./sw.js",{scope:"./"});
   await navigator.serviceWorker.ready;
   const subscription=await registration.pushManager.getSubscription();
   if(!subscription){
@@ -259,7 +259,7 @@ async function activatePush(userId){
   enable.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";
   const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
   if(permission!=="granted"){status.textContent="مجوز اعلان داده نشد. از تنظیمات مرورگر، اعلان‌های این سایت را فعال کنید.";return;}
-  const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
+  const registration=await navigator.serviceWorker.register("./sw.js",{scope:"./"});
   await navigator.serviceWorker.ready;
   let subscription=await registration.pushManager.getSubscription();
   if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
