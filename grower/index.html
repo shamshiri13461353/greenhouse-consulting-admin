@@ -197,16 +197,31 @@ function renderGreenhouses(){
  for(const gh of greenhouses)select.append(new Option(gh.name,gh.id));
  if(greenhouses.some(g=>g.id===selected))select.value=selected;
 }
+async function fetchGrowerRows(query){
+ if(!currentUser?.id||!currentAccessToken)throw new Error("نشست ورود معتبر نیست؛ دوباره وارد شوید.");
+ const response=await fetchWithTimeout(SUPABASE_URL+"/rest/v1/"+query,{
+  method:"GET",
+  headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+currentAccessToken,Accept:"application/json"}
+ });
+ if(!response.ok){
+  let detail="HTTP "+response.status;
+  try{const body=await response.json();detail=body.message||body.details||detail;}catch{}
+  throw new Error(detail);
+ }
+ return await response.json();
+}
 async function loadGreenhouses(){
- $("greenhouse-list").textContent="در حال دریافت اطلاعات…";
- const {data,error}=await supabase.from("greenhouses").select("id,name,city,province,area_m2,structure_type,cultivation_system,created_at").eq("owner_user_id",currentUser.id).order("created_at",{ascending:false});
- if(error){$("greenhouse-list").textContent="دریافت گلخانه‌ها ناموفق بود: "+error.message;return;}
- greenhouses=data||[];renderGreenhouses();
+ const host=$("greenhouse-list");host.textContent="در حال دریافت اطلاعات گلخانه‌ها…";
+ try{
+  const data=await fetchGrowerRows("greenhouses?select=id,name,city,province,area_m2,structure_type,cultivation_system,created_at&owner_user_id=eq."+encodeURIComponent(currentUser.id)+"&order=created_at.desc");
+  greenhouses=data||[];renderGreenhouses();
+ }catch(error){host.textContent="دریافت گلخانه‌ها ناموفق بود: "+(error?.message||"خطای ارتباط");throw error;}
 }
 async function loadCycles(){
- const host=$("cycle-list");host.textContent="در حال دریافت اطلاعات…";
- const {data,error}=await supabase.from("crop_cycles").select("id,greenhouse_id,crop_name,cultivar,rootstock,transplant_date,expected_end_date,substrate_type,plant_density_m2,status,created_at").order("created_at",{ascending:false});
- if(error){host.textContent="دریافت دوره‌های کشت ناموفق بود: "+error.message;return;}
+ const host=$("cycle-list");host.textContent="در حال دریافت دوره‌های کشت…";
+ let data;
+ try{data=await fetchGrowerRows("crop_cycles?select=id,greenhouse_id,crop_name,cultivar,rootstock,transplant_date,expected_end_date,substrate_type,plant_density_m2,status,created_at&order=created_at.desc");}
+ catch(error){host.textContent="دریافت دوره‌های کشت ناموفق بود: "+(error?.message||"خطای ارتباط");throw error;}
  cropCycles=data||[];
  const caseSelect=$("case-cycle");const oldCycle=caseSelect.value;caseSelect.replaceChildren(new Option("انتخاب دوره کشت",""));
  for(const c of cropCycles){const gh=greenhouses.find(g=>g.id===c.greenhouse_id);caseSelect.append(new Option((gh?.name||"گلخانه")+" — "+c.crop_name+(c.cultivar?" / "+c.cultivar:""),c.id));}
@@ -352,9 +367,10 @@ const statusLabels={draft:"پیش‌نویس",awaiting_information:"نیازمن
 const categoryLabels={pests_diseases:"آفات و بیماری‌ها",nutrition:"تغذیه گیاه",environmental_stress:"تنش‌های محیطی",physiology:"فیزیولوژی و رشد",irrigation_water:"آبیاری و کیفیت آب",substrate_roots:"بستر کشت و ریشه",other:"سایر"};
 const safeName=s=>String(s||"").replace(/[\\/:*?"<>|]/g,"_").slice(0,100);
 async function loadCases(){
- const host=$("case-list");host.textContent="در حال دریافت پرونده‌ها…";
- const {data,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at,updated_at").eq("created_by",currentUser.id).order("created_at",{ascending:false});
- if(error){host.textContent="دریافت پرونده‌ها ناموفق بود: "+error.message;return;}
+ const host=$("case-list");host.textContent="در حال دریافت پرونده‌های شما…";
+ let data;
+ try{data=await fetchGrowerRows("cases?select=id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at,updated_at&created_by=eq."+encodeURIComponent(currentUser.id)+"&order=created_at.desc");}
+ catch(error){host.textContent="دریافت پرونده‌ها ناموفق بود: "+(error?.message||"خطای ارتباط");throw error;}
  host.replaceChildren();
  if(!data?.length){host.className="empty";host.textContent="هنوز پرونده مشاوره‌ای ثبت نکرده‌اید.";return;}
  host.className="";
