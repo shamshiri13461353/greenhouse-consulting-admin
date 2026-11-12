@@ -164,9 +164,9 @@
     const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
     return Uint8Array.from(raw,c=>c.charCodeAt(0));
   }
-  async function activateAdminPush(userId){
+  async function activateAdminPush(userId, silent=false){
     const button=$("enable-push"),status=$("push-status");
-    button.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";
+    if(!silent){button.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";}
     try{
       if(!userId) throw new Error("ابتدا وارد حساب مدیر شوید.");
       if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))
@@ -182,11 +182,37 @@
         user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
       },{onConflict:"user_id,endpoint"});
       if(error) throw error;
-      status.textContent="اعلان‌های مدیریتی برای این دستگاه فعال شد.";
+      button.hidden=true;button.disabled=false;
+      status.textContent="اعلان‌ها روی این دستگاه فعال هستند؛ نیازی به فعال‌سازی دوباره نیست.";
     }catch(error){
       console.error("Admin push activation failed",error);
-      status.textContent="فعال‌سازی انجام نشد: "+(error?.message||"خطای نامشخص");
-    }finally{button.disabled=false;}
+      button.hidden=false;button.disabled=false;
+      status.textContent=(silent?"وضعیت اعلان‌ها بررسی نشد: ":"فعال‌سازی انجام نشد: ")+(error?.message||"خطای نامشخص");
+    }
+  }
+  async function syncAdminPushStatus(userId){
+    const button=$("enable-push"),status=$("push-status");
+    button.hidden=false;button.disabled=false;button.textContent="فعال‌سازی اعلان‌ها";
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
+      button.hidden=true;status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
+    }
+    if(Notification.permission==="denied"){
+      button.disabled=true;status.textContent="مجوز اعلان برای این سایت در تنظیمات مرورگر مسدود است؛ از تنظیمات سایت، اعلان‌ها را مجاز کنید.";return;
+    }
+    if(Notification.permission==="granted"){
+      try{
+        const registration=await navigator.serviceWorker.getRegistration("../");
+        const subscription=registration?await registration.pushManager.getSubscription():null;
+        if(subscription){await activateAdminPush(userId,true);return;}
+        button.textContent="تکمیل فعال‌سازی اعلان‌ها";
+        status.textContent="مجوز اعلان داده شده، اما اشتراک این دستگاه کامل نیست. برای تکمیل، دکمه را بزنید.";
+        return;
+      }catch(error){
+        console.error("Admin push status check failed",error);
+        status.textContent="بررسی وضعیت اعلان‌ها انجام نشد؛ در صورت نیاز فعال‌سازی را دوباره انجام دهید.";return;
+      }
+    }
+    status.textContent="برای دریافت اعلان‌های مدیریتی، یک‌بار دریافت اعلان‌ها را فعال کنید.";
   }
 
   async function loadExperts(){
@@ -339,7 +365,10 @@
     adminUser=user;
     const ok=await requireAdmin(user, accessToken);
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
-    if(ok) void loadDashboardData();
+    if(ok){
+      void loadDashboardData();
+      void syncAdminPushStatus(user.id);
+    }
     return ok;
   }
 
