@@ -9,7 +9,7 @@
 <section id="login-card" class="card"><h2>ورود کارشناس</h2><p class="muted">ورود فقط برای کارشناسان دعوت‌شده، تأییدشده و فعال امکان‌پذیر است.</p><label>ایمیل</label><input id="email" type="email" autocomplete="username"><label>گذرواژه</label><input id="password" type="password" autocomplete="current-password"><div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="alt">فراموشی گذرواژه</button></div><div id="login-msg" class="notice hidden"></div></section>
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
-<div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div></div>
+<div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button><button id="test-push" type="button" class="alt" disabled>ارسال اعلان آزمایشی</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
 <nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button></nav>
 <section id="invites" class="section active card"><div class="top"><h2>دعوت به همکاری در پرونده</h2><button class="alt" id="refresh-invites">به‌روزرسانی</button></div><div id="invite-list" class="empty">در حال دریافت…</div></section>
 <section id="assigned" class="section card"><div class="top"><h2>پرونده‌های ارجاع‌شده</h2><button class="alt" id="refresh-assigned">به‌روزرسانی</button></div><div id="assigned-list" class="empty">در حال دریافت…</div></section>
@@ -156,6 +156,56 @@ $("forgot-password").addEventListener("click",async()=>{
 });
 $("refresh-invites").addEventListener("click",loadInvites);$("refresh-assigned").addEventListener("click",loadAssigned);
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));}));
+
+const WEB_PUSH_PUBLIC_KEY="BKZeyPi0RNRZe1dVRggJ6hS_jAI5LdWMUMJ2GmccGuS6NvhVK140dalJvPtOoC94oStMMFy4nAkcQAev0o9G2jE";
+function base64UrlToBytes(value){
+ const padding="=".repeat((4-value.length%4)%4);
+ const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
+ return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function activatePush(userId){
+ const status=$("push-status");
+ const enable=$("enable-push"), test=$("test-push");
+ try{
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
+   status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
+  }
+  if(!userId){status.textContent="ابتدا وارد حساب کاربری شوید.";return;}
+  enable.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";
+  const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+  if(permission!=="granted"){status.textContent="مجوز اعلان داده نشد. از تنظیمات مرورگر، اعلان‌های این سایت را فعال کنید.";return;}
+  const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
+  await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription) subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
+  const json=subscription.toJSON();
+  const {error}=await supabase.from("web_push_subscriptions").upsert({
+   user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+  },{onConflict:"endpoint"});
+  if(error) throw error;
+  status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
+  test.disabled=false;
+ }catch(error){
+  console.error("Push activation failed",error);
+  status.textContent="فعال‌سازی انجام نشد: "+(error?.message||"خطای نامشخص");
+ }finally{enable.disabled=false;}
+}
+async function sendPushTest(){
+ const button=$("test-push"),status=$("push-status");
+ button.disabled=true;status.textContent="در حال ارسال اعلان آزمایشی…";
+ try{
+  const {data,error}=await supabase.functions.invoke("push-test",{body:{}});
+  if(error) throw error;
+  if(data?.sent>0) status.textContent="اعلان آزمایشی ارسال شد؛ دریافت آن را روی گوشی بررسی کنید.";
+  else status.textContent=data?.error||"اعلان به دستگاهی ارسال نشد.";
+ }catch(error){
+  console.error("Push test failed",error);
+  status.textContent="ارسال آزمایشی ناموفق بود: "+(error?.message||"خطای نامشخص");
+ }finally{button.disabled=false;}
+}
+
+$("enable-push").addEventListener("click",()=>activatePush(user?.id));
+$("test-push").addEventListener("click",sendPushTest);
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
 await verifyAndEnter();
 </script></body></html>
