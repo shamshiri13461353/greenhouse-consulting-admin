@@ -172,7 +172,7 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 const $=id=>document.getElementById(id);
-let currentUser=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null;
+let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
@@ -249,7 +249,7 @@ async function enter(user=null,accessToken=null){
   if(error)throw error;
   user=data?.session?.user||null;accessToken=data?.session?.access_token||null;
  }
- currentUser=user||null;
+ currentUser=user||null;currentAccessToken=accessToken||null;
  if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("logout",false);return;}
  const {profile,hasGrowerRole}=await requireGrower(user,accessToken);
  show("login-card",false);show("logout",true);
@@ -599,9 +599,8 @@ async function activatePush(userId){
   if(!subscription) subscription=await withPushTimeout(registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)}),"ایجاد اشتراک اعلان");
   const json=subscription.toJSON();
   status.textContent="در حال ثبت دستگاه در سامانه…";
-  const {data:{session},error:sessionError}=await supabase.auth.getSession();
-  if(sessionError) throw sessionError;
-  if(!session?.access_token) throw new Error("نشست ورود معتبر نیست؛ دوباره وارد شوید.");
+  const accessToken=currentAccessToken;
+  if(!accessToken) throw new Error("توکن نشست در حافظه پنل موجود نیست؛ یک‌بار خارج شوید و دوباره وارد شوید.");
   const saveController=new AbortController();
   const saveTimer=setTimeout(()=>saveController.abort(),20000);
   let saveResponse;
@@ -634,7 +633,7 @@ async function activatePush(userId){
  }finally{enable.disabled=false;}
 }
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}});
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
 await enter();
 </script>
 </body>
