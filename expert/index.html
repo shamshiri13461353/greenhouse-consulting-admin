@@ -47,6 +47,7 @@ async function verifyAndEnter(){
  $("welcome").textContent=[p.data.first_name,p.data.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
  $("profile").textContent=(e.data.professional_title||"کارشناس")+(e.data.organization?" · "+e.data.organization:"")+" · "+user.email;
  await Promise.all([loadInvites(),loadAssigned()]);
+ await syncPushStatus(user.id);
 }
 async function loadInvites(){
  const host=$("invite-list");host.textContent="در حال دریافت دعوت‌ها…";
@@ -163,9 +164,45 @@ function base64UrlToBytes(value){
  const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
  return Uint8Array.from(raw,c=>c.charCodeAt(0));
 }
+async function savePushSubscription(userId,subscription){
+ const json=subscription.toJSON();
+ const {error}=await supabase.from("web_push_subscriptions").upsert({
+  user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+ },{onConflict:"user_id,endpoint"});
+ if(error)throw error;
+}
+async function syncPushStatus(userId){
+ const status=$("push-status"),enable=$("enable-push");
+ enable.hidden=false;enable.disabled=false;
+ if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
+  status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";enable.hidden=true;return;
+ }
+ if(Notification.permission==="denied"){
+  status.textContent="مجوز اعلان برای این سایت در مرورگر مسدود است؛ از تنظیمات سایت آن را مجاز کنید.";enable.disabled=true;return;
+ }
+ if(Notification.permission!=="granted"){
+  status.textContent="برای دریافت اعلان روی این دستگاه، یک‌بار اعلان‌ها را فعال کنید.";
+  enable.textContent="فعال‌سازی اعلان‌ها";return;
+ }
+ try{
+  const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
+  await navigator.serviceWorker.ready;
+  const subscription=await registration.pushManager.getSubscription();
+  if(!subscription){
+   status.textContent="مجوز اعلان داده شده، اما اشتراک این دستگاه کامل نیست.";
+   enable.textContent="تکمیل فعال‌سازی اعلان‌ها";return;
+  }
+  await savePushSubscription(userId,subscription);
+  status.textContent="اعلان‌ها روی این دستگاه فعال هستند؛ نیازی به فعال‌سازی دوباره نیست.";
+  enable.hidden=true;
+ }catch(error){
+  console.error("Push status sync failed",error);
+  status.textContent="بررسی وضعیت اعلان‌ها ناموفق بود؛ برای تکمیل، دکمه فعال‌سازی را بزنید.";
+  enable.textContent="تلاش دوباره برای فعال‌سازی";
+ }
+}
 async function activatePush(userId){
- const status=$("push-status");
- const enable=$("enable-push");
+ const status=$("push-status"),enable=$("enable-push");
  try{
   if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
    status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
@@ -177,13 +214,10 @@ async function activatePush(userId){
   const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
   await navigator.serviceWorker.ready;
   let subscription=await registration.pushManager.getSubscription();
-  if(!subscription) subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
-  const json=subscription.toJSON();
-  const {error}=await supabase.from("web_push_subscriptions").upsert({
-   user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
-  },{onConflict:"user_id,endpoint"});
-  if(error) throw error;
-  status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
+  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
+  await savePushSubscription(userId,subscription);
+  status.textContent="اعلان‌ها روی این دستگاه فعال هستند؛ نیازی به فعال‌سازی دوباره نیست.";
+  enable.hidden=true;
  }catch(error){
   console.error("Push activation failed",error);
   status.textContent="فعال‌سازی انجام نشد: "+(error?.message||"خطای نامشخص");
