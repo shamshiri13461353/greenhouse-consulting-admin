@@ -38,6 +38,12 @@
 
   <section id="dashboard" class="hidden">
     <div class="card">
+      <div class="topline"><h2>اعلان‌های سامانه</h2><span class="pill">دریافت خودکار</span></div>
+      <p class="muted">با فعال‌سازی اعلان‌ها، رویدادهای مهم سامانه مانند ثبت پرونده جدید مستقیماً روی گوشی شما نمایش داده می‌شود.</p>
+      <div class="actions"><button id="enable-push" type="button" class="secondary">فعال‌سازی اعلان‌ها</button></div>
+      <p id="push-status" class="muted" role="status">برای دریافت اعلان‌های مدیریتی، مجوز اعلان را فعال کنید.</p>
+    </div>
+    <div class="card">
       <div class="topline"><h2>دعوت کارشناس جدید</h2><span class="pill">فقط توسط مدیر</span></div>
       <p class="muted">دعوت‌نامه از طریق Supabase Auth به ایمیل واردشده ارسال می‌شود. پس از پذیرش دعوت، مدیر باید مشخصات کارشناس را بررسی و تأیید کند.</p>
       <div class="grid">
@@ -118,6 +124,37 @@
     ]);
     if(profile?.account_status!=="active" || !role){ await supabase.auth.signOut(); return false; }
     return true;
+  }
+
+  const WEB_PUSH_PUBLIC_KEY = "BKZeyPi0RNRZe1dVRggJ6hS_jAI5LdWMUMJ2GmccGuS6NvhVK140dalJvPtOoC94oStMMFy4nAkcQAev0o9G2jE";
+  function base64UrlToBytes(value){
+    const padding="=".repeat((4-value.length%4)%4);
+    const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
+    return Uint8Array.from(raw,c=>c.charCodeAt(0));
+  }
+  async function activateAdminPush(userId){
+    const button=$("enable-push"),status=$("push-status");
+    button.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";
+    try{
+      if(!userId) throw new Error("ابتدا وارد حساب مدیر شوید.");
+      if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))
+        throw new Error("این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.");
+      const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+      if(permission!=="granted") throw new Error("مجوز اعلان داده نشد. تنظیمات اعلان این سایت را بررسی کنید.");
+      const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
+      await navigator.serviceWorker.ready;
+      let subscription=await registration.pushManager.getSubscription();
+      if(!subscription) subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
+      const json=subscription.toJSON();
+      const {error}=await supabase.from("web_push_subscriptions").upsert({
+        user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+      },{onConflict:"endpoint"});
+      if(error) throw error;
+      status.textContent="اعلان‌های مدیریتی برای این دستگاه فعال شد.";
+    }catch(error){
+      console.error("Admin push activation failed",error);
+      status.textContent="فعال‌سازی انجام نشد: "+(error?.message||"خطای نامشخص");
+    }finally{button.disabled=false;}
   }
 
   async function loadExperts(){
@@ -260,8 +297,10 @@
     const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;
     const ok=await requireAdmin();
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
-    if(ok){ await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
+    if(ok){ const {data:{user}}=await supabase.auth.getUser(); adminUser=user; await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
   }
+
+  $("enable-push").addEventListener("click",()=>activateAdminPush(adminUser?.id));
 
   $("login").addEventListener("click",async()=>{
     $("login").disabled=true;
