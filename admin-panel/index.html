@@ -125,8 +125,17 @@
     });
   };
   const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: { fetch: fetchWithTimeout }
+    global: { fetch: fetchWithTimeout },
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
+  // تضمین آزاد شدن دکمه ورود حتی اگر درخواست شبکه در مرورگر موبایل معطل بماند
+  function withLoginTimeout(promise, label = "ارتباط با سرور") {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(label + " بیش از ۱۵ ثانیه طول کشید. اتصال اینترنت یا دسترسی به سرور احراز هویت را بررسی کنید.")), 15000);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
   const $ = (id) => document.getElementById(id);
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
@@ -340,9 +349,12 @@
     button.disabled=true;
     message("login-message","در حال بررسی اطلاعات ورود…");
     try{
-      const {error}=await supabase.auth.signInWithPassword({email,password});
+      const {error}=await withLoginTimeout(
+        supabase.auth.signInWithPassword({email,password}),
+        "درخواست بررسی ایمیل و گذرواژه"
+      );
       if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-      const isAdmin=await enterDashboard();
+      const isAdmin=await withLoginTimeout(enterDashboard(),"بررسی دسترسی مدیریتی");
       if(!isAdmin){
         message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
       }
