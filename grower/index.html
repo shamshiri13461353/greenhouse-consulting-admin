@@ -231,17 +231,29 @@ async function loadCycles(){
  }
 }
 async function refreshAll(){await loadGreenhouses();await loadCycles();}
-async function enter(){
- const {data:{user},error}=await supabase.auth.getUser();
- currentUser=user||null;
- if(error||!user){show("login-card");show("app",false);show("account-pending",false);show("logout",false);return;}
- const [{data:profile,error:pe},{data:role,error:re}]=await Promise.all([
-  supabase.from("user_profiles").select("first_name,last_name,phone,account_status").eq("id",user.id).maybeSingle(),
-  supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","grower").maybeSingle()
+async function requireGrower(user,accessToken){
+ if(!user||!accessToken)throw new Error("نشست ورود یا توکن دسترسی دریافت نشد.");
+ const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+accessToken};
+ const [profileResponse,roleResponse]=await Promise.all([
+  fetchWithTimeout(SUPABASE_URL+"/rest/v1/user_profiles?select=first_name,last_name,phone,account_status&id=eq."+encodeURIComponent(user.id),{headers}),
+  fetchWithTimeout(SUPABASE_URL+"/rest/v1/user_roles?select=role_code&user_id=eq."+encodeURIComponent(user.id)+"&role_code=eq.grower",{headers})
  ]);
+ if(!profileResponse.ok)throw new Error("بررسی وضعیت حساب ناموفق بود (HTTP "+profileResponse.status+").");
+ if(!roleResponse.ok)throw new Error("بررسی نقش گلخانه‌دار ناموفق بود (HTTP "+roleResponse.status+").");
+ const [profiles,roles]=await Promise.all([profileResponse.json(),roleResponse.json()]);
+ return {profile:profiles?.[0]||null,hasGrowerRole:!!roles?.some(row=>row.role_code==="grower")};
+}
+async function enter(user=null,accessToken=null){
+ if(!user||!accessToken){
+  const {data,error}=await supabase.auth.getSession();
+  if(error)throw error;
+  user=data?.session?.user||null;accessToken=data?.session?.access_token||null;
+ }
+ currentUser=user||null;
+ if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("logout",false);return;}
+ const {profile,hasGrowerRole}=await requireGrower(user,accessToken);
  show("login-card",false);show("logout",true);
- if(pe||re){show("account-pending");show("app",false);$("pending-message").textContent="بررسی وضعیت حساب انجام نشد. لطفاً بعداً تلاش کنید یا با مدیر سامانه تماس بگیرید.";return;}
- if(profile?.account_status!=="active"||!role){
+ if(profile?.account_status!=="active"||!hasGrowerRole){
   show("account-pending");show("app",false);
   $("pending-message").textContent="حساب شما هنوز به‌عنوان گلخانه‌دار فعال نشده است. پس از بررسی مدیر سامانه، امکان ثبت گلخانه و دوره کشت فعال خواهد شد.";
   return;
@@ -250,7 +262,11 @@ async function enter(){
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
  $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
- await refreshAll();await loadCases();
+ // بارگذاری اطلاعات پنل پس از نمایش موفق صفحه، بدون معطل‌کردن ورود
+ void Promise.all([refreshAll(),loadCases()]).catch(error=>{
+  console.error("Grower dashboard data loading failed",error);
+  notice("login-message","ورود انجام شد، اما دریافت بخشی از اطلاعات پنل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
+ });
 }
 async function performGrowerLogin(){
  const button=$("login"),email=$("email").value.trim(),password=$("password").value;
@@ -264,7 +280,7 @@ async function performGrowerLogin(){
    "بررسی ایمیل و گذرواژه"
   );
   if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
-  await withLoginTimeout(enter(),"بررسی دسترسی حساب گلخانه‌دار");
+  await withLoginTimeout(enter(data?.user,data?.session?.access_token),"بررسی دسترسی حساب گلخانه‌دار");
  }catch(error){
   console.error("Grower login failed",error);
   notice("login-message","ارتباط با سامانه هنگام ورود برقرار نشد: "+(error?.message||"خطای نامشخص")+". اتصال اینترنت را بررسی و دوباره تلاش کنید.",true);
