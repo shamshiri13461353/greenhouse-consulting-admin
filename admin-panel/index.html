@@ -329,9 +329,8 @@
       message("action-message","ورود انجام شد، اما دریافت بخشی از اطلاعات پنل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
     }
   }
-  async function enterDashboard(){
-    const {data:{user},error:userError}=await supabase.auth.getUser();
-    if(userError) throw userError;
+  async function enterDashboard(user){
+    if(!user) throw new Error("اطلاعات حساب پس از ورود دریافت نشد.");
     adminUser=user;
     const ok=await requireAdmin(user);
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
@@ -349,12 +348,12 @@
     button.disabled=true;
     message("login-message","در حال بررسی اطلاعات ورود…");
     try{
-      const {error}=await withLoginTimeout(
+      const {data,error}=await withLoginTimeout(
         supabase.auth.signInWithPassword({email,password}),
         "درخواست بررسی ایمیل و گذرواژه"
       );
       if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-      const isAdmin=await withLoginTimeout(enterDashboard(),"بررسی دسترسی مدیریتی");
+      const isAdmin=await withLoginTimeout(enterDashboard(data?.user),"بررسی دسترسی مدیریتی");
       if(!isAdmin){
         message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
       }
