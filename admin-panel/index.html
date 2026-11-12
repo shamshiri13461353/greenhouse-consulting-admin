@@ -141,15 +141,20 @@
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
   function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
 
-  async function requireAdmin(user){
-    if(!user) return false;
-    const [{data:profile,error:profileError},{data:role,error:roleError}] = await Promise.all([
-      supabase.from("user_profiles").select("account_status").eq("id",user.id).maybeSingle(),
-      supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","admin").maybeSingle()
+  async function requireAdmin(user, accessToken){
+    if(!user || !accessToken) throw new Error("نشست ورود یا توکن دسترسی دریافت نشد.");
+    const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+accessToken};
+    const [profileResponse,roleResponse]=await Promise.all([
+      fetchWithTimeout(SUPABASE_URL+"/rest/v1/user_profiles?select=account_status&id=eq."+encodeURIComponent(user.id),{headers}),
+      fetchWithTimeout(SUPABASE_URL+"/rest/v1/user_roles?select=role_code&user_id=eq."+encodeURIComponent(user.id)+"&role_code=eq.admin",{headers})
     ]);
-    if(profileError) throw profileError;
-    if(roleError) throw roleError;
-    if(profile?.account_status!=="active" || !role){ await supabase.auth.signOut(); return false; }
+    if(!profileResponse.ok) throw new Error("بررسی وضعیت حساب ناموفق بود (HTTP "+profileResponse.status+").");
+    if(!roleResponse.ok) throw new Error("بررسی نقش مدیر ناموفق بود (HTTP "+roleResponse.status+").");
+    const [profiles,roles]=await Promise.all([profileResponse.json(),roleResponse.json()]);
+    if(profiles?.[0]?.account_status!=="active" || !roles?.some(row=>row.role_code==="admin")){
+      await supabase.auth.signOut();
+      return false;
+    }
     return true;
   }
 
@@ -329,10 +334,10 @@
       message("action-message","ورود انجام شد، اما دریافت بخشی از اطلاعات پنل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
     }
   }
-  async function enterDashboard(user){
+  async function enterDashboard(user, accessToken){
     if(!user) throw new Error("اطلاعات حساب پس از ورود دریافت نشد.");
     adminUser=user;
-    const ok=await requireAdmin(user);
+    const ok=await requireAdmin(user, accessToken);
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
     if(ok) void loadDashboardData();
     return ok;
@@ -353,7 +358,7 @@
         "درخواست بررسی ایمیل و گذرواژه"
       );
       if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-      const isAdmin=await withLoginTimeout(enterDashboard(data?.user),"بررسی دسترسی مدیریتی");
+      const isAdmin=await withLoginTimeout(enterDashboard(data?.user,data?.session?.access_token),"بررسی دسترسی مدیریتی");
       if(!isAdmin){
         message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
       }
