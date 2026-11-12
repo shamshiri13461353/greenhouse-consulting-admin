@@ -24,42 +24,60 @@
 </section></section></main>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
-const supabase=createClient("https://tnfunhkxnldrylwbxraf.supabase.co","sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH");
+const SUPABASE_URL="https://tnfunhkxnldrylwbxraf.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_f6K92sAcoynWBRGevrTrJA_TsSj73sH";
+const fetchWithTimeout=(input,init={})=>{
+ const controller=new AbortController(),originalSignal=init.signal;
+ const forwardAbort=()=>controller.abort();
+ if(originalSignal){if(originalSignal.aborted)controller.abort();else originalSignal.addEventListener("abort",forwardAbort,{once:true});}
+ const timer=setTimeout(()=>controller.abort(),25000);
+ return fetch(input,{...init,signal:controller.signal}).finally(()=>{clearTimeout(timer);originalSignal?.removeEventListener("abort",forwardAbort);});
+};
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:fetchWithTimeout},auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+function withLoginTimeout(promise,label="ارتباط با سرور"){
+ let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+" بیش از ۱۵ ثانیه طول کشید. اتصال اینترنت یا دسترسی به سرور احراز هویت را بررسی کنید.")),15000);});
+ return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
 const $=id=>document.getElementById(id);let user=null,activeCase=null,activeAssignment=null,opinionId=null,caseRefreshTimer=null,caseRefreshBusy=false,caseRefreshCaseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function msg(id,text,error=false){$(id).textContent=text;$(id).classList.remove("hidden","error");if(error)$(id).classList.add("error");}
 function el(tag,cls,text){const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;}
 const statuses={ready_for_review:"در انتظار بررسی",assigned:"ارجاع‌شده",under_review:"در حال بررسی",awaiting_information:"در انتظار اطلاعات",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده"};
-async function verifyAndEnter(){
- const {data:{user:u}}=await supabase.auth.getUser();user=u||null;
- if(!user){show("login-card");show("app",false);show("blocked",false);show("logout",false);return;}
- const [p,r,e]=await Promise.all([
-  supabase.from("user_profiles").select("first_name,last_name,account_status").eq("id",user.id).maybeSingle(),
-  supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","expert").maybeSingle(),
-  supabase.from("expert_profiles").select("professional_title,organization,invitation_status,is_verified").eq("user_id",user.id).maybeSingle()
- ]);
+async function verifyAndEnter(inputUser=null,inputToken=null){
+ let u=inputUser,token=inputToken;
+ if(!u||!token){
+  const {data,error}=await withLoginTimeout(supabase.auth.getSession(),"دریافت نشست ورود");
+  if(error)throw error;
+  u=data?.session?.user||null;token=data?.session?.access_token||null;
+ }
+ user=u||null;
+ if(!user||!token){show("login-card");show("app",false);show("blocked",false);show("logout",false);return false;}
+ const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+token};
+ const base=SUPABASE_URL+"/rest/v1/";
+ const requests=await withLoginTimeout(Promise.all([
+  fetchWithTimeout(base+"user_profiles?select=first_name,last_name,account_status&id=eq."+encodeURIComponent(user.id),{headers}),
+  fetchWithTimeout(base+"user_roles?select=role_code&user_id=eq."+encodeURIComponent(user.id)+"&role_code=eq.expert",{headers}),
+  fetchWithTimeout(base+"expert_profiles?select=professional_title,organization,invitation_status,is_verified&user_id=eq."+encodeURIComponent(user.id),{headers})
+ ]),"بررسی دسترسی کارشناسی");
+ const [pr,rr,er]=requests;
+ if(!pr.ok||!rr.ok||!er.ok)throw new Error("بررسی مجوز حساب کارشناس ناموفق بود (HTTP "+[pr.status,rr.status,er.status].join("/") +").");
+ const [profiles,roles,experts]=await Promise.all([pr.json(),rr.json(),er.json()]);
+ const p=profiles?.[0],e=experts?.[0],hasRole=roles?.some(x=>x.role_code==="expert");
  show("login-card",false);show("logout",true);
- if(p.error||r.error||e.error||p.data?.account_status!=="active"||!r.data||!e.data||e.data.invitation_status!=="accepted"||!e.data.is_verified){
-  show("blocked");show("app",false);$("blocked-msg").textContent="حساب باید دعوت را پذیرفته باشد، توسط مدیر تأیید شده باشد و وضعیت آن فعال باشد. در صورت نیاز با مدیر سامانه تماس بگیرید.";return;
+ if(p?.account_status!=="active"||!hasRole||!e||e.invitation_status!=="accepted"||!e.is_verified){
+  show("blocked");show("app",false);
+  $("blocked-msg").textContent="حساب باید دعوت را پذیرفته باشد، توسط مدیر تأیید شده باشد و وضعیت آن فعال باشد. در صورت نیاز با مدیر سامانه تماس بگیرید.";
+  return false;
  }
  show("blocked",false);show("app",true);
- $("welcome").textContent=[p.data.first_name,p.data.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
- $("profile").textContent=(e.data.professional_title||"کارشناس")+(e.data.organization?" · "+e.data.organization:"")+" · "+user.email;
- // ورود و نمایش پنل نباید منتظر پاسخ فهرست پرونده‌ها یا سرویس اعلان بماند.
+ $("welcome").textContent=[p.first_name,p.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
+ $("profile").textContent=(e.professional_title||"کارشناس")+(e.organization?" · "+e.organization:"")+" · "+user.email;
  const activeUserId=user.id;
  Promise.allSettled([loadInvites(),loadAssigned()]).then(results=>{
-  results.forEach((result,index)=>{
-   if(result.status==="rejected"){
-    const target=index===0?"invite-list":"assigned-list";
-    $(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";
-    console.error("Expert case list load failed",result.reason);
-   }
-  });
+  results.forEach((result,index)=>{if(result.status==="rejected"){const target=index===0?"invite-list":"assigned-list";$(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";console.error("Expert case list load failed",result.reason);}});
  });
- syncPushStatus(activeUserId).catch(error=>{
-  console.error("Expert push status sync failed",error);
-  $("push-status").textContent="وضعیت اعلان‌ها فعلاً قابل بررسی نیست.";
- });
+ syncPushStatus(activeUserId).catch(error=>{$("push-status").textContent="وضعیت اعلان‌ها فعلاً قابل بررسی نیست.";console.error("Expert push status sync failed",error);});
+ return true;
 }
 async function loadInvites(){
  const host=$("invite-list");host.textContent="در حال دریافت دعوت‌ها…";
@@ -156,25 +174,25 @@ async function logout(){
   location.replace("../users/");
 }
 $("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
-$("login").addEventListener("click",async()=>{
+async function performExpertLogin(){
  const button=$("login"),email=$("email").value.trim(),password=$("password").value;
  $("login-msg").classList.add("hidden");
  if(!email||!password){msg("login-msg","لطفاً ایمیل و گذرواژه را وارد کنید.",true);return;}
  button.disabled=true;button.textContent="در حال بررسی اطلاعات ورود…";
  try{
-  const {data,error}=await supabase.auth.signInWithPassword({email,password});
+  const {data,error}=await withLoginTimeout(supabase.auth.signInWithPassword({email,password}),"بررسی ایمیل و گذرواژه");
   if(error){msg("login-msg","ورود انجام نشد: "+error.message,true);return;}
-  if(!data?.user){msg("login-msg","ورود تأیید نشد؛ لطفاً دوباره تلاش کنید.",true);return;}
-  await verifyAndEnter();
-  if(!$("app").classList.contains("hidden")||!$("blocked").classList.contains("hidden"))return;
-  msg("login-msg","ورود انجام شد، اما بارگذاری پنل کامل نشد. صفحه را تازه‌سازی کنید و دوباره وارد شوید.",true);
+  if(!data?.user||!data?.session?.access_token)throw new Error("اطلاعات نشست ورود از سرور دریافت نشد.");
+  const ok=await withLoginTimeout(verifyAndEnter(data.user,data.session.access_token),"بررسی دسترسی کارشناسی");
+  if(!ok&&!$("blocked").classList.contains("hidden"))return;
+  if(!ok)msg("login-msg","ورود انجام شد، اما دسترسی پنل تأیید نشد.",true);
  }catch(error){
   console.error("Expert login failed",error);
-  msg("login-msg","خطا هنگام ورود یا بررسی دسترسی: "+(error?.message||"ارتباط با سامانه برقرار نشد."),true);
- }finally{
-  button.disabled=false;button.textContent="ورود";
- }
-});
+  msg("login-msg","ورود یا بررسی دسترسی ناموفق بود: "+(error?.name==="AbortError"?"مهلت ارتباط با سرور تمام شد.":(error?.message||"خطای نامشخص"))+". اتصال اینترنت را بررسی و دوباره تلاش کنید.",true);
+ }finally{button.disabled=false;button.textContent="ورود";}
+}
+$("login").addEventListener("click",performExpertLogin);
+$("password").addEventListener("keydown",event=>{if(event.key==="Enter")performExpertLogin();});
 $("forgot-password").addEventListener("click",async()=>{
  const email=$("email").value.trim();
  if(!email){msg("login-msg","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
@@ -255,5 +273,5 @@ async function activatePush(userId){
 }
 $("enable-push").addEventListener("click",()=>activatePush(user?.id));
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
-await verifyAndEnter();
+try{await withLoginTimeout(verifyAndEnter(),"بررسی نشست قبلی");}catch(error){console.error("Expert session check failed",error);show("login-card",true);show("app",false);msg("login-msg","بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. "+(error?.message||"خطای ارتباط"),true);}
 </script></body></html>
