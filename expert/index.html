@@ -272,6 +272,6 @@ async function activatePush(userId){
  }finally{enable.disabled=false;}
 }
 $("enable-push").addEventListener("click",()=>activatePush(user?.id));
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
 try{await withLoginTimeout(verifyAndEnter(),"بررسی نشست قبلی");}catch(error){console.error("Expert session check failed",error);show("login-card",true);show("app",false);msg("login-msg","بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. "+(error?.message||"خطای ارتباط"),true);}
 </script></body></html>
