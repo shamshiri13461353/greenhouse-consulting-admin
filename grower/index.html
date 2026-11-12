@@ -45,7 +45,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   <div class="card">
    <div class="topline"><div><h2 id="welcome">پنل گلخانه‌دار</h2><p class="muted">مدیریت گلخانه‌ها و دوره‌های کشت ثبت‌شده در سامانه</p></div><span class="tag">حساب فعال</span></div>
    <div id="profile-line" class="muted"></div>
-    <div class="actions"><button id="enable-push" type="button" class="secondary">فعال‌سازی اعلان‌ها</button><button id="test-push" type="button" class="secondary" disabled>ارسال اعلان آزمایشی</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p>
+    <div class="actions"><button id="enable-push" type="button" class="secondary">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p>
   </div>
   <nav class="tabs">
    <button class="active" data-tab="greenhouses-section">گلخانه‌های من</button>
@@ -524,7 +524,7 @@ function base64UrlToBytes(value){
 }
 async function activatePush(userId){
  const status=$("push-status");
- const enable=$("enable-push"), test=$("test-push");
+ const enable=$("enable-push");
  try{
   if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
    status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
@@ -543,28 +543,12 @@ async function activatePush(userId){
   },{onConflict:"endpoint"});
   if(error) throw error;
   status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
-  test.disabled=false;
  }catch(error){
   console.error("Push activation failed",error);
   status.textContent="فعال‌سازی انجام نشد: "+(error?.message||"خطای نامشخص");
  }finally{enable.disabled=false;}
 }
-async function sendPushTest(){
- const button=$("test-push"),status=$("push-status");
- button.disabled=true;status.textContent="در حال ارسال اعلان آزمایشی…";
- try{
-  const {data,error}=await supabase.functions.invoke("push-test",{body:{}});
-  if(error) throw error;
-  if(data?.sent>0) status.textContent="اعلان آزمایشی ارسال شد؛ دریافت آن را روی گوشی بررسی کنید.";
-  else status.textContent=data?.error||"اعلان به دستگاهی ارسال نشد.";
- }catch(error){
-  console.error("Push test failed",error);
-  status.textContent="ارسال آزمایشی ناموفق بود: "+(error?.message||"خطای نامشخص");
- }finally{button.disabled=false;}
-}
-
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
-$("test-push").addEventListener("click",sendPushTest);
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||!session){currentUser=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}});
 await enter();
 </script>
