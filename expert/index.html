@@ -144,7 +144,25 @@ async function logout(){
   location.replace("../users/");
 }
 $("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
-$("login").addEventListener("click",async()=>{const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error){msg("login-msg",error.message,true);return;}await verifyAndEnter();});
+$("login").addEventListener("click",async()=>{
+ const button=$("login"),email=$("email").value.trim(),password=$("password").value;
+ $("login-msg").classList.add("hidden");
+ if(!email||!password){msg("login-msg","لطفاً ایمیل و گذرواژه را وارد کنید.",true);return;}
+ button.disabled=true;button.textContent="در حال بررسی اطلاعات ورود…";
+ try{
+  const {data,error}=await supabase.auth.signInWithPassword({email,password});
+  if(error){msg("login-msg","ورود انجام نشد: "+error.message,true);return;}
+  if(!data?.user){msg("login-msg","ورود تأیید نشد؛ لطفاً دوباره تلاش کنید.",true);return;}
+  await verifyAndEnter();
+  if(!$("app").classList.contains("hidden")||!$("blocked").classList.contains("hidden"))return;
+  msg("login-msg","ورود انجام شد، اما بارگذاری پنل کامل نشد. صفحه را تازه‌سازی کنید و دوباره وارد شوید.",true);
+ }catch(error){
+  console.error("Expert login failed",error);
+  msg("login-msg","خطا هنگام ورود یا بررسی دسترسی: "+(error?.message||"ارتباط با سامانه برقرار نشد."),true);
+ }finally{
+  button.disabled=false;button.textContent="ورود";
+ }
+});
 $("forgot-password").addEventListener("click",async()=>{
  const email=$("email").value.trim();
  if(!email){msg("login-msg","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
