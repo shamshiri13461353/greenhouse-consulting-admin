@@ -54,9 +54,11 @@ jobs:
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
+          node --check admin-panel/admin-install/sw.js
           node --check /tmp/users.mjs
           node --check sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
+          python3 -m json.tool admin-panel/admin-install/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
         run: |
           TGZ="$(npm pack --silent @supabase/supabase-js@2.58.0 --pack-destination /tmp)"
@@ -67,8 +69,12 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/management _site/grower _site/expert _site/mobile/icons _site/users
+          mkdir -p _site/management _site/grower _site/expert _site/mobile/icons _site/users _site/admin-install
           cp admin-panel/index.html _site/index.html
+          cp admin-panel/admin-install/index.html _site/admin-install/index.html
+          cp admin-panel/admin-install/manifest.webmanifest _site/admin-install/manifest.webmanifest
+          cp admin-panel/admin-install/sw.js _site/admin-install/sw.js
+          cp admin-panel/admin-install/icon.svg _site/admin-install/icon.svg
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
           cp management/index.html _site/management/index.html
