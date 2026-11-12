@@ -57,6 +57,7 @@ jobs:
           node --check admin-panel/admin-install/sw.js
           node --check /tmp/users.mjs
           node --check sw.js
+          node --check expert/sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
           python3 -m json.tool admin-panel/admin-install/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
@@ -83,6 +84,7 @@ jobs:
           cp management/accept-grower-invitation.html _site/management/accept-grower-invitation.html
           cp grower/index.html _site/grower/index.html
           cp expert/index.html _site/expert/index.html
+          cp expert/sw.js _site/expert/sw.js
           cp mobile/index.html _site/mobile/index.html
           cp users/index.html _site/users/index.html
           cp mobile/manifest.webmanifest _site/mobile/manifest.webmanifest
