@@ -599,10 +599,34 @@ async function activatePush(userId){
   if(!subscription) subscription=await withPushTimeout(registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)}),"ایجاد اشتراک اعلان");
   const json=subscription.toJSON();
   status.textContent="در حال ثبت دستگاه در سامانه…";
-  const {error}=await withPushTimeout(supabase.from("web_push_subscriptions").upsert({
-   user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
-  },{onConflict:"user_id,endpoint"}),"ثبت اشتراک در سامانه",25000);
-  if(error) throw error;
+  const {data:{session},error:sessionError}=await supabase.auth.getSession();
+  if(sessionError) throw sessionError;
+  if(!session?.access_token) throw new Error("نشست ورود معتبر نیست؛ دوباره وارد شوید.");
+  const saveController=new AbortController();
+  const saveTimer=setTimeout(()=>saveController.abort(),20000);
+  let saveResponse;
+  try{
+   saveResponse=await fetch(SUPABASE_URL+"/rest/v1/web_push_subscriptions?on_conflict=user_id,endpoint",{
+    method:"POST",
+    headers:{
+     "apikey":SUPABASE_PUBLISHABLE_KEY,
+     "Authorization":"Bearer "+session.access_token,
+     "Content-Type":"application/json",
+     "Prefer":"resolution=merge-duplicates,return=minimal"
+    },
+    body:JSON.stringify({
+     user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+    }),
+    signal:saveController.signal
+   });
+  }catch(saveError){
+   if(saveError?.name==="AbortError") throw new Error("ارتباط مستقیم با پایگاه داده پس از ۲۰ ثانیه پاسخ نداد؛ اتصال اینترنت یا دسترسی به نشانی Supabase را بررسی کنید.");
+   throw saveError;
+  }finally{clearTimeout(saveTimer);}
+  if(!saveResponse.ok){
+   const details=await saveResponse.text();
+   throw new Error("ثبت دستگاه ناموفق بود ("+saveResponse.status+"): "+details.slice(0,500));
+  }
   status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
  }catch(error){
   console.error("Push activation failed",error);
