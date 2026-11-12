@@ -258,6 +258,35 @@ async function requireGrower(user,accessToken){
  const [profiles,roles]=await Promise.all([profileResponse.json(),roleResponse.json()]);
  return {profile:profiles?.[0]||null,hasGrowerRole:!!roles?.some(row=>row.role_code==="grower")};
 }
+async function refreshPushStatus(userId){
+ const button=$("enable-push"),status=$("push-status");
+ button.hidden=false;button.disabled=false;button.textContent="فعال‌سازی اعلان‌ها";
+ if(!userId||Notification.permission!=="granted"||!("serviceWorker" in navigator)||!("PushManager" in window)){
+  status.textContent="برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.";return;
+ }
+ try{
+  const registration=await withPushTimeout(navigator.serviceWorker.getRegistration("/"),"بررسی سرویس اعلان");
+  const subscription=registration?await withPushTimeout(registration.pushManager.getSubscription(),"بررسی اشتراک اعلان"):null;
+  if(!subscription){status.textContent="اشتراک اعلان این دستگاه فعال نیست؛ برای فعال‌سازی، دکمه زیر را بزنید.";return;}
+  if(!currentAccessToken)throw new Error("توکن نشست در دسترس نیست.");
+  const params=new URLSearchParams({select:"id",user_id:"eq."+userId,endpoint:"eq."+subscription.endpoint});
+  const response=await fetchWithTimeout(SUPABASE_URL+"/rest/v1/web_push_subscriptions?"+params.toString(),{
+   headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+currentAccessToken,Accept:"application/json"}
+  });
+  if(!response.ok)throw new Error("بررسی ثبت دستگاه ناموفق بود (HTTP "+response.status+").");
+  const rows=await response.json();
+  if(rows.length){
+   status.textContent="اعلان‌ها برای این دستگاه قبلاً فعال شده‌اند.";
+   button.hidden=true;
+  }else{
+   status.textContent="مجوز اعلان و اشتراک این دستگاه موجود است؛ ثبت آن در سامانه کامل نشده است.";
+   button.textContent="تکمیل ثبت اعلان‌ها";
+  }
+ }catch(error){
+  console.warn("Could not verify grower push status",error);
+  status.textContent="وضعیت اعلان‌ها بررسی نشد؛ برای اطمینان می‌توانید فعال‌سازی را دوباره انجام دهید.";
+ }
+}
 async function enter(user=null,accessToken=null){
  if(!user||!accessToken){
   const {data,error}=await supabase.auth.getSession();
@@ -277,6 +306,7 @@ async function enter(user=null,accessToken=null){
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
  $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
+ void refreshPushStatus(user.id);
  // بارگذاری اطلاعات پنل پس از نمایش موفق صفحه، بدون معطل‌کردن ورود
  void Promise.all([refreshAll(),loadCases()]).catch(error=>{
   console.error("Grower dashboard data loading failed",error);
