@@ -609,7 +609,7 @@ async function activatePush(userId){
     method:"POST",
     headers:{
      "apikey":SUPABASE_PUBLISHABLE_KEY,
-     "Authorization":"Bearer "+session.access_token,
+     "Authorization":"Bearer "+accessToken,
      "Content-Type":"application/json",
      "Prefer":"resolution=merge-duplicates,return=minimal"
     },
