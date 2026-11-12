@@ -181,7 +181,7 @@ async function activatePush(userId){
   const json=subscription.toJSON();
   const {error}=await supabase.from("web_push_subscriptions").upsert({
    user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
-  },{onConflict:"endpoint"});
+  },{onConflict:"user_id,endpoint"});
   if(error) throw error;
   status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
  }catch(error){
