@@ -302,13 +302,29 @@
 
   $("enable-push").addEventListener("click",()=>activateAdminPush(adminUser?.id));
 
-  $("login").addEventListener("click",async()=>{
-    $("login").disabled=true;
-    const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
-    $("login").disabled=false;
-    if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-    await enterDashboard();
-  });
+  async function performAdminLogin(){
+    const button=$("login");
+    const email=$("email").value.trim();
+    const password=$("password").value;
+    if(!email || !password){message("login-message","ایمیل و گذرواژه را وارد کنید.",true);return;}
+    button.disabled=true;
+    message("login-message","در حال بررسی اطلاعات ورود…");
+    try{
+      const {error}=await supabase.auth.signInWithPassword({email,password});
+      if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
+      await enterDashboard();
+      if($("dashboard").classList.contains("hidden")){
+        message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
+      }
+    }catch(error){
+      console.error("Admin login failed",error);
+      message("login-message","ارتباط با سامانه هنگام ورود برقرار نشد: "+(error?.message||"خطای نامشخص")+". اتصال اینترنت را بررسی و دوباره تلاش کنید.",true);
+    }finally{
+      button.disabled=false;
+    }
+  }
+  $("login").addEventListener("click",performAdminLogin);
+  $("password").addEventListener("keydown",event=>{if(event.key==="Enter") performAdminLogin();});
   $("forgot-password").addEventListener("click",async()=>{
     const email=$("email").value.trim();
     if(!email){message("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
