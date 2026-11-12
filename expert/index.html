@@ -46,8 +46,21 @@ async function verifyAndEnter(){
  show("blocked",false);show("app",true);
  $("welcome").textContent=[p.data.first_name,p.data.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
  $("profile").textContent=(e.data.professional_title||"کارشناس")+(e.data.organization?" · "+e.data.organization:"")+" · "+user.email;
- await Promise.all([loadInvites(),loadAssigned()]);
- await syncPushStatus(user.id);
+ // ورود و نمایش پنل نباید منتظر پاسخ فهرست پرونده‌ها یا سرویس اعلان بماند.
+ const activeUserId=user.id;
+ Promise.allSettled([loadInvites(),loadAssigned()]).then(results=>{
+  results.forEach((result,index)=>{
+   if(result.status==="rejected"){
+    const target=index===0?"invite-list":"assigned-list";
+    $(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";
+    console.error("Expert case list load failed",result.reason);
+   }
+  });
+ });
+ syncPushStatus(activeUserId).catch(error=>{
+  console.error("Expert push status sync failed",error);
+  $("push-status").textContent="وضعیت اعلان‌ها فعلاً قابل بررسی نیست.";
+ });
 }
 async function loadInvites(){
  const host=$("invite-list");host.textContent="در حال دریافت دعوت‌ها…";
