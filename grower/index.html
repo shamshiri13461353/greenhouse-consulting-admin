@@ -571,6 +571,13 @@ function base64UrlToBytes(value){
  const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
  return Uint8Array.from(raw,c=>c.charCodeAt(0));
 }
+function withPushTimeout(promise,label,ms=15000){
+ let timer;
+ return Promise.race([
+  promise,
+  new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+" بیش از "+Math.round(ms/1000)+" ثانیه طول کشید.")),ms);})
+ ]).finally(()=>clearTimeout(timer));
+}
 async function activatePush(userId){
  const status=$("push-status");
  const enable=$("enable-push");
@@ -579,17 +586,22 @@ async function activatePush(userId){
    status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
   }
   if(!userId){status.textContent="ابتدا وارد حساب کاربری شوید.";return;}
-  enable.disabled=true;status.textContent="در حال فعال‌سازی اعلان‌ها…";
-  const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+  enable.disabled=true;
+  status.textContent="در حال بررسی مجوز اعلان‌ها…";
+  const permission=Notification.permission==="granted"?"granted":await withPushTimeout(Notification.requestPermission(),"دریافت مجوز اعلان");
   if(permission!=="granted"){status.textContent="مجوز اعلان داده نشد. از تنظیمات مرورگر، اعلان‌های این سایت را فعال کنید.";return;}
-  const registration=await navigator.serviceWorker.register("../sw.js",{scope:"../"});
-  await navigator.serviceWorker.ready;
-  let subscription=await registration.pushManager.getSubscription();
-  if(!subscription) subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)});
+  status.textContent="در حال ثبت سرویس اعلان روی گوشی…";
+  const registration=await withPushTimeout(navigator.serviceWorker.register("../sw.js",{scope:"../"}),"ثبت سرویس اعلان");
+  status.textContent="در حال آماده‌سازی سرویس اعلان…";
+  await withPushTimeout(navigator.serviceWorker.ready,"آماده‌شدن سرویس اعلان");
+  status.textContent="در حال ایجاد اشتراک اعلان…";
+  let subscription=await withPushTimeout(registration.pushManager.getSubscription(),"بررسی اشتراک اعلان");
+  if(!subscription) subscription=await withPushTimeout(registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(WEB_PUSH_PUBLIC_KEY)}),"ایجاد اشتراک اعلان");
   const json=subscription.toJSON();
-  const {error}=await supabase.from("web_push_subscriptions").upsert({
+  status.textContent="در حال ثبت دستگاه در سامانه…";
+  const {error}=await withPushTimeout(supabase.from("web_push_subscriptions").upsert({
    user_id:userId,endpoint:json.endpoint,p256dh:json.keys.p256dh,auth_secret:json.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
-  },{onConflict:"user_id,endpoint"});
+  },{onConflict:"user_id,endpoint"}),"ثبت اشتراک در سامانه",25000);
   if(error) throw error;
   status.textContent="اعلان‌ها برای این دستگاه فعال شد.";
  }catch(error){
