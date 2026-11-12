@@ -132,13 +132,14 @@
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
   function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
 
-  async function requireAdmin(){
-    const {data:{user},error}=await supabase.auth.getUser();
-    if(error || !user) return false;
-    const [{data:profile},{data:role}] = await Promise.all([
+  async function requireAdmin(user){
+    if(!user) return false;
+    const [{data:profile,error:profileError},{data:role,error:roleError}] = await Promise.all([
       supabase.from("user_profiles").select("account_status").eq("id",user.id).maybeSingle(),
       supabase.from("user_roles").select("role_code").eq("user_id",user.id).eq("role_code","admin").maybeSingle()
     ]);
+    if(profileError) throw profileError;
+    if(roleError) throw roleError;
     if(profile?.account_status!=="active" || !role){ await supabase.auth.signOut(); return false; }
     return true;
   }
@@ -310,11 +311,23 @@
   $("assign-case").addEventListener("click",assignSelectedCase);
   $("refresh-cases").addEventListener("click",async()=>{await loadCaseManagement();await loadReviewQueue();});
   $("refresh-reviews").addEventListener("click",loadReviewQueue);
+  async function loadDashboardData(){
+    try{
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement()]);
+      await loadReviewQueue();
+    }catch(error){
+      console.error("Admin dashboard data loading failed",error);
+      message("action-message","ورود انجام شد، اما دریافت بخشی از اطلاعات پنل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
+    }
+  }
   async function enterDashboard(){
-    const {data:{user:currentUser}}=await supabase.auth.getUser(); adminUser=currentUser;
-    const ok=await requireAdmin();
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError) throw userError;
+    adminUser=user;
+    const ok=await requireAdmin(user);
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
-    if(ok){ const {data:{user}}=await supabase.auth.getUser(); adminUser=user; await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
+    if(ok) void loadDashboardData();
+    return ok;
   }
 
   $("enable-push").addEventListener("click",()=>activateAdminPush(adminUser?.id));
@@ -329,8 +342,8 @@
     try{
       const {error}=await supabase.auth.signInWithPassword({email,password});
       if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-      await enterDashboard();
-      if($("dashboard").classList.contains("hidden")){
+      const isAdmin=await enterDashboard();
+      if(!isAdmin){
         message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
       }
     }catch(error){
