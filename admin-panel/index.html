@@ -366,6 +366,14 @@
   const monitorAssignmentLabels={invited:"در انتظار پذیرش",active:"پذیرفته‌شده",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"};
   function monitorDate(value){if(!value)return "—";const date=new Date(value);return Number.isNaN(date.getTime())?"—":date.toLocaleString("fa-IR",{dateStyle:"short",timeStyle:"short"});}
   function monitorPerson(profile){return [profile?.first_name,profile?.last_name].filter(Boolean).join(" ")||"نام ثبت نشده";}
+  function monitorGrowerDisplay(caseRow){
+    const name=monitorPerson(caseRow?.user_profiles);
+    const greenhouse=caseRow?.crop_cycles?.greenhouses?.name;
+    const accountStatus=caseRow?.user_profiles?.account_status;
+    if(name!=="نام ثبت نشده")return name+(greenhouse?" · "+greenhouse:"");
+    const state=accountStatus==="active"?"حساب فعال؛ نام در پروفایل تکمیل نشده":accountStatus==="pending"?"حساب در انتظار تأیید؛ نام تکمیل نشده":"نام پروفایل ثبت نشده";
+    return state+(greenhouse?" · گلخانه: "+greenhouse:"");
+  }
   async function fetchMonitorRows(table,select,orderColumn,ascending=true){
     const all=[];let start=0;const size=500;
     while(true){let query=supabase.from(table).select(select);if(orderColumn)query=query.order(orderColumn,{ascending});const {data,error}=await query.range(start,start+size-1);if(error)throw error;const rows=data||[];all.push(...rows);if(rows.length<size||start>=9500)break;start+=size;}
@@ -385,7 +393,7 @@
     const body=$("monitor-cases"),empty=$("monitor-empty"),summary=$("monitor-summary");body.replaceChildren();
     const term=$("monitor-search").value.trim().toLocaleLowerCase("fa"),status=$("monitor-case-status").value,assignmentStatus=$("monitor-assignment-status").value,expertId=$("monitor-expert").value;
     const filtered=monitorCases.filter(c=>{
-      const grower=monitorPerson(c.user_profiles),searchText=[String(c.case_number),c.title,c.problem_category,grower].join(" ").toLocaleLowerCase("fa");
+      const grower=monitorGrowerDisplay(c),searchText=[String(c.case_number),c.title,c.problem_category,grower].join(" ").toLocaleLowerCase("fa");
       if(term&&!searchText.includes(term))return false;if(status&&c.status!==status)return false;
       const assignments=monitorAssignmentFor(c.id);if(assignmentStatus==="none"&&assignments.length)return false;
       if(assignmentStatus&&assignmentStatus!=="none"&&!assignments.some(a=>a.status===assignmentStatus))return false;
@@ -397,7 +405,7 @@
       const assignments=monitorAssignmentFor(c.id),lead=assignments.find(a=>a.is_lead&&a.status!=="revoked")||assignments.find(a=>a.is_lead);
       const statusText=assignments.length?assignments.map(a=>(a.is_lead?"مسئول: ":"همکار: ")+monitorExpertName(a)+" ("+(monitorAssignmentLabels[a.status]||a.status)+")").join("؛ "):"ارجاع نشده";
       const tr=document.createElement("tr");if(c.id===monitorSelectedCaseId)tr.className="selected";
-      const values=["پرونده "+c.case_number,(c.title||"—")+(c.problem_category?" · "+c.problem_category:""),monitorPerson(c.user_profiles),monitorDate(c.created_at),lead?monitorExpertName(lead):"—",lead?monitorDate(lead.assigned_at):"—",statusText,lead?monitorDate(lead.accepted_at):"—",monitorStatusText(c.status),monitorDate(c.updated_at)];
+      const values=["پرونده "+c.case_number,(c.title||"—")+(c.problem_category?" · "+c.problem_category:""),monitorGrowerDisplay(c),monitorDate(c.created_at),lead?monitorExpertName(lead):"—",lead?monitorDate(lead.assigned_at):"—",statusText,lead?monitorDate(lead.accepted_at):"—",monitorStatusText(c.status),monitorDate(c.updated_at)];
       for(const value of values){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
       tr.addEventListener("click",()=>{monitorSelectedCaseId=c.id;renderMonitorTable();renderMonitorDetail(c.id);});body.appendChild(tr);
     }
@@ -408,7 +416,7 @@
     const c=monitorCases.find(x=>x.id===caseId),host=$("monitor-detail");if(!c){host.classList.add("hidden");return;}host.classList.remove("hidden");
     $("monitor-detail-title").textContent="پرونده "+c.case_number+" · "+(c.title||"بدون عنوان");$("monitor-detail-description").textContent=c.description||"شرحی برای این پرونده ثبت نشده است.";
     const assignments=monitorAssignmentFor(caseId),lead=assignments.find(a=>a.is_lead),helpers=assignments.filter(a=>!a.is_lead),meta=$("monitor-detail-meta");meta.replaceChildren();
-    const facts=[["گلخانه‌دار",monitorPerson(c.user_profiles)],["وضعیت پرونده",monitorStatusText(c.status)],["تاریخ ثبت",monitorDate(c.created_at)],["کارشناس مسئول",lead?monitorExpertName(lead):"تعیین نشده"],["ارجاع مسئول",lead?monitorDate(lead.assigned_at):"—"],["پذیرش مسئول",lead?monitorDate(lead.accepted_at):"—"],["همکاران تخصصی",helpers.length?helpers.map(monitorExpertName).join("، "):"ندارد"],["آخرین به‌روزرسانی",monitorDate(c.updated_at)],["تاریخ بسته‌شدن",monitorDate(c.closed_at)]];
+    const facts=[["گلخانه‌دار",monitorGrowerDisplay(c)],["وضعیت پرونده",monitorStatusText(c.status)],["تاریخ ثبت",monitorDate(c.created_at)],["کارشناس مسئول",lead?monitorExpertName(lead):"تعیین نشده"],["ارجاع مسئول",lead?monitorDate(lead.assigned_at):"—"],["پذیرش مسئول",lead?monitorDate(lead.accepted_at):"—"],["همکاران تخصصی",helpers.length?helpers.map(monitorExpertName).join("، "):"ندارد"],["آخرین به‌روزرسانی",monitorDate(c.updated_at)],["تاریخ بسته‌شدن",monitorDate(c.closed_at)]];
     for(const [label,value] of facts){const box=document.createElement("div"),strong=document.createElement("strong");strong.textContent=label+"؛ ";box.append(strong,document.createTextNode(value));meta.appendChild(box);}
     const events=[{at:c.created_at,title:"ثبت پرونده",detail:"پرونده توسط گلخانه‌دار در سامانه ثبت شد."}];
     for(const h of monitorHistory.filter(x=>x.case_id===caseId)){events.push({at:h.changed_at,title:"تغییر وضعیت پرونده",detail:(h.old_status?monitorStatusText(h.old_status)+" ← ":"")+"وضعیت جدید: "+monitorStatusText(h.new_status)+(h.reason?" · "+h.reason:"")+(h.changed_by?" · ثبت‌کننده: "+monitorPerson(h.user_profiles):"")});}
@@ -424,7 +432,7 @@
     const button=$("refresh-monitor");if(button)button.disabled=true;
     try{
       const [cases,assignments,history,messages,opinions,responses]=await Promise.all([
-        fetchMonitorRows("cases","id,case_number,title,problem_category,description,severity,status,created_at,updated_at,closed_at,created_by,user_profiles!cases_created_by_fkey(first_name,last_name)","created_at",false),
+        fetchMonitorRows("cases","id,case_number,title,problem_category,description,severity,status,created_at,updated_at,closed_at,created_by,user_profiles!cases_created_by_fkey(first_name,last_name,account_status),crop_cycles!cases_crop_cycle_id_fkey(crop_name,greenhouses!crop_cycles_greenhouse_id_fkey(name))","created_at",false),
         fetchMonitorRows("case_assignments","id,case_id,expert_user_id,is_lead,status,assigned_at,accepted_at,completed_at,revoked_at,expert_profiles!case_assignments_expert_user_id_fkey(professional_title,organization,user_profiles!expert_profiles_user_id_fkey(first_name,last_name))","assigned_at"),
         fetchMonitorRows("case_status_history","id,case_id,old_status,new_status,changed_by,reason,changed_at,user_profiles!case_status_history_changed_by_fkey(first_name,last_name)","changed_at"),
         fetchMonitorRows("case_messages","id,case_id,sender_user_id,message_text,is_official,created_at,user_profiles!case_messages_sender_user_id_fkey(first_name,last_name)","created_at"),
