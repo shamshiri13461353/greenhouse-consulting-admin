@@ -337,7 +337,7 @@
     host.className="";
     for(const a of data){const expert=adminExpertDirectory.find(x=>x.user_id===a.expert_user_id),name=[expert?.user_profiles?.first_name,expert?.user_profiles?.last_name].filter(Boolean).join(" ")||expert?.professional_title||"نام ثبت نشده";
       const row=document.createElement("div");row.className="review-item";const title=document.createElement("strong");title.textContent=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+name+" · "+({invited:"دعوت‌شده",active:"فعال",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"}[a.status]||a.status);row.append(title);
-      if(a.status==="invited"){const b=document.createElement("button");b.className="danger";b.textContent="لغو دعوت";b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.from("case_assignments").update({status:"revoked",revoked_at:new Date().toISOString()}).eq("id",a.id).eq("status","invited");if(error){message("assignment-message","لغو دعوت ناموفق بود: "+error.message,true);b.disabled=false;return;}message("assignment-message","دعوت لغو شد.");await loadSelectedAssignments();});row.append(document.createElement("br"),b);}
+      if(a.status==="invited"){const b=document.createElement("button");b.className="danger";b.textContent="لغو دعوت";b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.from("case_assignments").update({status:"revoked",revoked_at:new Date().toISOString()}).eq("id",a.id).eq("status","invited");if(error){message("assignment-message","لغو دعوت ناموفق بود: "+error.message,true);b.disabled=false;return;}message("assignment-message","دعوت لغو شد.");await loadSelectedAssignments();await loadMonitorData();});row.append(document.createElement("br"),b);}
       host.append(row);
     }
   }
@@ -358,7 +358,7 @@
     $("assign-case").disabled=false;
     if(error){message("assignment-message","ثبت ارجاع ناموفق بود: "+error.message,true);return;}
     message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
-    $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();
+    $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();await loadMonitorData();
   }
   // Case monitoring uses existing tables only; no database schema change.
   let monitorCases=[],monitorAssignments=[],monitorHistory=[],monitorMessages=[],monitorOpinions=[],monitorResponses=[],monitorSelectedCaseId=null;
@@ -401,8 +401,8 @@
       for(const value of values){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
       tr.addEventListener("click",()=>{monitorSelectedCaseId=c.id;renderMonitorTable();renderMonitorDetail(c.id);});body.appendChild(tr);
     }
-    if(monitorSelectedCaseId&&!monitorCases.some(c=>c.id===monitorSelectedCaseId))monitorSelectedCaseId=null;
-    if(monitorSelectedCaseId)renderMonitorDetail(monitorSelectedCaseId);
+    if(monitorSelectedCaseId&&!filtered.some(c=>c.id===monitorSelectedCaseId))monitorSelectedCaseId=null;
+    if(monitorSelectedCaseId)renderMonitorDetail(monitorSelectedCaseId);else $("monitor-detail").classList.add("hidden");
   }
   function renderMonitorDetail(caseId){
     const c=monitorCases.find(x=>x.id===caseId),host=$("monitor-detail");if(!c){host.classList.add("hidden");return;}host.classList.remove("hidden");
@@ -432,7 +432,7 @@
         fetchMonitorRows("final_responses","id,case_id,version,prepared_by,response_text,is_published,published_at,created_at","created_at")
       ]);
       monitorCases=cases||[];monitorAssignments=assignments||[];monitorHistory=history||[];monitorMessages=messages||[];monitorOpinions=opinions||[];monitorResponses=responses||[];
-      renderMonitorFilters();renderMonitorTable();
+      $("monitor-summary").classList.remove("notice","error");renderMonitorFilters();renderMonitorTable();
     }catch(error){console.error("Case monitoring load failed",error);$("monitor-summary").textContent="دریافت اطلاعات نظارتی ناموفق بود: "+(error?.message||"خطای نامشخص");$("monitor-summary").classList.add("notice","error");}
     finally{if(button)button.disabled=false;}
   }
