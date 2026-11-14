@@ -366,9 +366,9 @@
   const monitorAssignmentLabels={invited:"در انتظار پذیرش",active:"پذیرفته‌شده",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"};
   function monitorDate(value){if(!value)return "—";const date=new Date(value);return Number.isNaN(date.getTime())?"—":date.toLocaleString("fa-IR",{dateStyle:"short",timeStyle:"short"});}
   function monitorPerson(profile){return [profile?.first_name,profile?.last_name].filter(Boolean).join(" ")||"نام ثبت نشده";}
-  async function fetchMonitorRows(table,select,orderColumn){
+  async function fetchMonitorRows(table,select,orderColumn,ascending=true){
     const all=[];let start=0;const size=500;
-    while(true){let query=supabase.from(table).select(select);if(orderColumn)query=query.order(orderColumn,{ascending:true});const {data,error}=await query.range(start,start+size-1);if(error)throw error;const rows=data||[];all.push(...rows);if(rows.length<size||start>=9500)break;start+=size;}
+    while(true){let query=supabase.from(table).select(select);if(orderColumn)query=query.order(orderColumn,{ascending});const {data,error}=await query.range(start,start+size-1);if(error)throw error;const rows=data||[];all.push(...rows);if(rows.length<size||start>=9500)break;start+=size;}
     return all;
   }
   function monitorAssignmentFor(caseId){return monitorAssignments.filter(a=>a.case_id===caseId);}
@@ -412,7 +412,7 @@
     for(const [label,value] of facts){const box=document.createElement("div"),strong=document.createElement("strong");strong.textContent=label+"؛ ";box.append(strong,document.createTextNode(value));meta.appendChild(box);}
     const events=[{at:c.created_at,title:"ثبت پرونده",detail:"پرونده توسط گلخانه‌دار در سامانه ثبت شد."}];
     for(const h of monitorHistory.filter(x=>x.case_id===caseId)){events.push({at:h.changed_at,title:"تغییر وضعیت پرونده",detail:(h.old_status?monitorStatusText(h.old_status)+" ← ":"")+"وضعیت جدید: "+monitorStatusText(h.new_status)+(h.reason?" · "+h.reason:"")+(h.changed_by?" · ثبت‌کننده: "+monitorPerson(h.user_profiles):"")});}
-    for(const a of assignments){const who=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+monitorExpertName(a);events.push({at:a.assigned_at,title:"ارسال دعوت ارجاع",detail:who});if(a.accepted_at)events.push({at:a.accepted_at,title:"پذیرش ارجاع توسط کارشناس",detail:who});if(a.completed_at)events.push({at:a.completed_at,title:"تکمیل همکاری کارشناس",detail:who});if(a.revoked_at)events.push({at:a.revoked_at,title:"لغو ارجاع",detail:who});if(a.status==="declined"&&!a.revoked_at)events.push({at:a.updated_at||a.assigned_at,title:"رد دعوت ارجاع",detail:who});}
+    for(const a of assignments){const who=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+monitorExpertName(a);events.push({at:a.assigned_at,title:"ارسال دعوت ارجاع",detail:who});if(a.accepted_at)events.push({at:a.accepted_at,title:"پذیرش ارجاع توسط کارشناس",detail:who});if(a.completed_at)events.push({at:a.completed_at,title:"تکمیل همکاری کارشناس",detail:who});if(a.revoked_at)events.push({at:a.revoked_at,title:"لغو ارجاع",detail:who});if(a.status==="declined"&&!a.revoked_at)events.push({at:null,title:"دعوت ارجاع رد شده است",detail:who+" · زمان دقیق رد دعوت در پایگاه داده ثبت نشده است."});}
     for(const m of monitorMessages.filter(x=>x.case_id===caseId))events.push({at:m.created_at,title:"ثبت پیام در پرونده",detail:monitorPerson(m.user_profiles)+(m.is_official?" · پیام رسمی":"")+(m.message_text?" · "+m.message_text.slice(0,240):"")});
     for(const o of monitorOpinions.filter(x=>x.case_id===caseId))events.push({at:o.updated_at||o.created_at,title:"ثبت یا به‌روزرسانی نظر کارشناسی",detail:monitorPerson(o.expert_profiles?.user_profiles)+(o.analysis_text?" · "+o.analysis_text.slice(0,240):"")});
     for(const r of monitorResponses.filter(x=>x.case_id===caseId))events.push({at:r.published_at||r.created_at,title:r.is_published?"انتشار پاسخ نهایی":"تهیه پیش‌نویس پاسخ",detail:"نسخه "+r.version+(r.response_text?" · "+r.response_text.slice(0,240):"")});
@@ -424,7 +424,7 @@
     const button=$("refresh-monitor");if(button)button.disabled=true;
     try{
       const [cases,assignments,history,messages,opinions,responses]=await Promise.all([
-        fetchMonitorRows("cases","id,case_number,title,problem_category,description,severity,status,created_at,updated_at,closed_at,created_by,user_profiles!cases_created_by_fkey(first_name,last_name)","created_at"),
+        fetchMonitorRows("cases","id,case_number,title,problem_category,description,severity,status,created_at,updated_at,closed_at,created_by,user_profiles!cases_created_by_fkey(first_name,last_name)","created_at",false),
         fetchMonitorRows("case_assignments","id,case_id,expert_user_id,is_lead,status,assigned_at,accepted_at,completed_at,revoked_at,expert_profiles!case_assignments_expert_user_id_fkey(professional_title,organization,user_profiles!expert_profiles_user_id_fkey(first_name,last_name))","assigned_at"),
         fetchMonitorRows("case_status_history","id,case_id,old_status,new_status,changed_by,reason,changed_at,user_profiles!case_status_history_changed_by_fkey(first_name,last_name)","changed_at"),
         fetchMonitorRows("case_messages","id,case_id,sender_user_id,message_text,is_official,created_at,user_profiles!case_messages_sender_user_id_fkey(first_name,last_name)","created_at"),
