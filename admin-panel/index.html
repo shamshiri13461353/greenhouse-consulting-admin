@@ -18,6 +18,15 @@
     .topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{font-size:12px;padding:5px 9px;border-radius:99px;background:#edf2ef;color:#40534d}
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #edf0ee;vertical-align:middle}th{color:#65746e;font-weight:600}
     .table-wrap{overflow-x:auto}.empty{text-align:center;padding:24px;color:#687771;font-size:13px}
+    .monitor-filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin:14px 0}
+    .monitor-table{min-width:1120px}.monitor-table tbody tr{cursor:pointer}.monitor-table tbody tr:hover{background:#f4f8f6}.monitor-table tbody tr.selected{background:#eaf3ef;outline:1px solid #a9c9bd}
+    .monitor-detail{border:1px solid #dce8e2;border-radius:12px;padding:16px;margin-top:18px;background:#fbfdfc}.monitor-detail h3{margin:0 0 8px;font-size:16px}
+    .monitor-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.monitor-meta>div{background:#f1f5f3;border-radius:8px;padding:9px;font-size:12px;line-height:1.8}
+    .monitor-timeline{border-right:2px solid #cbdcd4;margin:16px 12px 4px 0;padding-right:16px}.monitor-event{position:relative;padding:0 0 16px;line-height:1.8;font-size:13px}
+    .monitor-event:before{content:"";position:absolute;right:-23px;top:7px;width:10px;height:10px;border-radius:50%;background:#176b57;border:2px solid white;box-shadow:0 0 0 1px #9ab9ac}
+    .monitor-event time{display:block;color:#64756e;font-size:11px}.monitor-event strong{display:block;margin:2px 0}.monitor-event p{margin:3px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+    @media(max-width:760px){.monitor-filters{grid-template-columns:1fr 1fr}.monitor-meta{grid-template-columns:1fr 1fr}}
+    @media(max-width:480px){.monitor-filters,.monitor-meta{grid-template-columns:1fr}}
     @media(max-width:680px){.grid{grid-template-columns:1fr}header{padding:18px}.card{padding:15px}main{margin:16px auto}h1{font-size:17px}}
   </style>
 </head>
@@ -96,6 +105,27 @@
       <div class="divider"></div><h3>ارجاعات پرونده انتخاب‌شده</h3><div id="case-assignments" class="empty">ابتدا پرونده را انتخاب کنید.</div>
     </div>
     <div class="card">
+    <div class="card" id="case-monitor-card">
+      <div class="topline"><h2>نظارت جامع بر گردش پرونده‌ها</h2><button id="refresh-monitor" class="secondary">به‌روزرسانی فهرست</button></div>
+      <p class="muted">نمای کلی همه پرونده‌ها، از ثبت درخواست تا ارجاع، پذیرش کارشناس، تغییر وضعیت‌ها، پیام‌ها و پاسخ نهایی. با انتخاب هر پرونده، جزئیات و خط زمانی آن نمایش داده می‌شود.</p>
+      <div class="monitor-filters">
+        <div><label for="monitor-search">جست‌وجو (شماره پرونده، موضوع یا نام گلخانه‌دار)</label><input id="monitor-search" type="search" placeholder="جست‌وجو…"></div>
+        <div><label for="monitor-case-status">وضعیت پرونده</label><select id="monitor-case-status"><option value="">همه وضعیت‌ها</option></select></div>
+        <div><label for="monitor-assignment-status">وضعیت ارجاع</label><select id="monitor-assignment-status"><option value="">همه ارجاعات</option><option value="none">ارجاع‌نشده</option><option value="invited">در انتظار پذیرش</option><option value="active">پذیرفته‌شده</option><option value="completed">تکمیل‌شده</option><option value="declined">ردشده</option><option value="revoked">لغوشده</option></select></div>
+        <div><label for="monitor-expert">کارشناس</label><select id="monitor-expert"><option value="">همه کارشناسان</option></select></div>
+      </div>
+      <div id="monitor-summary" class="muted" aria-live="polite">در حال دریافت اطلاعات…</div>
+      <div class="table-wrap"><table class="monitor-table">
+        <thead><tr><th>شماره پرونده</th><th>موضوع</th><th>گلخانه‌دار</th><th>تاریخ ثبت</th><th>کارشناس مسئول</th><th>تاریخ ارجاع</th><th>وضعیت دعوت</th><th>زمان پذیرش</th><th>وضعیت پرونده</th><th>آخرین تغییر</th></tr></thead>
+        <tbody id="monitor-cases"></tbody>
+      </table></div>
+      <div id="monitor-empty" class="empty hidden">پرونده‌ای با این فیلترها پیدا نشد.</div>
+      <section id="monitor-detail" class="monitor-detail hidden" aria-live="polite">
+        <h3 id="monitor-detail-title">جزئیات پرونده</h3><div id="monitor-detail-meta" class="monitor-meta"></div>
+        <p id="monitor-detail-description" class="muted"></p><div class="divider"></div><h3>خط زمانی رسیدگی</h3>
+        <div id="monitor-timeline" class="monitor-timeline"></div>
+      </section>
+    </div>
       <div class="topline"><h2>نظارت بر نظر کارشناسی و پاسخ‌های نهایی</h2><button id="refresh-reviews" class="secondary">به‌روزرسانی</button></div>
       <p class="muted">مدیر می‌تواند محتوای نظر تخصصی و پیش‌نویس پاسخ را بررسی و بر روند کار نظارت کند. مطابق قاعده مصوب سامانه، تأیید نهایی و انتشار پاسخ بر عهده کارشناس مسئول پرونده است؛ مدیر در این بخش پاسخ را منتشر نمی‌کند.</p>
       <div class="divider"></div><h3>پیش‌نویس‌های منتشرنشده</h3><div id="draft-review-list" class="empty">در حال دریافت…</div>
@@ -279,7 +309,7 @@
     }
   }
 
-  const caseLabels={ready_for_review:"آماده ارجاع",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار بررسی پاسخ",under_review:"در حال بررسی",assigned:"ارجاع‌شده",awaiting_information:"در انتظار اطلاعات",answered:"پاسخ داده‌شده",closed:"بسته‌شده"};
+  const caseLabels={draft:"پیش‌نویس",awaiting_information:"در انتظار تکمیل اطلاعات",ready_for_review:"آماده ارجاع",awaiting_quote_approval:"در انتظار تأیید پیشنهاد هزینه",awaiting_payment:"در انتظار پرداخت",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار تأیید پاسخ نهایی",under_review:"در حال بررسی",awaiting_expert_input:"در انتظار نظر کارشناس همکار",assigned:"ارجاع‌شده",answered:"پاسخ داده‌شده",follow_up:"در حال پیگیری",closed:"بسته‌شده",cancelled:"لغوشده"};
   let adminUser=null,adminCases=[],adminExperts=[],adminExpertDirectory=[];
   async function loadCaseManagement(){
     const [cr,er]=await Promise.all([
@@ -330,6 +360,83 @@
     message("assignment-message","دعوت ارجاع برای کارشناس مسئول"+(helperId?" و همکار تخصصی":"")+" ثبت شد. کارشناس باید دعوت را در پنل خود بپذیرد.");
     $("lead-select").value="";$("helper-select").value="";await loadSelectedAssignments();
   }
+  // Case monitoring uses existing tables only; no database schema change.
+  let monitorCases=[],monitorAssignments=[],monitorHistory=[],monitorMessages=[],monitorOpinions=[],monitorResponses=[],monitorSelectedCaseId=null;
+  const monitorStatusLabels={draft:"پیش‌نویس",awaiting_information:"در انتظار تکمیل اطلاعات",ready_for_review:"آماده ارجاع",awaiting_quote_approval:"در انتظار تأیید پیشنهاد هزینه",awaiting_payment:"در انتظار پرداخت",assigned:"ارجاع‌شده",under_review:"در حال بررسی",awaiting_expert_input:"در انتظار نظر کارشناس همکار",awaiting_final_approval:"در انتظار تأیید پاسخ نهایی",answered:"پاسخ داده‌شده",follow_up:"در حال پیگیری",closed:"بسته‌شده",reopened:"بازگشایی‌شده",cancelled:"لغوشده"};
+  const monitorAssignmentLabels={invited:"در انتظار پذیرش",active:"پذیرفته‌شده",declined:"ردشده",completed:"تکمیل‌شده",revoked:"لغوشده"};
+  function monitorDate(value){if(!value)return "—";const date=new Date(value);return Number.isNaN(date.getTime())?"—":date.toLocaleString("fa-IR",{dateStyle:"short",timeStyle:"short"});}
+  function monitorPerson(profile){return [profile?.first_name,profile?.last_name].filter(Boolean).join(" ")||"نام ثبت نشده";}
+  async function fetchMonitorRows(table,select,orderColumn){
+    const all=[];let start=0;const size=500;
+    while(true){let query=supabase.from(table).select(select);if(orderColumn)query=query.order(orderColumn,{ascending:true});const {data,error}=await query.range(start,start+size-1);if(error)throw error;const rows=data||[];all.push(...rows);if(rows.length<size||start>=9500)break;start+=size;}
+    return all;
+  }
+  function monitorAssignmentFor(caseId){return monitorAssignments.filter(a=>a.case_id===caseId);}
+  function monitorExpertName(a){const e=a?.expert_profiles;const name=monitorPerson(e?.user_profiles);return name!=="نام ثبت نشده"?name:(e?.professional_title||"نام ثبت نشده");}
+  function monitorStatusText(status){return monitorStatusLabels[status]||status||"—";}
+  function renderMonitorFilters(){
+    const statusSelect=$("monitor-case-status"),expertSelect=$("monitor-expert"),oldStatus=statusSelect.value,oldExpert=expertSelect.value;
+    statusSelect.replaceChildren(new Option("همه وضعیت‌ها",""));for(const [value,label] of Object.entries(monitorStatusLabels))statusSelect.add(new Option(label,value));statusSelect.value=oldStatus;
+    expertSelect.replaceChildren(new Option("همه کارشناسان",""));const experts=new Map();
+    for(const a of monitorAssignments)if(a.expert_user_id)experts.set(a.expert_user_id,monitorExpertName(a));
+    for(const [id,name] of [...experts.entries()].sort((a,b)=>a[1].localeCompare(b[1],"fa")))expertSelect.add(new Option(name,id));expertSelect.value=oldExpert;
+  }
+  function renderMonitorTable(){
+    const body=$("monitor-cases"),empty=$("monitor-empty"),summary=$("monitor-summary");body.replaceChildren();
+    const term=$("monitor-search").value.trim().toLocaleLowerCase("fa"),status=$("monitor-case-status").value,assignmentStatus=$("monitor-assignment-status").value,expertId=$("monitor-expert").value;
+    const filtered=monitorCases.filter(c=>{
+      const grower=monitorPerson(c.user_profiles),searchText=[String(c.case_number),c.title,c.problem_category,grower].join(" ").toLocaleLowerCase("fa");
+      if(term&&!searchText.includes(term))return false;if(status&&c.status!==status)return false;
+      const assignments=monitorAssignmentFor(c.id);if(assignmentStatus==="none"&&assignments.length)return false;
+      if(assignmentStatus&&assignmentStatus!=="none"&&!assignments.some(a=>a.status===assignmentStatus))return false;
+      if(expertId&&!assignments.some(a=>a.expert_user_id===expertId))return false;return true;
+    });
+    summary.textContent="تعداد کل پرونده‌ها: "+monitorCases.length.toLocaleString("fa-IR")+" · پرونده‌های منطبق با فیلتر: "+filtered.length.toLocaleString("fa-IR");
+    empty.classList.toggle("hidden",filtered.length!==0);
+    for(const c of filtered){
+      const assignments=monitorAssignmentFor(c.id),lead=assignments.find(a=>a.is_lead&&a.status!=="revoked")||assignments.find(a=>a.is_lead);
+      const statusText=assignments.length?assignments.map(a=>(a.is_lead?"مسئول: ":"همکار: ")+monitorExpertName(a)+" ("+(monitorAssignmentLabels[a.status]||a.status)+")").join("؛ "):"ارجاع نشده";
+      const tr=document.createElement("tr");if(c.id===monitorSelectedCaseId)tr.className="selected";
+      const values=["پرونده "+c.case_number,(c.title||"—")+(c.problem_category?" · "+c.problem_category:""),monitorPerson(c.user_profiles),monitorDate(c.created_at),lead?monitorExpertName(lead):"—",lead?monitorDate(lead.assigned_at):"—",statusText,lead?monitorDate(lead.accepted_at):"—",monitorStatusText(c.status),monitorDate(c.updated_at)];
+      for(const value of values){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
+      tr.addEventListener("click",()=>{monitorSelectedCaseId=c.id;renderMonitorTable();renderMonitorDetail(c.id);});body.appendChild(tr);
+    }
+    if(monitorSelectedCaseId&&!monitorCases.some(c=>c.id===monitorSelectedCaseId))monitorSelectedCaseId=null;
+    if(monitorSelectedCaseId)renderMonitorDetail(monitorSelectedCaseId);
+  }
+  function renderMonitorDetail(caseId){
+    const c=monitorCases.find(x=>x.id===caseId),host=$("monitor-detail");if(!c){host.classList.add("hidden");return;}host.classList.remove("hidden");
+    $("monitor-detail-title").textContent="پرونده "+c.case_number+" · "+(c.title||"بدون عنوان");$("monitor-detail-description").textContent=c.description||"شرحی برای این پرونده ثبت نشده است.";
+    const assignments=monitorAssignmentFor(caseId),lead=assignments.find(a=>a.is_lead),helpers=assignments.filter(a=>!a.is_lead),meta=$("monitor-detail-meta");meta.replaceChildren();
+    const facts=[["گلخانه‌دار",monitorPerson(c.user_profiles)],["وضعیت پرونده",monitorStatusText(c.status)],["تاریخ ثبت",monitorDate(c.created_at)],["کارشناس مسئول",lead?monitorExpertName(lead):"تعیین نشده"],["ارجاع مسئول",lead?monitorDate(lead.assigned_at):"—"],["پذیرش مسئول",lead?monitorDate(lead.accepted_at):"—"],["همکاران تخصصی",helpers.length?helpers.map(monitorExpertName).join("، "):"ندارد"],["آخرین به‌روزرسانی",monitorDate(c.updated_at)],["تاریخ بسته‌شدن",monitorDate(c.closed_at)]];
+    for(const [label,value] of facts){const box=document.createElement("div"),strong=document.createElement("strong");strong.textContent=label+"؛ ";box.append(strong,document.createTextNode(value));meta.appendChild(box);}
+    const events=[{at:c.created_at,title:"ثبت پرونده",detail:"پرونده توسط گلخانه‌دار در سامانه ثبت شد."}];
+    for(const h of monitorHistory.filter(x=>x.case_id===caseId)){events.push({at:h.changed_at,title:"تغییر وضعیت پرونده",detail:(h.old_status?monitorStatusText(h.old_status)+" ← ":"")+"وضعیت جدید: "+monitorStatusText(h.new_status)+(h.reason?" · "+h.reason:"")+(h.changed_by?" · ثبت‌کننده: "+monitorPerson(h.user_profiles):"")});}
+    for(const a of assignments){const who=(a.is_lead?"کارشناس مسئول: ":"همکار تخصصی: ")+monitorExpertName(a);events.push({at:a.assigned_at,title:"ارسال دعوت ارجاع",detail:who});if(a.accepted_at)events.push({at:a.accepted_at,title:"پذیرش ارجاع توسط کارشناس",detail:who});if(a.completed_at)events.push({at:a.completed_at,title:"تکمیل همکاری کارشناس",detail:who});if(a.revoked_at)events.push({at:a.revoked_at,title:"لغو ارجاع",detail:who});if(a.status==="declined"&&!a.revoked_at)events.push({at:a.updated_at||a.assigned_at,title:"رد دعوت ارجاع",detail:who});}
+    for(const m of monitorMessages.filter(x=>x.case_id===caseId))events.push({at:m.created_at,title:"ثبت پیام در پرونده",detail:monitorPerson(m.user_profiles)+(m.is_official?" · پیام رسمی":"")+(m.message_text?" · "+m.message_text.slice(0,240):"")});
+    for(const o of monitorOpinions.filter(x=>x.case_id===caseId))events.push({at:o.updated_at||o.created_at,title:"ثبت یا به‌روزرسانی نظر کارشناسی",detail:monitorPerson(o.expert_profiles?.user_profiles)+(o.analysis_text?" · "+o.analysis_text.slice(0,240):"")});
+    for(const r of monitorResponses.filter(x=>x.case_id===caseId))events.push({at:r.published_at||r.created_at,title:r.is_published?"انتشار پاسخ نهایی":"تهیه پیش‌نویس پاسخ",detail:"نسخه "+r.version+(r.response_text?" · "+r.response_text.slice(0,240):"")});
+    events.sort((a,b)=>new Date(a.at||0)-new Date(b.at||0));
+    const timeline=$("monitor-timeline");timeline.replaceChildren();if(!events.length){timeline.className="empty";timeline.textContent="هنوز رویدادی برای این پرونده ثبت نشده است.";return;}timeline.className="monitor-timeline";
+    for(const event of events){const item=document.createElement("div");item.className="monitor-event";const time=document.createElement("time"),title=document.createElement("strong"),detail=document.createElement("p");time.textContent=monitorDate(event.at);title.textContent=event.title;detail.textContent=event.detail;item.append(time,title,detail);timeline.appendChild(item);}
+  }
+  async function loadMonitorData(){
+    const button=$("refresh-monitor");if(button)button.disabled=true;
+    try{
+      const [cases,assignments,history,messages,opinions,responses]=await Promise.all([
+        fetchMonitorRows("cases","id,case_number,title,problem_category,description,severity,status,created_at,updated_at,closed_at,created_by,user_profiles!cases_created_by_fkey(first_name,last_name)","created_at"),
+        fetchMonitorRows("case_assignments","id,case_id,expert_user_id,is_lead,status,assigned_at,accepted_at,completed_at,revoked_at,expert_profiles!case_assignments_expert_user_id_fkey(professional_title,organization,user_profiles!expert_profiles_user_id_fkey(first_name,last_name))","assigned_at"),
+        fetchMonitorRows("case_status_history","id,case_id,old_status,new_status,changed_by,reason,changed_at,user_profiles!case_status_history_changed_by_fkey(first_name,last_name)","changed_at"),
+        fetchMonitorRows("case_messages","id,case_id,sender_user_id,message_text,is_official,created_at,user_profiles!case_messages_sender_user_id_fkey(first_name,last_name)","created_at"),
+        fetchMonitorRows("expert_opinions","id,case_id,expert_user_id,analysis_text,created_at,updated_at,expert_profiles!expert_opinions_expert_user_id_fkey(user_profiles!expert_profiles_user_id_fkey(first_name,last_name))","updated_at"),
+        fetchMonitorRows("final_responses","id,case_id,version,prepared_by,response_text,is_published,published_at,created_at","created_at")
+      ]);
+      monitorCases=cases||[];monitorAssignments=assignments||[];monitorHistory=history||[];monitorMessages=messages||[];monitorOpinions=opinions||[];monitorResponses=responses||[];
+      renderMonitorFilters();renderMonitorTable();
+    }catch(error){console.error("Case monitoring load failed",error);$("monitor-summary").textContent="دریافت اطلاعات نظارتی ناموفق بود: "+(error?.message||"خطای نامشخص");$("monitor-summary").classList.add("notice","error");}
+    finally{if(button)button.disabled=false;}
+  }
+
   async function loadReviewQueue(){
     const [fr,op]=await Promise.all([
       supabase.from("final_responses").select("id,case_id,version,prepared_by,response_text,recommendations,warnings,created_at").eq("is_published",false).order("created_at",{ascending:false}).limit(60),
@@ -347,13 +454,18 @@
       for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExpertDirectory.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
     }
   }
+  $("monitor-search").addEventListener("input",renderMonitorTable);
+  $("monitor-case-status").addEventListener("change",renderMonitorTable);
+  $("monitor-assignment-status").addEventListener("change",renderMonitorTable);
+  $("monitor-expert").addEventListener("change",renderMonitorTable);
+  $("refresh-monitor").addEventListener("click",loadMonitorData);
   $("case-select").addEventListener("change",loadSelectedAssignments);
   $("assign-case").addEventListener("click",assignSelectedCase);
-  $("refresh-cases").addEventListener("click",async()=>{await loadCaseManagement();await loadReviewQueue();});
+  $("refresh-cases").addEventListener("click",async()=>{await Promise.all([loadCaseManagement(),loadMonitorData()]);await loadReviewQueue();});
   $("refresh-reviews").addEventListener("click",loadReviewQueue);
   async function loadDashboardData(){
     try{
-      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement()]);
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData()]);
       await loadReviewQueue();
     }catch(error){
       console.error("Admin dashboard data loading failed",error);
