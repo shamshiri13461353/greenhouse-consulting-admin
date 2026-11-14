@@ -416,7 +416,7 @@
     for(const m of monitorMessages.filter(x=>x.case_id===caseId))events.push({at:m.created_at,title:"ثبت پیام در پرونده",detail:monitorPerson(m.user_profiles)+(m.is_official?" · پیام رسمی":"")+(m.message_text?" · "+m.message_text.slice(0,240):"")});
     for(const o of monitorOpinions.filter(x=>x.case_id===caseId))events.push({at:o.updated_at||o.created_at,title:"ثبت یا به‌روزرسانی نظر کارشناسی",detail:monitorPerson(o.expert_profiles?.user_profiles)+(o.analysis_text?" · "+o.analysis_text.slice(0,240):"")});
     for(const r of monitorResponses.filter(x=>x.case_id===caseId))events.push({at:r.published_at||r.created_at,title:r.is_published?"انتشار پاسخ نهایی":"تهیه پیش‌نویس پاسخ",detail:"نسخه "+r.version+(r.response_text?" · "+r.response_text.slice(0,240):"")});
-    events.sort((a,b)=>new Date(a.at||0)-new Date(b.at||0));
+    events.sort((a,b)=>{if(!a.at&&!b.at)return 0;if(!a.at)return 1;if(!b.at)return -1;return new Date(a.at)-new Date(b.at);});
     const timeline=$("monitor-timeline");timeline.replaceChildren();if(!events.length){timeline.className="empty";timeline.textContent="هنوز رویدادی برای این پرونده ثبت نشده است.";return;}timeline.className="monitor-timeline";
     for(const event of events){const item=document.createElement("div");item.className="monitor-event";const time=document.createElement("time"),title=document.createElement("strong"),detail=document.createElement("p");time.textContent=monitorDate(event.at);title.textContent=event.title;detail.textContent=event.detail;item.append(time,title,detail);timeline.appendChild(item);}
   }
