@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123b32">
 <meta name="description" content="نصب اپلیکیشن مستقل پنل مدیریت پیوندگستر پارسان">
+<script>
+  // ثبت listener پیش از معرفی manifest؛ رویداد نصب ممکن است خیلی زود صادر شود.
+  window.__managementInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(event) {
+    event.preventDefault();
+    window.__managementInstallPrompt = event;
+    var status = document.getElementById('status');
+    if (status) status.textContent = 'امکان نصب آماده است. دکمه نصب را انتخاب کنید.';
+  });
+</script>
 <link rel="manifest" href="/management/manifest.webmanifest">
 <link rel="icon" href="/management/icons/icon-192.png" type="image/png">
 <title>نصب اپلیکیشن مدیریت | پیوندگستر پارسان</title>
@@ -29,30 +39,25 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
 </main>
 <script>
 (function(){
-  var promptEvent = null;
   var button = document.getElementById('install');
   var status = document.getElementById('status');
   var ready = false;
   var reloadKey = 'management-pwa-controller-reload';
   function message(t){ status.textContent = t; }
 
-  window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault();
-    promptEvent = e;
+  // رویداد از ابتدای بارگذاری صفحه ذخیره شده است؛ در اینجا فقط وضعیت UI را به‌روز می‌کنیم.
+  if (window.__managementInstallPrompt) {
     message('امکان نصب آماده است. دکمه نصب را انتخاب کنید.');
-  });
+  }
 
   window.addEventListener('appinstalled', function(){
-    promptEvent = null;
+    window.__managementInstallPrompt = null;
     message('اپلیکیشن مدیریت با موفقیت نصب شد.');
     button.disabled = true;
   });
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
-      // اگر سرویس‌ورکر تازه فعال شده باشد، صفحه فعلی هنوز تحت کنترل آن نیست.
-      // پس از claim شدن صفحه را فقط یک بار تازه‌سازی می‌کنیم تا Edge دوباره
-      // شرایط نصب‌پذیری و رویداد beforeinstallprompt را ارزیابی کند.
       if (!navigator.serviceWorker.controller) {
         navigator.serviceWorker.addEventListener('controllerchange', function(){
           if (!sessionStorage.getItem(reloadKey)) {
@@ -70,7 +75,9 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
           ready = true;
           if (navigator.serviceWorker.controller) {
             sessionStorage.removeItem(reloadKey);
-            if (!promptEvent) message('آماده‌سازی فنی انجام شد. اگر دکمه نصب فعال نشد، وضعیت نصب این سایت را از منوی Edge بررسی کنید.');
+            if (!window.__managementInstallPrompt) {
+              message('آماده‌سازی فنی انجام شد. اگر دکمه نصب فعال نشد، مرورگر هنوز رویداد نصب را صادر نکرده است.');
+            }
           } else {
             message('سرویس نصب در حال فعال‌شدن است؛ صفحه پس از آماده‌شدن به‌طور خودکار تازه‌سازی می‌شود.');
           }
@@ -85,14 +92,14 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
   }
 
   button.addEventListener('click', async function(){
-    if (!promptEvent) {
+    var event = window.__managementInstallPrompt;
+    if (!event) {
       message(ready
-        ? 'Edge هنوز مجوز نمایش پنجره نصب را برای این صفحه صادر نکرده است. از منوی سه‌نقطه Edge، بخش Apps، وضعیت نصب این سایت را بررسی کنید.'
+        ? 'مرورگر هنوز رویداد نصب را صادر نکرده است؛ در این وضعیت دکمه نمی‌تواند پنجره نصب را باز کند.'
         : 'آماده‌سازی نصب هنوز کامل نشده است؛ چند لحظه صبر کنید.');
       return;
     }
-    var event = promptEvent;
-    promptEvent = null;
+    window.__managementInstallPrompt = null;
     try {
       await event.prompt();
       var choice = await event.userChoice;
@@ -101,7 +108,7 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
         : 'درخواست نصب در Edge لغو شد. هر زمان خواستید دوباره دکمه نصب را انتخاب کنید.');
     } catch (error) {
       console.error('PWA install prompt:', error);
-      message('Edge نتوانست پنجره نصب را باز کند. وضعیت نصب سایت را از منوی Apps مرورگر بررسی کنید.');
+      message('Edge نتوانست پنجره نصب را باز کند. لطفاً وضعیت نصب را از منوی Apps مرورگر بررسی کنید.');
     }
   });
 })();
