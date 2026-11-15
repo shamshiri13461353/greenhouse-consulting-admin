@@ -189,18 +189,33 @@
   async function loadCaseManagement(){
     const [cr,er]=await Promise.all([
       supabase.from("cases").select("id,case_number,title,problem_category,severity,status,created_at,created_by,crop_cycle_id,user_profiles!cases_created_by_fkey(first_name,last_name)").order("created_at",{ascending:false}).limit(150),
-      supabase.from("expert_profiles").select("user_id,professional_title,organization,is_verified,invitation_status,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)").order("created_at",{ascending:false})
+      supabase.from("expert_profiles").select("user_id,professional_title,organization,is_verified,invitation_status,created_at").order("created_at",{ascending:false})
     ]);
     if(cr.error){message("assignment-message","دریافت پرونده‌ها ناموفق بود: "+cr.error.message,true);return;}
     if(er.error){message("assignment-message","دریافت کارشناسان ناموفق بود: "+er.error.message,true);return;}
     adminCases=cr.data||[];
     adminExpertDirectory=er.data||[];
-    adminExperts=adminExpertDirectory.filter(x=>x.is_verified&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
+    const expertIds=adminExpertDirectory.map(x=>x.user_id);
+    let profiles=[];
+    if(expertIds.length){
+      const pr=await supabase.from("user_profiles").select("id,first_name,last_name,account_status").in("id",expertIds);
+      if(pr.error){message("assignment-message","دریافت وضعیت حساب‌های کارشناسان ناموفق بود: "+pr.error.message,true);return;}
+      profiles=pr.data||[];
+    }
+    const profileMap=new Map(profiles.map(p=>[p.id,p]));
+    adminExpertDirectory=adminExpertDirectory.map(e=>({...e,user_profiles:profileMap.get(e.user_id)||null}));
+    adminExperts=adminExpertDirectory.filter(x=>x.is_verified===true&&x.invitation_status==="accepted"&&x.user_profiles?.account_status==="active");
     const cs=$("case-select"),ls=$("lead-select"),hs=$("helper-select");
     cs.replaceChildren(new Option("انتخاب پرونده",""));
     for(const c of adminCases){const growerName=[c.user_profiles?.first_name,c.user_profiles?.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";const op=new Option("پرونده "+c.case_number+" · "+c.title+" · گلخانه‌دار: "+growerName+" · "+(caseLabels[c.status]||c.status),c.id);cs.add(op);}
     ls.replaceChildren(new Option("انتخاب کارشناس مسئول",""));hs.replaceChildren(new Option("بدون همکار",""));
     for(const e of adminExperts){const name=[e.user_profiles?.first_name,e.user_profiles?.last_name].filter(Boolean).join(" ")||e.professional_title||"کارشناس";const label=name+" · "+(e.professional_title||"");ls.add(new Option(label,e.user_id));hs.add(new Option(label,e.user_id));}
+    if(!adminExperts.length){
+      const eligible=adminExpertDirectory.filter(x=>x.is_verified===true&&x.invitation_status==="accepted").length;
+      message("assignment-message",eligible
+        ?"کارشناسان تأییدشده پیدا شدند، اما وضعیت حساب فعال آن‌ها از پروفایل دریافت نشد. فهرست پروفایل‌ها و دسترسی مدیر را بررسی کنید."
+        :"در حال حاضر کارشناسِ هم دعوت‌پذیرفته و هم تأییدشده‌ای برای ارجاع وجود ندارد.",true);
+    }
     await loadSelectedAssignments();
   }
   async function loadSelectedAssignments(){
