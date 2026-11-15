@@ -114,9 +114,13 @@ jobs:
               if (!result.beforeInstallPromptSeen) throw new Error('Browser did not emit beforeinstallprompt in a regular profile');
               await page.locator('#install').click();
               await page.waitForTimeout(1000);
-              const promptCalled = await page.evaluate(() => window.__promptCalled);
-              console.log('INSTALL_BUTTON_PROMPT_CALLED=' + promptCalled);
-              if (!promptCalled) throw new Error('Install button did not invoke the native install prompt');
+              const promptResult = await page.evaluate(() => ({
+                called: window.__promptCalled,
+                status: document.getElementById('status')?.textContent || ''
+              }));
+              console.log('INSTALL_BUTTON_PROMPT_RESULT=' + JSON.stringify(promptResult));
+              if (!promptResult.called) throw new Error('Install button did not invoke the native install prompt');
+              if (promptResult.status.includes('نتوانست پنجره نصب')) throw new Error('Native install prompt was rejected by the browser');
 
               if (!runtime.secureContext) throw new Error('Page is not a secure context');
               if (!runtime.manifest || runtime.manifestStatus !== 200) throw new Error('Manifest missing or not HTTP 200');
