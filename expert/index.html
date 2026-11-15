@@ -72,6 +72,24 @@ const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function msg(id,text,error=false){$(id).textContent=text;$(id).classList.remove("hidden","error");if(error)$(id).classList.add("error");}
 function el(tag,cls,text){const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;}
 const statuses={ready_for_review:"در انتظار بررسی",assigned:"ارجاع‌شده",under_review:"در حال بررسی",awaiting_information:"در انتظار اطلاعات",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده"};
+function validIranIban(value){
+ if(!/^IR[0-9]{24}$/.test(value))return false;
+ const expanded=value.slice(4)+value.slice(0,4);
+ const numeric=expanded.replace(/[A-Z]/g,ch=>(ch.charCodeAt(0)-55).toString());
+ let remainder=0;
+ for(const digit of numeric)remainder=(remainder*10+Number(digit))%97;
+ return remainder===1;
+}
+function validCardNumber(value){
+ if(!/^[0-9]{16}$/.test(value))return false;
+ let sum=0,alternate=false;
+ for(let i=value.length-1;i>=0;i--){
+  let digit=Number(value[i]);
+  if(alternate){digit*=2;if(digit>9)digit-=9;}
+  sum+=digit;alternate=!alternate;
+ }
+ return sum%10===0;
+}
 async function loadExpertProfile(){
  if(!user)return;
  const button=$("save-expert-profile");button.disabled=true;
@@ -104,8 +122,8 @@ $("expert-profile-form").addEventListener("submit",async event=>{
  const cardRaw=$("bank-card").value.replace(/\s/g,""),card_number=cardRaw||null;
  const iban=$("bank-iban").value.replace(/\s/g,"").toUpperCase();
  try{
-  if(card_number&&!/^[0-9]{16}$/.test(card_number))throw new Error("شماره کارت باید ۱۶ رقم باشد.");
-  if(!/^IR[0-9]{24}$/.test(iban))throw new Error("شماره شبا باید با IR شروع شود و ۲۴ رقم پس از آن داشته باشد.");
+  if(card_number&&!validCardNumber(card_number))throw new Error("شماره کارت معتبر نیست؛ ۱۶ رقم و رقم کنترلی آن را بررسی کنید.");
+  if(!validIranIban(iban))throw new Error("شماره شبا معتبر نیست؛ قالب IR و رقم‌های کنترلی آن را بررسی کنید.");
   if(years_experience!==null&&(!Number.isInteger(years_experience)||years_experience<0||years_experience>80))throw new Error("سابقه فعالیت باید عدد صحیح بین صفر تا ۸۰ باشد.");
   const results=await Promise.all([
    supabase.from("user_profiles").update({first_name,last_name,phone}).eq("id",user.id),
