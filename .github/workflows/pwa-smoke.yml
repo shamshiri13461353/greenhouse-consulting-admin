@@ -29,7 +29,7 @@ jobs:
           PWA_URL: https://app.peyvandgostar.com/management/install.html
         run: |
           cat > /tmp/pwa-smoke.cjs <<'JS'
-          const { chromium } = require('playwright');
+          const { chromium } = require(require('path').join(process.env.GITHUB_WORKSPACE, 'node_modules', 'playwright'));
 
           (async () => {
             const browser = await chromium.launch({ headless: true });
