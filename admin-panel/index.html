@@ -297,7 +297,7 @@
         const td=document.createElement("td");
         if(e.invitation_status==="accepted"&&!e.is_verified){const b=document.createElement("button");b.textContent="تأیید کارشناس";b.addEventListener("click",()=>approve(e.user_id,b));td.appendChild(b);}
         else td.textContent=e.is_verified?"فعال":"—";
-        if(!e.is_verified&&p.account_status!=="active"){const remove=document.createElement("button");remove.type="button";remove.className="secondary";remove.textContent="حذف";remove.style.marginRight="6px";remove.addEventListener("click",()=>removeUnverifiedExpert(e.user_id,name,remove));td.appendChild(remove);}
+        if(p.id!==adminUser?.id){const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="حذف کارشناس";remove.style.marginRight="6px";remove.addEventListener("click",()=>removeExpert(e.user_id,name,remove));td.appendChild(remove);}
         tr.appendChild(td);host.appendChild(tr);host.appendChild(detailRow);
       }
     } catch(error) {
@@ -309,8 +309,8 @@
     }
   }
 
-  async function removeUnverifiedExpert(userId,expertName,button){
-    const confirmed=window.confirm("آیا مطمئن هستید که کارشناس «"+expertName+"» از فهرست حذف شود؟ حساب او غیرفعال می‌شود و سوابق قبلی پرونده‌ها حفظ خواهد شد.");
+  async function removeExpert(userId,expertName,button){
+    const confirmed=window.confirm("آیا مطمئن هستید که کارشناس «"+expertName+"» حذف شود؟ حساب او غیرفعال می‌شود؛ ارجاعات پرونده‌های ناتمام لغو و در صورت نبود کارشناس مسئول دیگر، پرونده برای ارجاع مجدد به صف بررسی بازمی‌گردد. پاسخ‌ها و سوابق قبلی حفظ می‌شوند.");
     if(!confirmed)return;
     button.disabled=true;
     const {error}=await supabase.rpc("admin_remove_unverified_expert",{p_user_id:userId});
@@ -319,7 +319,7 @@
       button.disabled=false;
       return;
     }
-    message("action-message","کارشناس از فهرست فعال حذف و حساب او غیرفعال شد؛ سوابق قبلی حفظ شده‌اند.");
+    message("action-message","کارشناس غیرفعال شد؛ ارجاعات ناتمام تعیین‌تکلیف و سوابق قبلی حفظ شدند.");
     await loadExperts();
   }
 
