@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123b32">
+<meta name="description" content="نصب اپلیکیشن مستقل پنل مدیریت پیوندگستر پارسان">
+<link rel="manifest" href="/management/manifest.webmanifest">
+<link rel="icon" href="/management/icons/icon-192.png" type="image/png">
+<title>نصب اپلیکیشن مدیریت | پیوندگستر پارسان</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f6f4;color:#18332c;font-family:Tahoma,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:22px}
+main{width:min(100%,440px);background:#fff;border-radius:24px;padding:30px 24px;text-align:center;box-shadow:0 12px 40px #153b3020}
+.logo{width:92px;height:92px;margin:0 auto 18px;border-radius:24px;display:grid;place-items:center;background:#123b32;color:white;font-size:38px;font-weight:bold}
+h1{font-size:22px;margin:8px 0 12px}p{font-size:14px;line-height:2;color:#52645e;margin:8px 0 20px}
+button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17634e;color:#fff;font-size:16px;font-weight:bold;padding:15px;cursor:pointer;text-decoration:none;margin-top:12px}
+.secondary{background:#e8f0ec;color:#164b3b}.note{font-size:12px;color:#75847e;margin-top:18px}#status{margin-top:14px;color:#17634e;font-size:13px;line-height:1.9;white-space:pre-line}
+</style>
+</head>
+<body>
+<main>
+<div class="logo">م</div>
+<h1>اپلیکیشن مستقل مدیریت</h1>
+<p>نسخه اختصاصی مدیر سامانه پیوندگستر پارسان</p>
+<button id="install" type="button">نصب اپلیکیشن مدیریت</button>
+<a class="link secondary" href="/management/">ورود به پنل مدیریت</a>
+<div id="status" role="status">در حال آماده‌سازی امکان نصب…</div>
+<div class="note">این اپلیکیشن فقط پنل مدیریت را باز می‌کند و از نسخه گلخانه‌دار و کارشناس مستقل است.</div>
+</main>
+<script>
+(function(){
+  var promptEvent=null;
+  var button=document.getElementById('install');
+  var status=document.getElementById('status');
+  function message(t){status.textContent=t;}
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault(); promptEvent=e;
+    message('امکان نصب آماده است. دکمه نصب را انتخاب کنید.');
+  });
+  window.addEventListener('appinstalled',function(){promptEvent=null;message('اپلیکیشن مدیریت نصب شد.');});
+  button.addEventListener('click',async function(){
+    if(promptEvent){
+      var event=promptEvent; promptEvent=null;
+      try{
+        await event.prompt();
+        var choice=await event.userChoice;
+        message(choice.outcome==='accepted'?'درخواست نصب پذیرفته شد.':'درخواست نصب لغو شد.');
+      }catch(err){message('Chrome امکان نمایش پنجره نصب را نداد. از منوی سه‌نقطه گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.');}
+    }else{
+      message('اگر گزینه نصب خودکار نمایش داده نمی‌شود، منوی سه‌نقطه Chrome را باز کنید و «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.');
+    }
+  });
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('/management/sw.js',{scope:'/management/'}).then(function(){
+        message('صفحه آماده است. اگر Chrome پیشنهاد نصب نداد، از منوی سه‌نقطه گزینه نصب را انتخاب کنید.');
+      }).catch(function(){message('ثبت سرویس‌ورکر انجام نشد؛ صفحه همچنان قابل استفاده است.');});
+    });
+  }
+})();
+</script>
+</body>
+</html>
