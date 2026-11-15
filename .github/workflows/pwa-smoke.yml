@@ -1,0 +1,121 @@
+name: Management PWA live smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "management/**"
+      - ".github/workflows/pwa-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pwa-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser test
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Check live management PWA
+        env:
+          PWA_URL: https://app.peyvandgostar.com/management/install.html
+        run: |
+          cat > /tmp/pwa-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            try {
+              const page = await browser.newPage();
+              const pageErrors = [];
+              const failed = [];
+              page.on('pageerror', e => pageErrors.push(String(e)));
+              page.on('requestfailed', r => failed.push({url:r.url(), error:r.failure()?.errorText}));
+
+              await page.addInitScript(() => {
+                window.__bipSeen = false;
+                window.addEventListener('beforeinstallprompt', e => {
+                  window.__bipSeen = true;
+                  e.preventDefault();
+                });
+              });
+
+              const response = await page.goto(process.env.PWA_URL, { waitUntil: 'networkidle', timeout: 60000 });
+              if (!response || !response.ok()) throw new Error('Install page HTTP status: ' + (response && response.status()));
+
+              await page.waitForTimeout(3500);
+
+              const cdp = await page.context().newCDPSession(page);
+              const manifestResult = await cdp.send('Page.getAppManifest');
+              let installability = null;
+              try { installability = await cdp.send('Page.getInstallabilityErrors'); }
+              catch (e) { installability = { unavailable: String(e) }; }
+
+              const runtime = await page.evaluate(async () => {
+                const link = document.querySelector('link[rel="manifest"]');
+                const manifestUrl = link ? new URL(link.href).href : null;
+                const manifestResponse = manifestUrl ? await fetch(manifestUrl, {cache:'no-store'}) : null;
+                const manifest = manifestResponse && manifestResponse.ok ? await manifestResponse.json() : null;
+                const registration = await navigator.serviceWorker.getRegistration('/management/');
+                const icons = [];
+                if (manifest?.icons) {
+                  for (const icon of manifest.icons) {
+                    const url = new URL(icon.src, manifestUrl).href;
+                    const r = await fetch(url, {cache:'no-store'});
+                    const blob = await r.blob();
+                    const image = await createImageBitmap(blob).catch(() => null);
+                    icons.push({url, status:r.status, type:r.headers.get('content-type'), width:image?.width, height:image?.height, purpose:icon.purpose});
+                  }
+                }
+                return {
+                  pageUrl: location.href,
+                  secureContext: isSecureContext,
+                  manifestUrl,
+                  manifestStatus: manifestResponse?.status,
+                  manifest,
+                  serviceWorker: {
+                    supported: 'serviceWorker' in navigator,
+                    controller: !!navigator.serviceWorker.controller,
+                    scope: registration?.scope,
+                    activeState: registration?.active?.state
+                  },
+                  icons
+                };
+              });
+
+              const result = {
+                httpStatus: response.status(),
+                manifestErrors: manifestResult.errors,
+                manifestData: manifestResult.data,
+                installability,
+                beforeInstallPromptSeen: await page.evaluate(() => window.__bipSeen),
+                runtime,
+                pageErrors,
+                failedRequests: failed
+              };
+              console.log(JSON.stringify(result, null, 2));
+
+              if (!runtime.secureContext) throw new Error('Page is not a secure context');
+              if (!runtime.manifest || runtime.manifestStatus !== 200) throw new Error('Manifest missing or not HTTP 200');
+              if (!runtime.manifest.name || !runtime.manifest.short_name || !runtime.manifest.start_url || !runtime.manifest.scope) throw new Error('Required manifest fields missing');
+              if (!['standalone','fullscreen','minimal-ui'].includes(runtime.manifest.display)) throw new Error('Invalid PWA display mode');
+              if (runtime.icons.length < 2 || runtime.icons.some(i => i.status !== 200 || !i.type?.includes('image/png') || !i.width || !i.height)) throw new Error('One or more PWA icons failed validation');
+              if (!runtime.serviceWorker.controller || runtime.serviceWorker.activeState !== 'activated') throw new Error('Management service worker is not controlling the install page');
+              if (pageErrors.length) throw new Error('Browser page errors detected');
+              if (runtime.manifest.scope !== '/management/' || !runtime.manifest.start_url.startsWith(runtime.manifest.scope)) throw new Error('Manifest scope/start_url mismatch');
+              if (manifestResult.errors?.length) throw new Error('Browser reports manifest errors');
+              console.log('PWA_SMOKE_RESULT=PASS');
+            } finally {
+              await browser.close();
+            }
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          node /tmp/pwa-smoke.cjs
