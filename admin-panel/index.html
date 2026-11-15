@@ -88,7 +88,7 @@
     </div>
     <div class="card">
       <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
-      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>عنوان تخصصی / سازمان</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>عنوان تخصصی / سازمان</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>اطلاعات بانکی</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
       <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
       <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
     </div>
@@ -246,28 +246,52 @@
   }
 
   async function loadExperts(){
-    $("experts").innerHTML = '<tr><td colspan="5">در حال دریافت اطلاعات…</td></tr>';
+    $("experts").innerHTML = '<tr><td colspan="6">در حال دریافت اطلاعات…</td></tr>';
     $("empty").classList.add("hidden");
-    const {data,error}=await supabase.from("expert_profiles")
-      .select("user_id,professional_title,organization,invitation_status,is_verified,created_at,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)")
-      .order("created_at",{ascending:false});
+    const [expertResult,bankResult]=await Promise.all([
+      supabase.from("expert_profiles")
+        .select("user_id,professional_title,organization,invitation_status,is_verified,created_at,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)")
+        .order("created_at",{ascending:false}),
+      supabase.from("expert_bank_details").select("user_id,account_holder_name,bank_name,card_number,iban")
+    ]);
+    const {data,error}=expertResult;
     if(error){ $("experts").innerHTML=""; message("action-message","دریافت فهرست کارشناسان ناموفق بود: "+error.message,true); return; }
+    if(bankResult.error)message("action-message","اطلاعات بانکی بارگذاری نشد؛ دسترسی مدیر به جدول اطلاعات بانکی را بررسی کنید: "+bankResult.error.message,true);
+    const bankMap=new Map((bankResult.data||[]).map(x=>[x.user_id,x]));
     $("count").textContent = new Intl.NumberFormat("fa-IR").format(data.length)+" کارشناس";
     $("experts").innerHTML="";
     $("empty").classList.toggle("hidden",data.length!==0);
     for(const e of data){
-      const p=e.user_profiles||{};
+      const p=e.user_profiles||{},bank=bankMap.get(e.user_id);
       const tr=document.createElement("tr");
       const name=[p.first_name,p.last_name].filter(Boolean).join(" ") || e.professional_title || "بدون نام";
       const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ") || "—";
       const cells=[name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
       for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
-      const td=document.createElement("td");
+      const bankTd=document.createElement("td"),bankButton=document.createElement("button");
+      bankButton.className="secondary";
+      bankButton.textContent=bank?"مشاهده اطلاعات":"ثبت نشده";
+      bankButton.disabled=!bank;
+      bankTd.appendChild(bankButton);tr.appendChild(bankTd);
+      const detailRow=document.createElement("tr");detailRow.classList.add("hidden");
+      const detailCell=document.createElement("td");detailCell.colSpan=6;
+      if(bank){
+        const parts=[
+          "صاحب حساب: "+bank.account_holder_name,
+          "بانک: "+bank.bank_name,
+          "شماره شبا: "+bank.iban,
+          "شماره کارت: "+(bank.card_number||"ثبت نشده")
+        ];
+        detailCell.textContent=parts.join("  |  ");
+      }else{detailCell.textContent="اطلاعات بانکی این کارشناس هنوز ثبت نشده است.";}
+      detailRow.appendChild(detailCell);
+      bankButton.addEventListener("click",()=>detailRow.classList.toggle("hidden"));
+      const actionTd=document.createElement("td");
       if(e.invitation_status==="accepted" && !e.is_verified){
         const b=document.createElement("button"); b.textContent="تأیید کارشناس";
-        b.addEventListener("click",()=>approve(e.user_id,b)); td.appendChild(b);
-      }else{td.textContent=e.is_verified?"فعال":"—";}
-      tr.appendChild(td); $("experts").appendChild(tr);
+        b.addEventListener("click",()=>approve(e.user_id,b)); actionTd.appendChild(b);
+      }else{actionTd.textContent=e.is_verified?"فعال":"—";}
+      tr.appendChild(actionTd);$("experts").append(tr,detailRow);
     }
   }
 
