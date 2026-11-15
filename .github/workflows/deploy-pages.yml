@@ -126,7 +126,7 @@ jobs:
                       if e2>=dy: err+=dy; x0+=sx
                       if e2<=dx: err+=dx; y0+=sy
               def poly(points):
-                  miny=max(0,min(y for x,y in points)); maxy=min(h-1,max(y for x,y in points))
+                  miny=max(0,math.floor(min(y for x,y in points))); maxy=min(h-1,math.ceil(max(y for x,y in points)))
                   for y in range(miny,maxy+1):
                       xs=[]
                       for i,(x1,y1) in enumerate(points):
