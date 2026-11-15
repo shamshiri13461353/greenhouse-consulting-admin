@@ -38,6 +38,7 @@ jobs:
           import re, pathlib
           portals = {
               "admin-panel/index.html": "admin-panel",
+  "management/index.html": "management",
               "grower/index.html": "grower",
               "expert/index.html": "expert",
               "mobile/index.html": "mobile",
@@ -51,6 +52,7 @@ jobs:
               pathlib.Path(f"/tmp/{name}.mjs").write_text(scripts[0])
           PY
           node --check /tmp/admin-panel.mjs
+          node --check /tmp/management.mjs
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
@@ -91,6 +93,7 @@ jobs:
           cp mobile/icons/icon.svg _site/mobile/icons/icon.svg
           cp sw.js _site/sw.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/users/supabase.js
+          cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/management/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
