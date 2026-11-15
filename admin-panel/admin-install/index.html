@@ -22,7 +22,7 @@ body.launched{padding:0;background:#fff}body.launched main{display:none}body.lau
 <iframe class="appframe" id="admin" title="پنل مدیریت" src="/" allow="clipboard-read; clipboard-write"></iframe>
 <script>
 let installPrompt=null;const btn=document.getElementById('install');const status=document.getElementById('status');
-function launch(){document.body.classList.add('launched');document.getElementById('admin').src='/';}
+function launch(){document.body.classList.add('launched');document.getElementById('admin').src='/management/';}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
 btn.addEventListener('click',async()=>{if(installPrompt){installPrompt.prompt();const choice=await installPrompt.userChoice;status.textContent=choice.outcome==='accepted'?'درخواست نصب پذیرفته شد. پس از نصب، آیکون مدیریت را باز کنید.':'نصب انجام نشد؛ هر زمان خواستید دوباره تلاش کنید.';installPrompt=null;}else{status.textContent='در منوی مرورگر گزینه «افزودن به صفحه اصلی» یا «Install app» را انتخاب کنید.';}});
 window.addEventListener('appinstalled',()=>{status.textContent='اپلیکیشن مدیریت نصب شد.';});
