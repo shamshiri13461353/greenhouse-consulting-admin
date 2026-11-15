@@ -57,11 +57,13 @@ jobs:
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
           node --check admin-panel/admin-install/sw.js
+          node --check management/sw.js
           node --check /tmp/users.mjs
           node --check sw.js
           node --check expert/sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
           python3 -m json.tool admin-panel/admin-install/manifest.webmanifest > /dev/null
+          python3 -m json.tool management/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
         run: |
           TGZ="$(npm pack --silent @supabase/supabase-js@2.58.0 --pack-destination /tmp)"
