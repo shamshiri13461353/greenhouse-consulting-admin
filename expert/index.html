@@ -32,10 +32,10 @@
   <div class="grid">
    <div><label for="bank-holder">نام صاحب حساب *</label><input id="bank-holder" maxlength="120" required autocomplete="name"></div>
    <div><label for="bank-name">نام بانک *</label><input id="bank-name" maxlength="100" required></div>
-   <div><label for="bank-card">شماره کارت ۱۶ رقمی</label><input id="bank-card" inputmode="numeric" maxlength="16" pattern="[0-9]{16}" placeholder="اختیاری"></div>
+   <div><label for="bank-card">شماره کارت ۱۶ رقمی *</label><input id="bank-card" inputmode="numeric" maxlength="16" minlength="16" pattern="[0-9]{16}" required autocomplete="cc-number"></div>
    <div><label for="bank-iban">شماره شبا *</label><input id="bank-iban" dir="ltr" inputmode="text" maxlength="26" minlength="26" pattern="IR[0-9]{24}" placeholder="IR000000000000000000000000" required></div>
   </div>
-  <p class="muted">شماره شبا را با IR و بدون فاصله وارد کنید. شماره کارت اختیاری است و برای کنترل اولیه ثبت می‌شود.</p>
+  <p class="muted">شماره کارت باید ۱۶ رقم معتبر و شماره شبا باید با IR و بدون فاصله وارد شود. هر دو مورد برای ثبت اطلاعات بانکی الزامی هستند.</p>
   <div class="actions"><button id="save-expert-profile" type="submit">ذخیره تغییرات</button></div>
   <div id="expert-profile-message" class="notice hidden" role="status"></div>
  </form>
@@ -119,10 +119,10 @@ $("expert-profile-form").addEventListener("submit",async event=>{
  const biography=$("expert-biography").value.trim()||null;
  const yearsRaw=$("expert-years").value.trim(),years_experience=yearsRaw===""?null:Number(yearsRaw);
  const account_holder_name=$("bank-holder").value.trim(),bank_name=$("bank-name").value.trim();
- const cardRaw=$("bank-card").value.replace(/\s/g,""),card_number=cardRaw||null;
+ const cardRaw=$("bank-card").value.replace(/\s/g,""),card_number=cardRaw;
  const iban=$("bank-iban").value.replace(/\s/g,"").toUpperCase();
  try{
-  if(card_number&&!validCardNumber(card_number))throw new Error("شماره کارت معتبر نیست؛ ۱۶ رقم و رقم کنترلی آن را بررسی کنید.");
+  if(!validCardNumber(card_number))throw new Error("شماره کارت الزامی است و باید ۱۶ رقم معتبر داشته باشد؛ رقم‌های آن را بررسی کنید.");
   if(!validIranIban(iban))throw new Error("شماره شبا معتبر نیست؛ قالب IR و رقم‌های کنترلی آن را بررسی کنید.");
   if(years_experience!==null&&(!Number.isInteger(years_experience)||years_experience<0||years_experience>80))throw new Error("سابقه فعالیت باید عدد صحیح بین صفر تا ۸۰ باشد.");
   const results=await Promise.all([
