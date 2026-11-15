@@ -32,7 +32,7 @@ jobs:
           const { chromium } = require(require('path').join(process.env.GITHUB_WORKSPACE, 'node_modules', 'playwright'));
 
           (async () => {
-            const browser = await chromium.launch({ headless: true });
+            const browser = await chromium.launch({ headless: false, args: ['--no-sandbox'] });
             try {
               const page = await browser.newPage();
               const pageErrors = [];
@@ -51,7 +51,8 @@ jobs:
               const response = await page.goto(process.env.PWA_URL, { waitUntil: 'networkidle', timeout: 60000 });
               if (!response || !response.ok()) throw new Error('Install page HTTP status: ' + (response && response.status()));
 
-              await page.waitForTimeout(3500);
+              await page.locator('body').click({ position: { x: 8, y: 8 } });
+              await page.waitForTimeout(35000);
 
               const cdp = await page.context().newCDPSession(page);
               const manifestResult = await cdp.send('Page.getAppManifest');
@@ -118,4 +119,4 @@ jobs:
             }
           })().catch(e => { console.error(e); process.exit(1); });
           JS
-          node /tmp/pwa-smoke.cjs
+          xvfb-run -a node /tmp/pwa-smoke.cjs
