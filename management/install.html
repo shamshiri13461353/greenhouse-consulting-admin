@@ -29,34 +29,44 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
 </main>
 <script>
 (function(){
-  var promptEvent=null;
-  var button=document.getElementById('install');
-  var status=document.getElementById('status');
-  function message(t){status.textContent=t;}
-  window.addEventListener('beforeinstallprompt',function(e){
-    e.preventDefault(); promptEvent=e;
+  var promptEvent = null;
+  var button = document.getElementById('install');
+  var status = document.getElementById('status');
+  var ready = false;
+  function message(t){ status.textContent = t; }
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); promptEvent = e;
     message('امکان نصب آماده است. دکمه نصب را انتخاب کنید.');
   });
-  window.addEventListener('appinstalled',function(){promptEvent=null;message('اپلیکیشن مدیریت نصب شد.');});
-  button.addEventListener('click',async function(){
-    if(promptEvent){
-      var event=promptEvent; promptEvent=null;
-      try{
-        await event.prompt();
-        var choice=await event.userChoice;
-        message(choice.outcome==='accepted'?'درخواست نصب پذیرفته شد.':'درخواست نصب لغو شد.');
-      }catch(err){message('Chrome امکان نمایش پنجره نصب را نداد. از منوی سه‌نقطه گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.');}
-    }else{
-      message('اگر گزینه نصب خودکار نمایش داده نمی‌شود، منوی سه‌نقطه Chrome را باز کنید و «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.');
-    }
+  window.addEventListener('appinstalled', function(){
+    promptEvent = null; message('اپلیکیشن مدیریت با موفقیت نصب شد.');
+    button.disabled = true;
   });
-  if('serviceWorker' in navigator){
-    window.addEventListener('load',function(){
-      navigator.serviceWorker.register('/management/sw.js',{scope:'/management/'}).then(function(){
-        message('صفحه آماده است. اگر Chrome پیشنهاد نصب نداد، از منوی سه‌نقطه گزینه نصب را انتخاب کنید.');
-      }).catch(function(){message('ثبت سرویس‌ورکر انجام نشد؛ صفحه همچنان قابل استفاده است.');});
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/management/sw.js', {scope:'/management/'})
+        .then(function(){ return navigator.serviceWorker.ready; })
+        .then(function(){
+          ready = true;
+          if (!promptEvent) message('صفحه آماده است. در Edge از منوی سه‌نقطه، بخش Apps و گزینه Install this site as an app را انتخاب کنید.');
+        })
+        .catch(function(){ message('آماده‌سازی نصب کامل نشد. صفحه را تازه‌سازی کنید و دوباره تلاش کنید.'); });
     });
   }
+  button.addEventListener('click', async function(){
+    if (promptEvent) {
+      var event = promptEvent; promptEvent = null;
+      try {
+        await event.prompt();
+        var choice = await event.userChoice;
+        message(choice.outcome === 'accepted' ? 'درخواست نصب پذیرفته شد.' : 'درخواست نصب لغو شد.');
+      } catch (err) {
+        message('Edge پنجره نصب خودکار را باز نکرد. از منوی سه‌نقطه Edge، بخش Apps و گزینه Install this site as an app را انتخاب کنید.');
+      }
+    } else {
+      message(ready ? 'در Edge از منوی سه‌نقطه، بخش Apps و گزینه Install this site as an app را انتخاب کنید.' : 'صفحه هنوز آماده نشده است؛ چند لحظه صبر کنید و دوباره بزنید.');
+    }
+  });
 })();
 </script>
 </body>
