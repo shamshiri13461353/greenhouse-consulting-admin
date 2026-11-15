@@ -10,7 +10,36 @@
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
 <div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
-<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button></nav>
+<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
+<section id="expert-profile-section" class="section card">
+ <h2>پروفایل من</h2>
+ <p class="muted">اطلاعات فردی، تخصصی و بانکی خود را تکمیل یا اصلاح کنید. اطلاعات بانکی فقط برای شما و مدیر سامانه قابل مشاهده است.</p>
+ <form id="expert-profile-form">
+  <h3>اطلاعات فردی</h3>
+  <div class="grid">
+   <div><label for="expert-first-name">نام *</label><input id="expert-first-name" maxlength="80" required autocomplete="given-name"></div>
+   <div><label for="expert-last-name">نام خانوادگی *</label><input id="expert-last-name" maxlength="100" required autocomplete="family-name"></div>
+  </div>
+  <label for="expert-phone">شماره تماس</label><input id="expert-phone" type="tel" maxlength="20" autocomplete="tel">
+  <div class="divider"></div><h3>اطلاعات تخصصی</h3>
+  <div class="grid">
+   <div><label for="expert-title">عنوان حرفه‌ای / تخصص</label><input id="expert-title" maxlength="150"></div>
+   <div><label for="expert-organization">سازمان یا محل فعالیت</label><input id="expert-organization" maxlength="180"></div>
+   <div><label for="expert-years">سابقه فعالیت (سال)</label><input id="expert-years" type="number" min="0" max="80" step="1"></div>
+  </div>
+  <label for="expert-biography">معرفی کوتاه و سوابق مرتبط</label><textarea id="expert-biography" maxlength="3000"></textarea>
+  <div class="divider"></div><h3>اطلاعات بانکی جهت دریافت حق کارشناسی</h3>
+  <div class="grid">
+   <div><label for="bank-holder">نام صاحب حساب *</label><input id="bank-holder" maxlength="120" required autocomplete="name"></div>
+   <div><label for="bank-name">نام بانک *</label><input id="bank-name" maxlength="100" required></div>
+   <div><label for="bank-card">شماره کارت ۱۶ رقمی</label><input id="bank-card" inputmode="numeric" maxlength="16" pattern="[0-9]{16}" placeholder="اختیاری"></div>
+   <div><label for="bank-iban">شماره شبا *</label><input id="bank-iban" dir="ltr" inputmode="text" maxlength="26" minlength="26" pattern="IR[0-9]{24}" placeholder="IR000000000000000000000000" required></div>
+  </div>
+  <p class="muted">شماره شبا را با IR و بدون فاصله وارد کنید. شماره کارت اختیاری است و برای کنترل اولیه ثبت می‌شود.</p>
+  <div class="actions"><button id="save-expert-profile" type="submit">ذخیره تغییرات</button></div>
+  <div id="expert-profile-message" class="notice hidden" role="status"></div>
+ </form>
+</section>
 <section id="invites" class="section active card"><div class="top"><h2>دعوت به همکاری در پرونده</h2><button class="alt" id="refresh-invites">به‌روزرسانی</button></div><div id="invite-list" class="empty">در حال دریافت…</div></section>
 <section id="assigned" class="section card"><div class="top"><h2>پرونده‌های ارجاع‌شده</h2><button class="alt" id="refresh-assigned">به‌روزرسانی</button></div><div id="assigned-list" class="empty">در حال دریافت…</div></section>
 <section id="detail" class="card hidden"><div class="top"><div><h2 id="case-title">جزئیات پرونده</h2><div id="case-meta" class="muted"></div></div><button id="close-detail" class="alt">بستن</button></div><div class="actions" id="case-actions"></div>
@@ -43,6 +72,53 @@ const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function msg(id,text,error=false){$(id).textContent=text;$(id).classList.remove("hidden","error");if(error)$(id).classList.add("error");}
 function el(tag,cls,text){const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;}
 const statuses={ready_for_review:"در انتظار بررسی",assigned:"ارجاع‌شده",under_review:"در حال بررسی",awaiting_information:"در انتظار اطلاعات",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده"};
+async function loadExpertProfile(){
+ if(!user)return;
+ const button=$("save-expert-profile");button.disabled=true;
+ try{
+  const [pr,er,br]=await Promise.all([
+   supabase.from("user_profiles").select("first_name,last_name,phone").eq("id",user.id).maybeSingle(),
+   supabase.from("expert_profiles").select("professional_title,organization,biography,years_experience").eq("user_id",user.id).maybeSingle(),
+   supabase.from("expert_bank_details").select("account_holder_name,bank_name,card_number,iban").eq("user_id",user.id).maybeSingle()
+  ]);
+  if(pr.error)throw pr.error;if(er.error)throw er.error;if(br.error)throw br.error;
+  const p=pr.data||{},x=er.data||{},b=br.data||{};
+  $("expert-first-name").value=p.first_name||"";$("expert-last-name").value=p.last_name||"";$("expert-phone").value=p.phone||"";
+  $("expert-title").value=x.professional_title||"";$("expert-organization").value=x.organization||"";
+  $("expert-biography").value=x.biography||"";$("expert-years").value=x.years_experience??"";
+  $("bank-holder").value=b.account_holder_name||"";$("bank-name").value=b.bank_name||"";
+  $("bank-card").value=b.card_number||"";$("bank-iban").value=b.iban||"";
+ }catch(error){msg("expert-profile-message","دریافت اطلاعات پروفایل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
+ finally{button.disabled=false;}
+}
+$("expert-profile-form").addEventListener("submit",async event=>{
+ event.preventDefault();if(!user)return;
+ const button=$("save-expert-profile");button.disabled=true;
+ $("expert-profile-message").classList.add("hidden");
+ const first_name=$("expert-first-name").value.trim(),last_name=$("expert-last-name").value.trim();
+ const phone=$("expert-phone").value.trim()||null;
+ const title=$("expert-title").value.trim()||null,organization=$("expert-organization").value.trim()||null;
+ const biography=$("expert-biography").value.trim()||null;
+ const yearsRaw=$("expert-years").value.trim(),years_experience=yearsRaw===""?null:Number(yearsRaw);
+ const account_holder_name=$("bank-holder").value.trim(),bank_name=$("bank-name").value.trim();
+ const cardRaw=$("bank-card").value.replace(/\s/g,""),card_number=cardRaw||null;
+ const iban=$("bank-iban").value.replace(/\s/g,"").toUpperCase();
+ try{
+  if(card_number&&!/^[0-9]{16}$/.test(card_number))throw new Error("شماره کارت باید ۱۶ رقم باشد.");
+  if(!/^IR[0-9]{24}$/.test(iban))throw new Error("شماره شبا باید با IR شروع شود و ۲۴ رقم پس از آن داشته باشد.");
+  if(years_experience!==null&&(!Number.isInteger(years_experience)||years_experience<0||years_experience>80))throw new Error("سابقه فعالیت باید عدد صحیح بین صفر تا ۸۰ باشد.");
+  const results=await Promise.all([
+   supabase.from("user_profiles").update({first_name,last_name,phone}).eq("id",user.id),
+   supabase.from("expert_profiles").update({professional_title:title,organization,biography,years_experience}).eq("user_id",user.id),
+   supabase.from("expert_bank_details").upsert({user_id:user.id,account_holder_name,bank_name,card_number,iban},{onConflict:"user_id"})
+  ]);
+  const failed=results.find(x=>x.error);if(failed?.error)throw failed.error;
+  msg("expert-profile-message","اطلاعات پروفایل و بانکی با موفقیت ذخیره شد.");
+  $("welcome").textContent=[first_name,last_name].filter(Boolean).join(" ")||"پنل کارشناس";
+  $("profile").textContent=(title||"کارشناس")+(organization?" · "+organization:"")+" · "+(user.email||"");
+ }catch(error){msg("expert-profile-message","ذخیره اطلاعات ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
+ finally{button.disabled=false;}
+});
 async function verifyAndEnter(inputUser=null,inputToken=null){
  let u=inputUser,token=inputToken;
  if(!u||!token){
@@ -73,6 +149,7 @@ async function verifyAndEnter(inputUser=null,inputToken=null){
  $("welcome").textContent=[p.first_name,p.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
  $("profile").textContent=(e.professional_title||"کارشناس")+(e.organization?" · "+e.organization:"")+" · "+user.email;
  const activeUserId=user.id;
+ void loadExpertProfile();
  Promise.allSettled([loadInvites(),loadAssigned()]).then(results=>{
   results.forEach((result,index)=>{if(result.status==="rejected"){const target=index===0?"invite-list":"assigned-list";$(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";console.error("Expert case list load failed",result.reason);}});
  });
