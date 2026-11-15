@@ -246,60 +246,66 @@
   }
 
   async function loadExperts(){
-    $("experts").innerHTML = '<tr><td colspan="6">در حال دریافت اطلاعات…</td></tr>';
-    $("empty").classList.add("hidden");
-    const [expertResult,bankResult]=await Promise.all([
-      supabase.from("expert_profiles")
-        .select("user_id,professional_title,organization,invitation_status,is_verified,created_at,user_profiles!expert_profiles_user_id_fkey(first_name,last_name,account_status)")
-        .order("created_at",{ascending:false}),
-      supabase.from("expert_bank_details").select("user_id,account_holder_name,bank_name,card_number,iban")
-    ]);
-    const {data,error}=expertResult;
-    if(error){ $("experts").innerHTML=""; message("action-message","دریافت فهرست کارشناسان ناموفق بود: "+error.message,true); return; }
-    if(bankResult.error)message("action-message","اطلاعات بانکی بارگذاری نشد؛ دسترسی مدیر به جدول اطلاعات بانکی را بررسی کنید: "+bankResult.error.message,true);
-    const bankMap=new Map((bankResult.data||[]).map(x=>[x.user_id,x]));
-    const visibleExperts=(data||[]).filter(e=>e.invitation_status!=="revoked" && e.user_profiles?.account_status!=="disabled");
-    $("count").textContent = new Intl.NumberFormat("fa-IR").format(visibleExperts.length)+" کارشناس";
-    $("experts").innerHTML="";
-    $("empty").classList.toggle("hidden",visibleExperts.length!==0);
-    for(const e of visibleExperts){
-      const p=e.user_profiles||{},bank=bankMap.get(e.user_id);
-      const tr=document.createElement("tr");
-      const name=[p.first_name,p.last_name].filter(Boolean).join(" ") || e.professional_title || "بدون نام";
-      const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ") || "—";
-      const cells=[name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"];
-      for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
-      const bankTd=document.createElement("td"),bankButton=document.createElement("button");
-      bankButton.className="secondary";
-      bankButton.textContent=bank?"مشاهده اطلاعات":"ثبت نشده";
-      bankButton.disabled=!bank;
-      bankTd.appendChild(bankButton);tr.appendChild(bankTd);
-      const detailRow=document.createElement("tr");detailRow.classList.add("hidden");
-      const detailCell=document.createElement("td");detailCell.colSpan=6;
-      if(bank){
-        const parts=[
-          "صاحب حساب: "+bank.account_holder_name,
-          "بانک: "+bank.bank_name,
-          "شماره شبا: "+bank.iban,
-          "شماره کارت: "+(bank.card_number||"ثبت نشده")
-        ];
-        detailCell.textContent=parts.join("  |  ");
-      }else{detailCell.textContent="اطلاعات بانکی این کارشناس هنوز ثبت نشده است.";}
-      detailRow.appendChild(detailCell);
-      bankButton.addEventListener("click",()=>detailRow.classList.toggle("hidden"));
-      const actionTd=document.createElement("td");
-      if(e.invitation_status==="accepted" && !e.is_verified){
-        const b=document.createElement("button"); b.textContent="تأیید کارشناس";
-        b.addEventListener("click",()=>approve(e.user_id,b)); actionTd.appendChild(b);
-      }else{actionTd.textContent=e.is_verified?"فعال":"—";}
-      if(!e.is_verified && p.account_status!=="active"){
-        const remove=document.createElement("button");
-        remove.type="button"; remove.className="secondary"; remove.textContent="حذف";
-        remove.style.marginRight="6px";
-        remove.addEventListener("click",()=>removeUnverifiedExpert(e.user_id,name,remove));
-        actionTd.appendChild(remove);
+    const host=$("experts");
+    host.innerHTML='<tr><td colspan="6">در حال دریافت اطلاعات…</td></tr>';
+    $("empty").classList.add("hidden");$("count").textContent="…";
+    let timer;
+    try {
+      const expertResult=await Promise.race([
+        supabase.from("expert_profiles").select("user_id,professional_title,organization,invitation_status,is_verified,created_at").order("created_at",{ascending:false}),
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("مهلت دریافت فهرست کارشناسان به پایان رسید؛ ارتباط با پایگاه داده پاسخ نداد.")),15000);})
+      ]);
+      clearTimeout(timer);if(expertResult.error)throw expertResult.error;
+      const experts=expertResult.data||[],ids=experts.map(e=>e.user_id);
+      let profiles=[],bankRows=[];
+      if(ids.length){
+        const profileResult=await Promise.race([
+          supabase.from("user_profiles").select("id,first_name,last_name,account_status").in("id",ids),
+          new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("مهلت دریافت مشخصات کارشناسان به پایان رسید.")),15000);})
+        ]);
+        clearTimeout(timer);if(profileResult.error)throw profileResult.error;
+        profiles=profileResult.data||[];
+        const bankResult=await Promise.race([
+          supabase.from("expert_bank_details").select("user_id,account_holder_name,bank_name,card_number,iban"),
+          new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("مهلت دریافت اطلاعات بانکی کارشناسان به پایان رسید.")),15000);})
+        ]);
+        clearTimeout(timer);
+        if(bankResult.error)message("action-message","اطلاعات بانکی بارگذاری نشد: "+bankResult.error.message,true);
+        bankRows=bankResult.data||[];
       }
-      tr.appendChild(actionTd);$("experts").append(tr,detailRow);
+      const profileMap=new Map(profiles.map(p=>[p.id,p])),bankMap=new Map(bankRows.map(x=>[x.user_id,x]));
+      const visibleExperts=experts.map(e=>({...e,user_profiles:profileMap.get(e.user_id)||null}))
+        .filter(e=>e.invitation_status!=="revoked"&&e.user_profiles?.account_status!=="disabled");
+      $("count").textContent=new Intl.NumberFormat("fa-IR").format(visibleExperts.length)+" کارشناس";
+      host.innerHTML="";$("empty").classList.toggle("hidden",visibleExperts.length!==0);
+      for(const e of visibleExperts){
+        const p=e.user_profiles||{},bank=bankMap.get(e.user_id),tr=document.createElement("tr");
+        const name=[p.first_name,p.last_name].filter(Boolean).join(" ")||e.professional_title||"بدون نام";
+        const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ")||"—";
+        for(const v of [name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"]){
+          const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+        }
+        const bankTd=document.createElement("td"),bankButton=document.createElement("button");
+        bankButton.className="secondary";bankButton.textContent=bank?"مشاهده اطلاعات":"ثبت نشده";bankButton.disabled=!bank;
+        bankTd.appendChild(bankButton);tr.appendChild(bankTd);
+        const detailRow=document.createElement("tr");detailRow.classList.add("hidden");
+        const detailCell=document.createElement("td");detailCell.colSpan=6;
+        if(bank)detailCell.textContent="صاحب حساب: "+bank.account_holder_name+" · بانک: "+bank.bank_name+" · شماره شبا: "+bank.iban+" · شماره کارت: "+(bank.card_number||"ثبت نشده");
+        else detailCell.textContent="اطلاعات بانکی ثبت نشده است.";
+        detailRow.appendChild(detailCell);
+        bankButton.addEventListener("click",()=>detailRow.classList.toggle("hidden"));
+        const td=document.createElement("td");
+        if(e.invitation_status==="accepted"&&!e.is_verified){const b=document.createElement("button");b.textContent="تأیید کارشناس";b.addEventListener("click",()=>approve(e.user_id,b));td.appendChild(b);}
+        else td.textContent=e.is_verified?"فعال":"—";
+        if(!e.is_verified&&p.account_status!=="active"){const remove=document.createElement("button");remove.type="button";remove.className="secondary";remove.textContent="حذف";remove.style.marginRight="6px";remove.addEventListener("click",()=>removeUnverifiedExpert(e.user_id,name,remove));td.appendChild(remove);}
+        tr.appendChild(td);host.appendChild(tr);host.appendChild(detailRow);
+      }
+    } catch(error) {
+      clearTimeout(timer);host.innerHTML="";
+      const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;
+      td.textContent="دریافت فهرست کارشناسان ناموفق بود: "+(error?.message||String(error));
+      tr.appendChild(td);host.appendChild(tr);$("count").textContent="—";
+      message("action-message","فهرست کارشناسان بارگذاری نشد. پس از رفع خطا، «به‌روزرسانی فهرست» را بزنید.",true);
     }
   }
 
