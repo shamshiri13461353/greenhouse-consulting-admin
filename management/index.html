@@ -98,6 +98,16 @@
   </section>
 </main>
 <script src="./supabase.js"></script>
+<script>
+window.addEventListener("error", function(event) {
+  const box=document.getElementById("login-message");
+  if(box){box.textContent="خطای اجرای پنل: "+(event.message||"خطای نامشخص");box.classList.remove("hidden");box.classList.add("error");}
+});
+window.addEventListener("unhandledrejection", function(event) {
+  const box=document.getElementById("login-message");
+  if(box){box.textContent="خطای ارتباط یا اجرای پنل: "+(event.reason?.message||String(event.reason||"خطای نامشخص"));box.classList.remove("hidden");box.classList.add("error");}
+});
+</script>
 <script type="module">
   const createClient = window.supabase.createClient;
 
@@ -329,11 +339,22 @@
   }
 
   $("login").addEventListener("click",async()=>{
-    $("login").disabled=true;
-    const {error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
-    $("login").disabled=false;
-    if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
-    await enterDashboard();
+    const button=$("login");
+    button.disabled=true;
+    message("login-message","در حال برقراری ارتباط و بررسی اطلاعات ورود…");
+    try {
+      const result=await Promise.race([
+        supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value}),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("پاسخی از سرویس ورود دریافت نشد؛ اتصال شبکه یا دسترسی به Supabase را بررسی کنید.")),20000))
+      ]);
+      if(result.error){message("login-message","ورود انجام نشد: "+result.error.message,true);return;}
+      message("login-message","ورود تأیید شد؛ در حال بارگذاری پنل…");
+      await enterDashboard();
+    } catch(error) {
+      message("login-message","خطا در اجرای ورود: "+(error?.message||String(error)),true);
+    } finally {
+      button.disabled=false;
+    }
   });
   $("forgot-password").addEventListener("click",async()=>{
     const email=$("email").value.trim();
