@@ -142,8 +142,29 @@
         const b=document.createElement("button"); b.textContent="تأیید کارشناس";
         b.addEventListener("click",()=>approve(e.user_id,b)); td.appendChild(b);
       }else{td.textContent=e.is_verified?"فعال":"—";}
+      if(!e.is_verified){
+        const remove=document.createElement("button");
+        remove.type="button"; remove.className="secondary"; remove.textContent="حذف";
+        remove.style.marginRight="6px";
+        remove.addEventListener("click",()=>removeUnverifiedExpert(e.user_id,name,remove));
+        td.appendChild(remove);
+      }
       tr.appendChild(td); $("experts").appendChild(tr);
     }
+  }
+
+  async function removeUnverifiedExpert(userId,expertName,button){
+    const confirmed=window.confirm("آیا مطمئن هستید که کارشناس «"+expertName+"» از فهرست حذف شود؟ حساب او غیرفعال می‌شود و سوابق قبلی پرونده‌ها حفظ خواهد شد.");
+    if(!confirmed)return;
+    button.disabled=true;
+    const {error}=await supabase.rpc("admin_remove_unverified_expert",{p_user_id:userId});
+    if(error){
+      message("action-message","حذف کارشناس انجام نشد: "+error.message,true);
+      button.disabled=false;
+      return;
+    }
+    message("action-message","کارشناس از فهرست فعال حذف و حساب او غیرفعال شد؛ سوابق قبلی حفظ شده‌اند.");
+    await loadExperts();
   }
 
   async function approve(userId,button){
