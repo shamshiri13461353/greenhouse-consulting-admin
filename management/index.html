@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#123d35">
+  <meta name="description" content="پنل مستقل مدیریت سامانه مشاوره گلخانه پیوندگستر پارسان">
+  <link rel="manifest" href="/management/manifest.webmanifest">
+  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">
   <title>پنل مدیریت سامانه مشاوره گلخانه</title>
   <style>
     :root{font-family:Tahoma,Arial,sans-serif;color:#172b27;background:#f3f6f5}
@@ -97,6 +100,15 @@
     </div>
   </section>
 </main>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/management/sw.js", { scope: "/management/" }).catch(function (error) {
+        console.error("ثبت سرویس‌ورکر پنل مدیریت ناموفق بود:", error);
+      });
+    });
+  }
+</script>
 <script src="./supabase.js"></script>
 <script>
 window.addEventListener("error", function(event) {
