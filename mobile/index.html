@@ -32,8 +32,8 @@
     .role p{font-size:11px;color:#6b7b74;line-height:1.8;margin:0}
     .arrow{font-size:21px;color:#82948c}
     .install-wrap{text-align:center;margin:18px 0 10px}
-    .install{display:none;border:0;border-radius:10px;background:#176b57;color:#fff;padding:12px 22px;font:inherit;font-size:13px;cursor:pointer}
-    .install.visible{display:inline-block}
+    .install{display:inline-block;border:0;border-radius:10px;background:#176b57;color:#fff;padding:12px 22px;font:inherit;font-size:13px;cursor:pointer}
+    .install:disabled{opacity:.65;cursor:wait}
     .help{text-align:center;font-size:11px;line-height:1.9;color:#73837c;margin:12px 10px}
     footer{text-align:center;font-size:11px;color:#89968f;padding:8px 12px 24px}
     @media(min-width:560px){.roles{grid-template-columns:1fr 1fr}.role:last-child{grid-column:1/-1}.role:last-child .role-copy{max-width:80%}}
@@ -62,27 +62,48 @@
         <span class="arrow" aria-hidden="true">‹</span>
       </a>
     </nav>
-    <div class="install-wrap"><button id="install-app" class="install" type="button">نصب سامانه روی گوشی</button></div>
-    <p class="help">برای نصب، در مرورگر گوشی گزینه «افزودن به صفحه اصلی» یا «نصب برنامه» را انتخاب کنید.</p>
-    <p class="help">این نسخه برای ورود و دریافت اطلاعات به اینترنت نیاز دارد. اطلاعات پرونده‌ها و پیام‌ها روی گوشی ذخیره آفلاین نمی‌شوند.</p>
+    <div class="install-wrap"><button id="install-app" class="install" type="button">نصب سامانه روی گوشی یا رایانه</button></div>
+    <p id="install-help" class="help" role="status" aria-live="polite">اگر پنجره نصب خودکار باز نشد، از منوی مرورگر گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.</p>
+    <p class="help">برای ورود و دریافت اطلاعات پرونده‌ها و پیام‌ها، اتصال اینترنت لازم است.</p>
   </main>
   <footer>نسخه همراه سامانه مشاوره گلخانه · پیوندگستر پارسان</footer>
   <script type="module">
     const installButton = document.getElementById("install-app");
+    const installHelp = document.getElementById("install-help");
     let installPrompt = null;
+
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
       installPrompt = event;
-      installButton.classList.add("visible");
+      installButton.textContent = "نصب سامانه";
+      installHelp.textContent = "برای شروع نصب، دکمه زیر را انتخاب کنید.";
     });
+
     installButton.addEventListener("click", async () => {
-      if (!installPrompt) return;
+      if (!installPrompt) {
+        installHelp.textContent = "در این مرورگر، نصب از منوی مرورگر انجام می‌شود: در Microsoft Edge از منوی سه‌نقطه، بخش Apps و سپس Install this site as an app را انتخاب کنید. در Chrome از منوی سه‌نقطه، Install app یا Add to Home screen را بزنید.";
+        return;
+      }
       installButton.disabled = true;
-      await installPrompt.prompt();
-      installPrompt = null;
-      installButton.disabled = false;
-      installButton.classList.remove("visible");
+      try {
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        installHelp.textContent = choice?.outcome === "accepted" ? "درخواست نصب پذیرفته شد." : "درخواست نصب لغو شد؛ هر زمان خواستید دوباره اقدام کنید.";
+      } catch (error) {
+        installHelp.textContent = "مرورگر پنجره نصب را باز نکرد. از منوی مرورگر گزینه نصب برنامه را انتخاب کنید.";
+        console.error("نمایش پنجره نصب ناموفق بود:", error);
+      } finally {
+        installPrompt = null;
+        installButton.disabled = false;
+      }
     });
+
+    window.addEventListener("appinstalled", () => {
+      installButton.textContent = "سامانه نصب شد";
+      installButton.disabled = true;
+      installHelp.textContent = "سامانه با موفقیت روی دستگاه نصب شد.";
+    });
+
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(error => {
