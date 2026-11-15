@@ -33,38 +33,75 @@ button,.link{display:block;width:100%;border:0;border-radius:13px;background:#17
   var button = document.getElementById('install');
   var status = document.getElementById('status');
   var ready = false;
+  var reloadKey = 'management-pwa-controller-reload';
   function message(t){ status.textContent = t; }
+
   window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault(); promptEvent = e;
+    e.preventDefault();
+    promptEvent = e;
     message('امکان نصب آماده است. دکمه نصب را انتخاب کنید.');
   });
+
   window.addEventListener('appinstalled', function(){
-    promptEvent = null; message('اپلیکیشن مدیریت با موفقیت نصب شد.');
+    promptEvent = null;
+    message('اپلیکیشن مدیریت با موفقیت نصب شد.');
     button.disabled = true;
   });
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
+      // اگر سرویس‌ورکر تازه فعال شده باشد، صفحه فعلی هنوز تحت کنترل آن نیست.
+      // پس از claim شدن صفحه را فقط یک بار تازه‌سازی می‌کنیم تا Edge دوباره
+      // شرایط نصب‌پذیری و رویداد beforeinstallprompt را ارزیابی کند.
+      if (!navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('controllerchange', function(){
+          if (!sessionStorage.getItem(reloadKey)) {
+            sessionStorage.setItem(reloadKey, '1');
+            window.location.reload();
+          }
+        }, {once:true});
+      } else {
+        sessionStorage.removeItem(reloadKey);
+      }
+
       navigator.serviceWorker.register('/management/sw.js', {scope:'/management/'})
         .then(function(){ return navigator.serviceWorker.ready; })
         .then(function(){
           ready = true;
-          if (!promptEvent) message('صفحه آماده است. در Edge از منوی سه‌نقطه، بخش Apps و گزینه Install this site as an app را انتخاب کنید.');
+          if (navigator.serviceWorker.controller) {
+            sessionStorage.removeItem(reloadKey);
+            if (!promptEvent) message('آماده‌سازی فنی انجام شد. اگر دکمه نصب فعال نشد، وضعیت نصب این سایت را از منوی Edge بررسی کنید.');
+          } else {
+            message('سرویس نصب در حال فعال‌شدن است؛ صفحه پس از آماده‌شدن به‌طور خودکار تازه‌سازی می‌شود.');
+          }
         })
-        .catch(function(){ message('آماده‌سازی نصب کامل نشد. صفحه را تازه‌سازی کنید و دوباره تلاش کنید.'); });
+        .catch(function(error){
+          console.error('PWA service worker:', error);
+          message('ثبت سرویس نصب ناموفق بود. امکان نصب تا رفع این خطا فعال نمی‌شود.');
+        });
     });
+  } else {
+    message('این مرورگر از سرویس موردنیاز نصب برنامه پشتیبانی نمی‌کند.');
   }
+
   button.addEventListener('click', async function(){
-    if (promptEvent) {
-      var event = promptEvent; promptEvent = null;
-      try {
-        await event.prompt();
-        var choice = await event.userChoice;
-        message(choice.outcome === 'accepted' ? 'درخواست نصب پذیرفته شد.' : 'درخواست نصب لغو شد.');
-      } catch (err) {
-        message('Edge پنجره نصب خودکار را باز نکرد. از منوی سه‌نقطه Edge، بخش Apps و گزینه Install this site as an app را انتخاب کنید.');
-      }
-    } else {
-      message(ready ? 'در Edge از منوی سه‌نقطه، بخش Apps و گزینه Install this site as an app را انتخاب کنید.' : 'صفحه هنوز آماده نشده است؛ چند لحظه صبر کنید و دوباره بزنید.');
+    if (!promptEvent) {
+      message(ready
+        ? 'Edge هنوز مجوز نمایش پنجره نصب را برای این صفحه صادر نکرده است. از منوی سه‌نقطه Edge، بخش Apps، وضعیت نصب این سایت را بررسی کنید.'
+        : 'آماده‌سازی نصب هنوز کامل نشده است؛ چند لحظه صبر کنید.');
+      return;
+    }
+    var event = promptEvent;
+    promptEvent = null;
+    try {
+      await event.prompt();
+      var choice = await event.userChoice;
+      message(choice.outcome === 'accepted'
+        ? 'درخواست نصب پذیرفته شد؛ مراحل نمایش‌داده‌شده در Edge را تکمیل کنید.'
+        : 'درخواست نصب در Edge لغو شد. هر زمان خواستید دوباره دکمه نصب را انتخاب کنید.');
+    } catch (error) {
+      console.error('PWA install prompt:', error);
+      message('Edge نتوانست پنجره نصب را باز کند. وضعیت نصب سایت را از منوی Apps مرورگر بررسی کنید.');
     }
   });
 })();
