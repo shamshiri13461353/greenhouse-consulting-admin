@@ -97,8 +97,9 @@
     </div>
   </section>
 </main>
+<script src="./supabase.js"></script>
 <script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+  const createClient = window.supabase.createClient;
 
   const SUPABASE_URL = "https://tnfunhkxnldrylwbxraf.supabase.co";
   // کلید publishable عمومی است؛ هرگز service_role یا secret key را اینجا قرار ندهید.
