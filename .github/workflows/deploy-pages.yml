@@ -72,7 +72,7 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare site
         run: |
-          mkdir -p _site/admin-panel _site/management _site/grower _site/expert _site/mobile/icons _site/users _site/admin-install
+          mkdir -p _site/admin-panel _site/management/icons _site/grower _site/expert _site/mobile/icons _site/users _site/admin-install
           cp admin-panel/index.html _site/index.html
           cp admin-panel/index.html _site/admin-panel/index.html
           cp admin-panel/admin-install/index.html _site/admin-install/index.html
@@ -82,6 +82,9 @@ jobs:
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
           cp management/index.html _site/management/index.html
+          cp management/install.html _site/management/install.html
+          cp management/manifest.webmanifest _site/management/manifest.webmanifest
+          cp management/sw.js _site/management/sw.js
           cp management/accept-invitation.html _site/management/accept-invitation.html
           cp management/accept-grower-invitation.html _site/management/accept-grower-invitation.html
           cp grower/index.html _site/grower/index.html
@@ -96,6 +99,61 @@ jobs:
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/management/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
+          python3 - <<'PY'
+          import math, struct, zlib, pathlib
+          def png(path, size):
+              w = h = size
+              bg = (18, 59, 50, 255)
+              fg = (255, 255, 255, 255)
+              pixels = [bytearray(bg * w) for _ in range(h)]
+              def dot(x, y, color, radius=0):
+                  for yy in range(max(0, int(y-radius)), min(h, int(y+radius+1))):
+                      for xx in range(max(0, int(x-radius)), min(w, int(x+radius+1))):
+                          if (xx-x)**2 + (yy-y)**2 <= radius**2 + 1:
+                              pixels[yy][xx*4:xx*4+4] = bytes(color)
+              def line(a, b, thick=None):
+                  if thick is None: thick=max(2,size//38)
+                  x0,y0=map(int,a); x1,y1=map(int,b)
+                  dx=abs(x1-x0); sx=1 if x0<x1 else -1
+                  dy=-abs(y1-y0); sy=1 if y0<y1 else -1
+                  err=dx+dy
+                  while True:
+                      dot(x0,y0,fg,thick//2)
+                      if x0==x1 and y0==y1: break
+                      e2=2*err
+                      if e2>=dy: err+=dy; x0+=sx
+                      if e2<=dx: err+=dx; y0+=sy
+              def poly(points):
+                  miny=max(0,min(y for x,y in points)); maxy=min(h-1,max(y for x,y in points))
+                  for y in range(miny,maxy+1):
+                      xs=[]
+                      for i,(x1,y1) in enumerate(points):
+                          x2,y2=points[(i+1)%len(points)]
+                          if y1!=y2 and min(y1,y2)<=y<max(y1,y2):
+                              xs.append(x1+(y-y1)*(x2-x1)/(y2-y1))
+                      xs.sort()
+                      for j in range(0,len(xs)-1,2):
+                          for x in range(max(0,math.ceil(xs[j])),min(w,math.ceil(xs[j+1]))):
+                              pixels[y][x*4:x*4+4]=bytes(fg)
+              s=size
+              line((s*.20,s*.48),(s*.50,s*.22))
+              line((s*.50,s*.22),(s*.80,s*.48))
+              line((s*.27,s*.46),(s*.27,s*.77))
+              line((s*.73,s*.46),(s*.73,s*.77))
+              line((s*.27,s*.77),(s*.73,s*.77))
+              line((s*.50,s*.43),(s*.50,s*.76))
+              poly([(s*.49,s*.64),(s*.35,s*.55),(s*.37,s*.68),(s*.49,s*.70)])
+              poly([(s*.51,s*.60),(s*.65,s*.50),(s*.63,s*.64),(s*.51,s*.68)])
+              line((s*.50,s*.62),(s*.50,s*.77),max(2,s//42))
+              raw=b"".join(b"\x00"+bytes(row) for row in pixels)
+              def chunk(kind,data):
+                  return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
+              data=b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">2I5B",w,h,8,6,0,0,0))+chunk(b"IDAT",zlib.compress(raw,9))+chunk(b"IEND",b"")
+              pathlib.Path(path).write_bytes(data)
+          pathlib.Path("_site/management/icons").mkdir(parents=True,exist_ok=True)
+          png("_site/management/icons/icon-192.png",192)
+          png("_site/management/icons/icon-512.png",512)
+          PY
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
           touch _site/.nojekyll
           printf '%s\n' 'app.peyvandgostar.com' > _site/CNAME
