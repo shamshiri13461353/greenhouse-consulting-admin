@@ -23,7 +23,7 @@ jobs:
         run: |
           npm init -y
           npm install --no-save playwright
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps msedge
       - name: Check live management PWA
         env:
           PWA_URL: https://app.peyvandgostar.com/management/install.html
@@ -32,7 +32,7 @@ jobs:
           const { chromium } = require(require('path').join(process.env.GITHUB_WORKSPACE, 'node_modules', 'playwright'));
 
           (async () => {
-            const context = await chromium.launchPersistentContext('/tmp/pwa-user-profile', { headless: false, args: ['--no-sandbox'] });
+            const context = await chromium.launchPersistentContext('/tmp/pwa-user-profile', { headless: false, channel: 'msedge', args: ['--no-sandbox'] });
             try {
               const page = await context.newPage();
               const pageErrors = [];
