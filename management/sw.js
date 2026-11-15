@@ -20,7 +20,10 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || !url.pathname.startsWith("/management/")) return;
   event.respondWith(fetch(request).then(response => {
-    if (response && response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+    if (response && response.ok) {
+      const responseToCache = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, responseToCache)).catch(() => {});
+    }
     return response;
   }).catch(() => caches.match(request).then(cached => cached || Response.error())));
 });
