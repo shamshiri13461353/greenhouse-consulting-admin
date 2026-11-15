@@ -42,8 +42,16 @@ jobs:
 
               await page.addInitScript(() => {
                 window.__bipSeen = false;
+                window.__promptCalled = false;
                 window.addEventListener('beforeinstallprompt', e => {
                   window.__bipSeen = true;
+                  const originalPrompt = e.prompt.bind(e);
+                  try {
+                    e.prompt = (...args) => {
+                      window.__promptCalled = true;
+                      return originalPrompt(...args);
+                    };
+                  } catch (_) {}
                   e.preventDefault();
                 });
               });
@@ -103,6 +111,12 @@ jobs:
                 failedRequests: failed
               };
               console.log(JSON.stringify(result, null, 2));
+              if (!result.beforeInstallPromptSeen) throw new Error('Browser did not emit beforeinstallprompt in a regular profile');
+              await page.locator('#install').click();
+              await page.waitForTimeout(1000);
+              const promptCalled = await page.evaluate(() => window.__promptCalled);
+              console.log('INSTALL_BUTTON_PROMPT_CALLED=' + promptCalled);
+              if (!promptCalled) throw new Error('Install button did not invoke the native install prompt');
 
               if (!runtime.secureContext) throw new Error('Page is not a secure context');
               if (!runtime.manifest || runtime.manifestStatus !== 200) throw new Error('Manifest missing or not HTTP 200');
