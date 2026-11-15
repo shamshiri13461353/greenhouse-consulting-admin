@@ -1,14 +1,28 @@
 {
-  "id": "/admin-install/",
+  "id": "/management-app/",
   "name": "مدیریت پیوندگستر پارسان",
   "short_name": "مدیریت",
   "description": "اپلیکیشن مستقل مدیریت سامانه مشاوره گلخانه",
   "lang": "fa",
   "dir": "rtl",
-  "start_url": "/admin-install/",
-  "scope": "/admin-install/",
+  "start_url": "/admin-install/?launch=management",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f3f6f4",
   "theme_color": "#123b32",
-  "icons": [{"src": "/admin-install/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/admin-install/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin-install/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
