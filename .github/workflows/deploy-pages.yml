@@ -38,7 +38,7 @@ jobs:
           import re, pathlib
           portals = {
               "admin-panel/index.html": "admin-panel",
-  "management/index.html": "management",
+              "management/index.html": "management",
               "grower/index.html": "grower",
               "expert/index.html": "expert",
               "mobile/index.html": "mobile",
