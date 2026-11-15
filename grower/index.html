@@ -51,7 +51,23 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
    <button class="active" data-tab="greenhouses-section">گلخانه‌های من</button>
    <button data-tab="cycles-section">دوره‌های کشت</button>
    <button data-tab="cases-section">پرونده‌های مشاوره</button>
+   <button data-tab="profile-section">پروفایل من</button>
   </nav>
+  <section id="profile-section" class="section">
+   <div class="card">
+    <h2>پروفایل من</h2>
+    <p class="muted">مشخصات فردی و شماره تماس خود را تکمیل یا اصلاح کنید.</p>
+    <form id="grower-profile-form">
+     <div class="grid">
+      <div><label for="grower-first-name">نام *</label><input id="grower-first-name" maxlength="80" required autocomplete="given-name"></div>
+      <div><label for="grower-last-name">نام خانوادگی *</label><input id="grower-last-name" maxlength="100" required autocomplete="family-name"></div>
+     </div>
+     <label for="grower-phone">شماره تماس</label><input id="grower-phone" type="tel" maxlength="20" autocomplete="tel" placeholder="شماره همراه یا تلفن">
+     <div class="actions"><button id="save-grower-profile" type="submit">ذخیره تغییرات</button></div>
+     <div id="grower-profile-message" class="notice hidden" role="status"></div>
+    </form>
+   </div>
+  </section>
   <section id="greenhouses-section" class="section active">
    <div class="card">
     <h2>ثبت گلخانه جدید</h2>
@@ -287,6 +303,37 @@ async function refreshPushStatus(userId){
   status.textContent="وضعیت اعلان‌ها بررسی نشد؛ برای اطمینان می‌توانید فعال‌سازی را دوباره انجام دهید.";
  }
 }
+async function loadGrowerProfile(){
+ const form=$("grower-profile-form");if(!form||!currentUser)return;
+ const button=$("save-grower-profile");button.disabled=true;
+ try{
+  const {data,error}=await supabase.from("user_profiles").select("first_name,last_name,phone").eq("id",currentUser.id).maybeSingle();
+  if(error)throw error;
+  $("grower-first-name").value=data?.first_name||"";
+  $("grower-last-name").value=data?.last_name||"";
+  $("grower-phone").value=data?.phone||"";
+ }catch(error){notice("grower-profile-message","دریافت پروفایل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
+ finally{button.disabled=false;}
+}
+$("grower-profile-form").addEventListener("submit",async event=>{
+ event.preventDefault();if(!currentUser)return;
+ const button=$("save-grower-profile");button.disabled=true;
+ clearNotice("grower-profile-message");
+ const payload={
+  first_name:$("grower-first-name").value.trim(),
+  last_name:$("grower-last-name").value.trim(),
+  phone:$("grower-phone").value.trim()||null
+ };
+ try{
+  const {error}=await supabase.from("user_profiles").update(payload).eq("id",currentUser.id);
+  if(error)throw error;
+  notice("grower-profile-message","پروفایل با موفقیت ذخیره شد.");
+  const full=[payload.first_name,payload.last_name].filter(Boolean).join(" ");
+  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
+  $("profile-line").textContent="ایمیل حساب: "+(currentUser.email||"")+(payload.phone?" · تلفن: "+payload.phone:"");
+ }catch(error){notice("grower-profile-message","ذخیره پروفایل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
+ finally{button.disabled=false;}
+});
 async function enter(user=null,accessToken=null){
  if(!user||!accessToken){
   const {data,error}=await supabase.auth.getSession();
@@ -307,6 +354,7 @@ async function enter(user=null,accessToken=null){
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
  $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
  void refreshPushStatus(user.id);
+ void loadGrowerProfile();
  // بارگذاری اطلاعات پنل پس از نمایش موفق صفحه، بدون معطل‌کردن ورود
  void Promise.all([refreshAll(),loadCases()]).catch(error=>{
   console.error("Grower dashboard data loading failed",error);
