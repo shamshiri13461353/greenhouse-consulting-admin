@@ -640,10 +640,28 @@ async function openCase(id){
  $("case-detail-meta").textContent=(statusLabels[c.status]||c.status)+" · "+(categoryLabels[c.problem_category]||c.problem_category)+" · شدت: "+(c.severity||"تعیین نشده")+"\\n"+c.description;
  const actions=$("case-detail-actions");actions.replaceChildren();
  if(["draft","awaiting_information","reopened"].includes(c.status)){
-  const submit=node("button","","ارسال پرونده برای بررسی");submit.addEventListener("click",async()=>{
-   submit.disabled=true;const {error}=await supabase.rpc("submit_grower_case",{p_case_id:id});submit.disabled=false;
-   if(error){alert("ارسال پرونده ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
-  });actions.append(submit);
+  const submit=node("button","","ارسال پرونده برای بررسی");
+  const validationNotice=node("div","notice hidden","");
+  submit.type="button";
+  submit.addEventListener("click",async()=>{
+   const missing=[];
+   if(!String(c.crop_cycle_id||"").trim())missing.push("دوره کشت");
+   if(!String(c.title||"").trim())missing.push("عنوان مسئله");
+   if(!["pests_diseases","nutrition","environmental_stress","physiology","irrigation_water","substrate_roots","other"].includes(c.problem_category))missing.push("زمینه مسئله");
+   if(!String(c.description||"").trim())missing.push("شرح کامل مسئله");
+   if(missing.length){
+    validationNotice.textContent="پرونده هنوز قابل ارسال نیست. لطفاً این موارد را تکمیل کنید: "+missing.join("، ")+"؛ سپس دوباره تلاش کنید.";
+    validationNotice.classList.remove("hidden");validationNotice.classList.add("error");
+    return;
+   }
+   validationNotice.classList.add("hidden");validationNotice.classList.remove("error");
+   submit.disabled=true;
+   const {error}=await supabase.rpc("submit_grower_case",{p_case_id:id});
+   submit.disabled=false;
+   if(error){validationNotice.textContent="ارسال پرونده ناموفق بود: "+error.message;validationNotice.classList.remove("hidden");validationNotice.classList.add("error");return;}
+   await loadCases();await openCase(id);
+  });
+  actions.append(validationNotice,submit);
  }
  if(c.status==="closed"){
   const reopen=node("button","secondary","درخواست بازگشایی پرونده");reopen.addEventListener("click",async()=>{
