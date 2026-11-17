@@ -129,6 +129,7 @@ window.addEventListener("unhandledrejection", function(event) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
   const $ = (id) => document.getElementById(id);
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+  function isInvalidCredentialsError(error){const code=String(error?.code||"").toLowerCase(),detail=String(error?.message||"").toLowerCase();return code==="invalid_credentials"||detail.includes("invalid login credentials")||detail.includes("invalid credentials");}
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
   function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
 
@@ -348,6 +349,7 @@ window.addEventListener("unhandledrejection", function(event) {
     const ok=await requireAdmin();
     show("login-card",!ok); show("dashboard",ok); show("signout",ok);
     if(ok){ await loadExperts(); await loadGrowers(); await loadCaseManagement(); await loadReviewQueue(); }
+    return ok;
   }
 
   $("login").addEventListener("click",async()=>{
@@ -359,9 +361,9 @@ window.addEventListener("unhandledrejection", function(event) {
         supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value}),
         new Promise((_,reject)=>setTimeout(()=>reject(new Error("پاسخی از سرویس ورود دریافت نشد؛ اتصال شبکه یا دسترسی به Supabase را بررسی کنید.")),20000))
       ]);
-      if(result.error){message("login-message","ورود انجام نشد: "+result.error.message,true);return;}
-      message("login-message","ورود تأیید شد؛ در حال بارگذاری پنل…");
-      await enterDashboard();
+      if(result.error){message("login-message",isInvalidCredentialsError(result.error)?"نام کاربری یا رمز عبور اشتباه است.":"ورود انجام نشد؛ لطفاً اتصال را بررسی و دوباره تلاش کنید.",true);return;}
+      const authorized=await enterDashboard();
+      if(!authorized)message("login-message","حساب شما هنوز به‌عنوان مدیر سامانه فعال نشده است.",true);
     } catch(error) {
       message("login-message","خطا در اجرای ورود: "+(error?.message||String(error)),true);
     } finally {
