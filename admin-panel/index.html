@@ -53,6 +53,11 @@
       <p id="push-status" class="muted" role="status">برای دریافت اعلان‌های مدیریتی، مجوز اعلان را فعال کنید.</p>
     </div>
     <div class="card">
+      <div class="topline"><h2>پیام‌های خطاب به مدیر سامانه</h2><button id="refresh-admin-inbox" class="secondary" type="button">به‌روزرسانی</button></div>
+      <p class="muted">پیام‌هایی که گلخانه‌داران یا کارشناسان مستقیماً برای مدیر سامانه فرستاده‌اند. این پیام‌ها برای طرف دیگر پرونده نمایش داده نمی‌شوند.</p>
+      <div id="admin-message-inbox" class="empty">در حال دریافت پیام‌ها…</div>
+    </div>
+    <div class="card">
       <div class="topline"><h2>دعوت کارشناس جدید</h2><span class="pill">فقط توسط مدیر</span></div>
       <p class="muted">دعوت‌نامه از طریق Supabase Auth به ایمیل واردشده ارسال می‌شود. پس از پذیرش دعوت، مدیر باید مشخصات کارشناس را بررسی و تأیید کند.</p>
       <div class="grid">
@@ -534,13 +539,37 @@
   $("monitor-assignment-status").addEventListener("change",renderMonitorTable);
   $("monitor-expert").addEventListener("change",renderMonitorTable);
   $("refresh-monitor").addEventListener("click",loadMonitorData);
+  $("refresh-admin-inbox").addEventListener("click",loadAdminInbox);
   $("case-select").addEventListener("change",loadSelectedAssignments);
   $("assign-case").addEventListener("click",assignSelectedCase);
   $("refresh-cases").addEventListener("click",async()=>{await Promise.all([loadCaseManagement(),loadMonitorData()]);await loadReviewQueue();});
   $("refresh-reviews").addEventListener("click",loadReviewQueue);
+  async function loadAdminInbox(){
+    const host=$("admin-message-inbox");
+    host.replaceChildren();
+    if(!adminUser){host.className="empty";host.textContent="نشست مدیر در دسترس نیست.";return;}
+    const {data,error}=await supabase.from("case_messages")
+      .select("id,case_id,sender_user_id,sender_role,message_text,created_at,cases!case_messages_case_id_fkey(case_number,title),user_profiles!case_messages_sender_user_id_fkey(first_name,last_name)")
+      .eq("recipient_user_id",adminUser.id)
+      .order("created_at",{ascending:false})
+      .limit(100);
+    if(error){host.className="empty";host.textContent="دریافت پیام‌های مدیر ناموفق بود: "+error.message;return;}
+    if(!data?.length){host.className="empty";host.textContent="پیامی خطاب به مدیر سامانه ثبت نشده است.";return;}
+    host.className="";
+    for(const item of data){
+      const card=document.createElement("article");card.className="review-item";
+      const role=item.sender_role==="grower"?"گلخانه‌دار":item.sender_role==="expert"?"کارشناس":"کاربر سامانه";
+      const sender=[item.user_profiles?.first_name,item.user_profiles?.last_name].filter(Boolean).join(" ")||role;
+      const title=document.createElement("h3");title.textContent="پرونده "+(item.cases?.case_number||"—")+" · پیام از "+role;
+      const meta=document.createElement("div");meta.className="muted";meta.textContent=sender+" · "+monitorDate(item.created_at);
+      const body=document.createElement("p");body.textContent=item.message_text;
+      card.append(title,meta,body);host.append(card);
+    }
+  }
+
   async function loadDashboardData(){
     try{
-      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData()]);
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox()]);
       await loadReviewQueue();
     }catch(error){
       console.error("Admin dashboard data loading failed",error);
