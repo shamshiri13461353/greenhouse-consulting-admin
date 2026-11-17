@@ -38,7 +38,6 @@ jobs:
           import re, pathlib
           portals = {
               "admin-panel/index.html": "admin-panel",
-              "management/index.html": "management",
               "grower/index.html": "grower",
               "expert/index.html": "expert",
               "mobile/index.html": "mobile",
@@ -52,17 +51,14 @@ jobs:
               pathlib.Path(f"/tmp/{name}.mjs").write_text(scripts[0])
           PY
           node --check /tmp/admin-panel.mjs
-          node --check /tmp/management.mjs
           node --check /tmp/grower.mjs
           node --check /tmp/expert.mjs
           node --check /tmp/mobile.mjs
-          node --check admin-panel/admin-install/sw.js
           node --check management/sw.js
           node --check /tmp/users.mjs
           node --check sw.js
           node --check expert/sw.js
           python3 -m json.tool mobile/manifest.webmanifest > /dev/null
-          python3 -m json.tool admin-panel/admin-install/manifest.webmanifest > /dev/null
           python3 -m json.tool management/manifest.webmanifest > /dev/null
       - name: Download pinned Supabase browser bundle
         run: |
@@ -77,13 +73,12 @@ jobs:
           mkdir -p _site/admin-panel _site/management/icons _site/grower _site/expert _site/mobile/icons _site/users _site/admin-install
           cp admin-panel/index.html _site/index.html
           cp admin-panel/index.html _site/admin-panel/index.html
+          # /management/ remains the stable URL and PWA start URL, but serves the single canonical admin portal.
+          cp admin-panel/index.html _site/management/index.html
+          # Keep the old install URL as a redirect only; /management/ owns the sole admin PWA manifest.
           cp admin-panel/admin-install/index.html _site/admin-install/index.html
-          cp admin-panel/admin-install/manifest.webmanifest _site/admin-install/manifest.webmanifest
-          cp admin-panel/admin-install/sw.js _site/admin-install/sw.js
-          cp admin-panel/admin-install/icon.svg _site/admin-install/icon.svg
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
           cp admin-panel/accept-grower-invitation.html _site/accept-grower-invitation.html
-          cp management/index.html _site/management/index.html
           cp management/install.html _site/management/install.html
           cp management/manifest.webmanifest _site/management/manifest.webmanifest
           cp management/sw.js _site/management/sw.js
@@ -101,6 +96,8 @@ jobs:
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/management/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
+          cmp -s _site/index.html _site/admin-panel/index.html
+          cmp -s _site/index.html _site/management/index.html
           python3 - <<'PY'
           import math, struct, zlib, pathlib
           def png(path, size):
