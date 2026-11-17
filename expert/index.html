@@ -500,7 +500,7 @@ async function loadNotificationInbox(){
   if(!rows.length){host.className="empty";host.textContent="هنوز اعلانی برای حساب شما ثبت نشده است.";return;}
   host.className="";
   for(const item of rows){
-   const article=document.createElement("article");article.className="review-item";
+   const article=document.createElement("article");article.className="item review-item";
    const heading=document.createElement("h3");heading.textContent=(item.read_at?"":"● ")+(item.title||"اعلان سامانه");
    const body=document.createElement("p");body.textContent=item.body||"";
    const meta=document.createElement("div");meta.className="muted";meta.textContent=new Date(item.created_at).toLocaleString("fa-IR");
@@ -529,5 +529,6 @@ document.getElementById("refresh-notifications")?.addEventListener("click",loadN
 supabase.auth.onAuthStateChange((event,session)=>{
  if(session?.user)queueMicrotask(()=>loadNotificationInbox());
 });
+queueMicrotask(()=>loadNotificationInbox());
 
 </script></body></html>
