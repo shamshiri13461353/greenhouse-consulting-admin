@@ -80,10 +80,10 @@ jobs:
           from pathlib import Path
           page = Path("_site/management/index.html")
           html = page.read_text()
-          marker = '  <meta name="theme-color" content="#123d35">\\n'
+          marker = '  <meta name="theme-color" content="#123d35">\n'
           if marker not in html:
               raise SystemExit("Management portal theme-color marker not found")
-          html = html.replace(marker, marker + '  <link rel="manifest" href="/management/manifest.webmanifest">\\n  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">\\n', 1)
+          html = html.replace(marker, marker + '  <link rel="manifest" href="/management/manifest.webmanifest">\n  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">\n', 1)
           page.write_text(html)
           admin = Path("_site/admin-panel/index.html").read_text()
           import re
