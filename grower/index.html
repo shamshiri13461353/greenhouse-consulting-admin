@@ -216,6 +216,7 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
 const $=id=>document.getElementById(id);
 let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
+function isInvalidCredentialsError(error){const code=String(error?.code||"").toLowerCase(),detail=String(error?.message||"").toLowerCase();return code==="invalid_credentials"||detail.includes("invalid login credentials")||detail.includes("invalid credentials");}
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
 function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"T00:00:00")):"—";}
@@ -477,7 +478,7 @@ async function performGrowerLogin(){
    supabase.auth.signInWithPassword({email,password}),
    "بررسی ایمیل و گذرواژه"
   );
-  if(error){notice("login-message","ورود انجام نشد: "+error.message,true);return;}
+  if(error){notice("login-message",isInvalidCredentialsError(error)?"نام کاربری یا رمز عبور اشتباه است.":"ورود انجام نشد؛ لطفاً اتصال را بررسی و دوباره تلاش کنید.",true);return;}
   await withLoginTimeout(enter(data?.user,data?.session?.access_token),"بررسی دسترسی حساب گلخانه‌دار");
  }catch(error){
   console.error("Grower login failed",error);
