@@ -173,6 +173,7 @@
   }
   const $ = (id) => document.getElementById(id);
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+  function isInvalidCredentialsError(error){const code=String(error?.code||"").toLowerCase(),detail=String(error?.message||"").toLowerCase();return code==="invalid_credentials"||detail.includes("invalid login credentials")||detail.includes("invalid credentials");}
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
   function faStatus(s){ return ({invited:"دعوت ارسال شده",accepted:"دعوت پذیرفته شده",expired:"منقضی",revoked:"لغوشده",not_invited:"دعوت نشده"})[s] || s || "—"; }
 
@@ -602,10 +603,10 @@
         supabase.auth.signInWithPassword({email,password}),
         "درخواست بررسی ایمیل و گذرواژه"
       );
-      if(error){message("login-message","ورود انجام نشد: "+error.message,true);return;}
+      if(error){message("login-message",isInvalidCredentialsError(error)?"نام کاربری یا رمز عبور اشتباه است.":"ورود انجام نشد؛ لطفاً اتصال را بررسی و دوباره تلاش کنید.",true);return;}
       const isAdmin=await withLoginTimeout(enterDashboard(data?.user,data?.session?.access_token),"بررسی دسترسی مدیریتی");
       if(!isAdmin){
-        message("login-message","ورود انجام شد، اما دسترسی مدیریتی این حساب تأیید نشد.",true);
+        message("login-message","حساب شما هنوز به‌عنوان مدیر سامانه فعال نشده است.",true);
       }
     }catch(error){
       console.error("Admin login failed",error);
