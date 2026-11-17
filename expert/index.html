@@ -343,16 +343,34 @@ $("publish-final").addEventListener("click",async()=>{const draftId=$("final-for
 $("close-detail").addEventListener("click",()=>{stopCaseAutoRefresh();show("detail",false);});
 async function logout(){
   stopCaseAutoRefresh();
+  const buttons=[$("logout"),$("blocked-logout")];
+  buttons.forEach(button=>{if(button)button.disabled=true;});
+  try{
+    const {data,error:sessionError}=await supabase.auth.getSession();
+    if(sessionError)throw sessionError;
 
-  const { error } = await supabase.auth.signOut();
+    if(data?.session){
+      const {error}=await supabase.auth.signOut({scope:"local"});
+      const sessionAlreadyMissing=error&&(
+        error.name==="AuthSessionMissingError"||
+        error.code==="auth_session_missing"||
+        /auth session missing/i.test(error.message||"")
+      );
+      if(error&&!sessionAlreadyMissing)throw error;
+    }
 
-  if (error) {
-    alert("خروج از حساب انجام نشد: " + error.message);
-    return;
+    user=null;
+    activeCase=null;
+    activeAssignment=null;
+    show("app",false);
+    show("blocked",false);
+    show("login-card",true);
+    show("logout",false);
+    location.replace("../users/");
+  }catch(error){
+    buttons.forEach(button=>{if(button)button.disabled=false;});
+    alert("خروج از حساب انجام نشد: "+(error?.message||"خطای نامشخص"));
   }
-
-  user = null;
-  location.replace("../users/");
 }
 $("logout").addEventListener("click",logout);$("blocked-logout").addEventListener("click",logout);
 async function performExpertLogin(){
