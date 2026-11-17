@@ -70,7 +70,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   </section>
   <section id="greenhouses-section" class="section active">
    <div class="card">
-    <h2>ثبت گلخانه جدید</h2>
+    <h2 id="gh-form-title">ثبت گلخانه جدید</h2>
     <form id="greenhouse-form">
      <div class="grid">
       <div><label for="gh-name">نام گلخانه *</label><input id="gh-name" required maxlength="120" placeholder="مثلاً گلخانه شماره یک"></div>
@@ -81,7 +81,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
       <div><label for="gh-system">سیستم کشت *</label><select id="gh-system" required><option value="">انتخاب نشده</option><option>خاکی</option><option>بدون خاک / هیدروپونیک</option><option>ترکیبی</option></select></div>
      </div>
      <label for="gh-address">نشانی یا توضیحات محل *</label><textarea id="gh-address" required maxlength="1000"></textarea>
-     <div class="actions"><button id="save-greenhouse" type="submit">ثبت گلخانه</button></div>
+     <div class="actions"><button id="save-greenhouse" type="submit">ثبت گلخانه</button><button id="cancel-greenhouse-edit" class="secondary hidden" type="button">لغو ویرایش</button></div>
      <div id="gh-message" class="notice hidden"></div>
     </form>
    </div>
@@ -186,7 +186,7 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 const $=id=>document.getElementById(id);
-let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null;
+let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
@@ -204,7 +204,12 @@ function renderGreenhouses(){
    gh.structure_type||"نوع سازه ثبت نشده",
    gh.cultivation_system||"سیستم کشت ثبت نشده"
   ].join(" · "));
-  card.append(title,meta);host.append(card);
+  const actions=node("div","actions");
+  const edit=node("button","secondary","ویرایش مشخصات");
+  edit.type="button";
+  edit.addEventListener("click",()=>startGreenhouseEdit(gh.id));
+  actions.append(edit);
+  card.append(title,meta,actions);host.append(card);
  }
  const select=$("cycle-greenhouse");const selected=select.value;select.replaceChildren();
  select.append(new Option("انتخاب گلخانه",""));
@@ -227,7 +232,7 @@ async function fetchGrowerRows(query){
 async function loadGreenhouses(){
  const host=$("greenhouse-list");host.textContent="در حال دریافت اطلاعات گلخانه‌ها…";
  try{
-  const data=await fetchGrowerRows("greenhouses?select=id,name,city,province,area_m2,structure_type,cultivation_system,created_at&owner_user_id=eq."+encodeURIComponent(currentUser.id)+"&order=created_at.desc");
+  const data=await fetchGrowerRows("greenhouses?select=id,name,city,province,area_m2,structure_type,cultivation_system,address,created_at&owner_user_id=eq."+encodeURIComponent(currentUser.id)+"&order=created_at.desc");
   greenhouses=data||[];renderGreenhouses();
  }catch(error){host.textContent="دریافت گلخانه‌ها ناموفق بود: "+(error?.message||"خطای ارتباط");throw error;}
 }
@@ -409,6 +414,34 @@ async function logout(){
   location.replace("../users/");
 }
 $("logout").addEventListener("click",logout);$("pending-logout").addEventListener("click",logout);
+function startGreenhouseEdit(id){
+ const gh=greenhouses.find(item=>item.id===id);
+ if(!gh){notice("gh-message","اطلاعات این گلخانه در فهرست فعلی پیدا نشد؛ فهرست را به‌روزرسانی کنید.",true);return;}
+ editingGreenhouseId=gh.id;
+ $("gh-name").value=gh.name||"";
+ $("gh-city").value=gh.city||"";
+ $("gh-province").value=gh.province||"";
+ $("gh-area").value=gh.area_m2??"";
+ $("gh-structure").value=gh.structure_type||"";
+ $("gh-system").value=gh.cultivation_system||"";
+ $("gh-address").value=gh.address||"";
+ $("gh-form-title").textContent="ویرایش مشخصات گلخانه";
+ $("save-greenhouse").textContent="ذخیره تغییرات";
+ show("cancel-greenhouse-edit");
+ clearNotice("gh-message");
+ $("greenhouse-form").scrollIntoView({behavior:"smooth",block:"start"});
+ $("gh-name").focus({preventScroll:true});
+}
+function resetGreenhouseForm(){
+ editingGreenhouseId=null;
+ $("greenhouse-form").reset();
+ $("gh-form-title").textContent="ثبت گلخانه جدید";
+ $("save-greenhouse").textContent="ثبت گلخانه";
+ show("cancel-greenhouse-edit",false);
+}
+$("cancel-greenhouse-edit").addEventListener("click",()=>{
+ resetGreenhouseForm();clearNotice("gh-message");
+});
 $("greenhouse-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("gh-message");
  const requiredFields=[
@@ -426,12 +459,24 @@ $("greenhouse-form").addEventListener("submit",async ev=>{
   notice("gh-message","مساحت گلخانه باید عددی بزرگ‌تر از صفر باشد.",true);
   $("gh-area").focus();return;
  }
- const payload={owner_user_id:currentUser.id,name:$("gh-name").value.trim(),city:$("gh-city").value.trim(),province:$("gh-province").value.trim(),area_m2:area,structure_type:$("gh-structure").value,cultivation_system:$("gh-system").value,address:$("gh-address").value.trim()};
+ const payload={name:$("gh-name").value.trim(),city:$("gh-city").value.trim(),province:$("gh-province").value.trim(),area_m2:area,structure_type:$("gh-structure").value,cultivation_system:$("gh-system").value,address:$("gh-address").value.trim()};
  $("save-greenhouse").disabled=true;
- const {error}=await supabase.from("greenhouses").insert(payload);
+ let error=null, saved=false;
+ if(editingGreenhouseId){
+  const result=await supabase.from("greenhouses").update(payload).eq("id",editingGreenhouseId).eq("owner_user_id",currentUser.id).select("id").maybeSingle();
+  error=result.error;
+  saved=!!result.data?.id;
+ }else{
+  const result=await supabase.from("greenhouses").insert({...payload,owner_user_id:currentUser.id});
+  error=result.error;saved=!error;
+ }
  $("save-greenhouse").disabled=false;
- if(error){notice("gh-message","ثبت گلخانه ناموفق بود: "+error.message,true);return;}
- notice("gh-message","گلخانه با موفقیت ثبت شد.");$("greenhouse-form").reset();await loadGreenhouses();
+ if(error){notice("gh-message","ذخیره مشخصات گلخانه ناموفق بود: "+error.message,true);return;}
+ if(!saved){notice("gh-message","گلخانه به‌روزرسانی نشد؛ ممکن است دیگر به این رکورد دسترسی نداشته باشید. فهرست را به‌روزرسانی کنید.",true);return;}
+ const wasEditing=!!editingGreenhouseId;
+ resetGreenhouseForm();
+ notice("gh-message",wasEditing?"مشخصات گلخانه با موفقیت ویرایش شد.":"گلخانه با موفقیت ثبت شد.");
+ await loadGreenhouses();
 });
 $("cycle-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("cycle-message");
