@@ -191,6 +191,10 @@ const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
 function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"T00:00:00")):"—";}
+function normalizeGreenhouseName(value){
+ return String(value??"").replace(/[يى]/g,"ی").replace(/ك/g,"ک")
+  .replace(/[\u200c\u200d]/g," ").trim().replace(/\s+/g," ").toLowerCase();
+}
 function node(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
 function renderGreenhouses(){
  const host=$("greenhouse-list");host.replaceChildren();
@@ -460,6 +464,13 @@ $("greenhouse-form").addEventListener("submit",async ev=>{
   $("gh-area").focus();return;
  }
  const payload={name:$("gh-name").value.trim(),city:$("gh-city").value.trim(),province:$("gh-province").value.trim(),area_m2:area,structure_type:$("gh-structure").value,cultivation_system:$("gh-system").value,address:$("gh-address").value.trim()};
+ const currentEditingGreenhouse=editingGreenhouseId?greenhouses.find(gh=>gh.id===editingGreenhouseId):null;
+ const nameChanged=!currentEditingGreenhouse||normalizeGreenhouseName(currentEditingGreenhouse.name)!==normalizeGreenhouseName(payload.name);
+ const duplicateName=nameChanged&&greenhouses.some(gh=>gh.id!==editingGreenhouseId&&normalizeGreenhouseName(gh.name)===normalizeGreenhouseName(payload.name));
+ if(duplicateName){
+  notice("gh-message","این نام قبلاً برای یکی از گلخانه‌های شما ثبت شده است؛ لطفاً نام دیگری انتخاب کنید.",true);
+  $("gh-name").focus();return;
+ }
  $("save-greenhouse").disabled=true;
  let error=null, saved=false;
  if(editingGreenhouseId){
@@ -471,7 +482,14 @@ $("greenhouse-form").addEventListener("submit",async ev=>{
   error=result.error;saved=!error;
  }
  $("save-greenhouse").disabled=false;
- if(error){notice("gh-message","ذخیره مشخصات گلخانه ناموفق بود: "+error.message,true);return;}
+ if(error){
+  if(error.code==="23505"&&((error.message||"").includes("greenhouses_owner_name_unique")||(error.message||"").includes("greenhouse_name_already_exists"))){
+   notice("gh-message","این نام قبلاً برای یکی از گلخانه‌های شما ثبت شده است؛ لطفاً نام دیگری انتخاب کنید.",true);
+  }else{
+   notice("gh-message","ذخیره مشخصات گلخانه ناموفق بود: "+error.message,true);
+  }
+  return;
+ }
  if(!saved){notice("gh-message","گلخانه به‌روزرسانی نشد؛ ممکن است دیگر به این رکورد دسترسی نداشته باشید. فهرست را به‌روزرسانی کنید.",true);return;}
  const wasEditing=!!editingGreenhouseId;
  resetGreenhouseForm();
