@@ -932,7 +932,6 @@ $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
 await enter();
 
-});
 
 </script>
 </body>
