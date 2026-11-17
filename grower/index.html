@@ -111,7 +111,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
       <div><label for="cultivar">رقم</label><input id="cultivar" maxlength="100"></div>
       <div><label for="rootstock">پایه</label><input id="rootstock" maxlength="100"></div>
       <div><label for="transplant-date">تاریخ انتقال نشا (شمسی)</label><div class="jalali-date-wrap">
-       <input id="transplant-date" class="jalali-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۱/۱۵" aria-haspopup="dialog" aria-expanded="false">
+       <input id="transplant-date" class="jalali-date-input" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="۱۴۰۵/۰۱/۱۵" aria-haspopup="dialog" aria-expanded="false">
        <button class="date-picker-toggle" type="button" data-date-toggle="transplant-date" aria-label="نمایش تقویم انتقال نشا">▦</button>
        <div id="transplant-date-picker" class="jalali-date-picker hidden" role="dialog" aria-label="تقویم شمسی">
         <div class="jalali-date-picker-head"><button type="button" data-date-prev="transplant-date" aria-label="ماه قبل">‹</button><strong id="transplant-date-month"></strong><button type="button" data-date-next="transplant-date" aria-label="ماه بعد">›</button></div>
@@ -119,7 +119,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
        </div>
       </div></div>
       <div><label for="end-date">تاریخ پایان پیش‌بینی‌شده (شمسی)</label><div class="jalali-date-wrap">
-       <input id="end-date" class="jalali-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۷/۱۵" aria-haspopup="dialog" aria-expanded="false">
+       <input id="end-date" class="jalali-date-input" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="۱۴۰۵/۰۷/۱۵" aria-haspopup="dialog" aria-expanded="false">
        <button class="date-picker-toggle" type="button" data-date-toggle="end-date" aria-label="نمایش تقویم پایان دوره">▦</button>
        <div id="end-date-picker" class="jalali-date-picker hidden" role="dialog" aria-label="تقویم شمسی">
         <div class="jalali-date-picker-head"><button type="button" data-date-prev="end-date" aria-label="ماه قبل">‹</button><strong id="end-date-month"></strong><button type="button" data-date-next="end-date" aria-label="ماه بعد">›</button></div>
