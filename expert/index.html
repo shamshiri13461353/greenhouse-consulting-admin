@@ -10,12 +10,6 @@
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
 <div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
-<div class="card" id="notification-inbox-card">
- <div class="top"><h2>صندوق اعلان‌ها</h2><button id="refresh-notifications" class="alt" type="button">به‌روزرسانی</button></div>
- <p class="muted">تغییرات پرونده‌ها، ارجاع‌ها، پیام‌ها و پیگیری‌های مرتبط با شما در این بخش نگهداری می‌شوند.</p>
- <p id="notification-unread-count" class="muted" aria-live="polite"></p>
- <div id="notifications-list" class="empty">در حال دریافت اعلان‌ها…</div>
-</div>
 <nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
 <section id="expert-profile-section" class="section card">
  <h2>پروفایل من</h2>
@@ -481,53 +475,6 @@ $("enable-push").addEventListener("click",()=>activatePush(user?.id));
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){user=null;show("app",false);show("blocked",false);show("login-card",true);show("logout",false);}});
 try{await withLoginTimeout(verifyAndEnter(),"بررسی نشست قبلی");}catch(error){console.error("Expert session check failed",error);show("login-card",true);show("app",false);msg("login-msg","بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. "+(error?.message||"خطای ارتباط"),true);}
 
-async function loadNotificationInbox(){
- const host=document.getElementById("notifications-list");
- const count=document.getElementById("notification-unread-count");
- if(!host||!count)return;
- host.textContent="در حال دریافت اعلان‌ها…";
- try{
-  const {data:{user:activeUser},error:userError}=await supabase.auth.getUser();
-  if(userError)throw userError;
-  if(!activeUser){host.textContent="برای مشاهده اعلان‌ها وارد حساب شوید.";count.textContent="";return;}
-  const {data,error}=await supabase.from("notifications")
-   .select("id,event_type,title,body,target_url,read_at,created_at")
-   .order("created_at",{ascending:false}).limit(40);
-  if(error)throw error;
-  const rows=data||[],unread=rows.filter(x=>!x.read_at).length;
-  count.textContent=unread?("اعلان خوانده‌نشده: "+unread):"همه اعلان‌ها خوانده شده‌اند.";
-  host.replaceChildren();
-  if(!rows.length){host.className="empty";host.textContent="هنوز اعلانی برای حساب شما ثبت نشده است.";return;}
-  host.className="";
-  for(const item of rows){
-   const article=document.createElement("article");article.className="item review-item";
-   const heading=document.createElement("h3");heading.textContent=(item.read_at?"":"● ")+(item.title||"اعلان سامانه");
-   const body=document.createElement("p");body.textContent=item.body||"";
-   const meta=document.createElement("div");meta.className="muted";meta.textContent=new Date(item.created_at).toLocaleString("fa-IR");
-   const actions=document.createElement("div");actions.className="actions";
-   if(!item.read_at){
-    const readButton=document.createElement("button");readButton.type="button";readButton.className="secondary";readButton.textContent="علامت‌گذاری به‌عنوان خوانده‌شده";
-    readButton.addEventListener("click",async()=>{
-     readButton.disabled=true;
-     const {error:updateError}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",item.id);
-     if(updateError){readButton.disabled=false;meta.textContent="ثبت وضعیت خواندن ناموفق بود: "+updateError.message;return;}
-     await loadNotificationInbox();
-    });
-    actions.append(readButton);
-   }
-   const openButton=document.createElement("button");openButton.type="button";openButton.className="secondary";openButton.textContent="رفتن به بخش مرتبط";
-   openButton.addEventListener("click",async()=>{
-    if(!item.read_at)await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",item.id);
-    const target=/^\/(management|grower|expert)\//.test(item.target_url||"")?item.target_url:"/mobile/";
-    window.location.assign(target);
-   });
-   actions.append(openButton);article.append(heading,body,meta,actions);host.append(article);
-  }
- }catch(error){host.className="notice error";host.textContent="دریافت صندوق اعلان‌ها ناموفق بود: "+(error?.message||"خطای نامشخص");}
-}
-document.getElementById("refresh-notifications")?.addEventListener("click",loadNotificationInbox);
-supabase.auth.onAuthStateChange((event,session)=>{
- if(session?.user)queueMicrotask(()=>loadNotificationInbox());
 });
 queueMicrotask(()=>loadNotificationInbox());
 
