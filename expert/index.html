@@ -476,6 +476,5 @@ supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){user=
 try{await withLoginTimeout(verifyAndEnter(),"بررسی نشست قبلی");}catch(error){console.error("Expert session check failed",error);show("login-card",true);show("app",false);msg("login-msg","بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. "+(error?.message||"خطای ارتباط"),true);}
 
 });
-queueMicrotask(()=>loadNotificationInbox());
 
 </script></body></html>
