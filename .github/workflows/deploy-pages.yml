@@ -75,6 +75,22 @@ jobs:
           cp admin-panel/index.html _site/admin-panel/index.html
           # /management/ remains the stable URL and PWA start URL, but serves the single canonical admin portal.
           cp admin-panel/index.html _site/management/index.html
+          # Restore the stable PWA manifest association on the shared admin portal.
+          python3 - <<'PY'
+          from pathlib import Path
+          page = Path("_site/management/index.html")
+          html = page.read_text()
+          marker = '  <meta name="theme-color" content="#123d35">\\n'
+          if marker not in html:
+              raise SystemExit("Management portal theme-color marker not found")
+          html = html.replace(marker, marker + '  <link rel="manifest" href="/management/manifest.webmanifest">\\n  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">\\n', 1)
+          page.write_text(html)
+          admin = Path("_site/admin-panel/index.html").read_text()
+          import re
+          scripts = lambda value: re.findall(r'<script type="module">(.*?)</script>', value, re.S)
+          if scripts(admin) != scripts(html):
+              raise SystemExit("Admin portal module differs between canonical and management routes")
+          PY
           # Keep the old install URL as a redirect only; /management/ owns the sole admin PWA manifest.
           cp admin-panel/admin-install/index.html _site/admin-install/index.html
           cp admin-panel/accept-invitation.html _site/accept-invitation.html
@@ -97,7 +113,6 @@ jobs:
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/grower/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/expert/supabase.js
           cmp -s _site/index.html _site/admin-panel/index.html
-          cmp -s _site/index.html _site/management/index.html
           python3 - <<'PY'
           import math, struct, zlib, pathlib
           def png(path, size):
