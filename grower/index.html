@@ -222,7 +222,7 @@ function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"
 
 // تبدیل تقویم شمسی در مرورگر؛ داده‌ها در پایگاه داده به قالب استاندارد میلادی می‌مانند
 const JALALI_BREAKS=[-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
-const jDiv=(a,b)=>Math.floor(a/b),jMod=(a,b)=>a-jDiv(a,b)*b;
+const jDiv=(a,b)=>Math.trunc(a/b),jMod=(a,b)=>a-jDiv(a,b)*b;
 function jalCal(jy,withoutLeap=false){
  const bl=JALALI_BREAKS.length,gy=jy+621;if(jy<JALALI_BREAKS[0]||jy>=JALALI_BREAKS[bl-1])throw new RangeError("سال خارج از محدوده تقویم است.");
  let leapJ=-14,jp=JALALI_BREAKS[0],jm=0,jump=0;
