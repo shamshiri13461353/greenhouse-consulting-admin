@@ -161,7 +161,7 @@
   };
   const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: { fetch: fetchWithTimeout },
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "greenhouse-admin-auth" }
   });
   // تضمین آزاد شدن دکمه ورود حتی اگر درخواست شبکه در مرورگر موبایل معطل بماند
   function withLoginTimeout(promise, label = "ارتباط با سرور") {
