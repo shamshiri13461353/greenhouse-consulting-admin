@@ -74,13 +74,13 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <form id="greenhouse-form">
      <div class="grid">
       <div><label for="gh-name">نام گلخانه *</label><input id="gh-name" required maxlength="120" placeholder="مثلاً گلخانه شماره یک"></div>
-      <div><label for="gh-city">شهر</label><input id="gh-city" maxlength="100"></div>
-      <div><label for="gh-province">استان / منطقه</label><input id="gh-province" maxlength="100"></div>
-      <div><label for="gh-area">مساحت (مترمربع)</label><input id="gh-area" type="number" min="0.01" step="0.01"></div>
-      <div><label for="gh-structure">نوع سازه</label><select id="gh-structure"><option value="">انتخاب نشده</option><option>پلاستیکی</option><option>شیشه‌ای</option><option>تونلی</option><option>سایر</option></select></div>
-      <div><label for="gh-system">سیستم کشت</label><select id="gh-system"><option value="">انتخاب نشده</option><option>خاکی</option><option>بدون خاک / هیدروپونیک</option><option>ترکیبی</option></select></div>
+      <div><label for="gh-city">شهر *</label><input id="gh-city" required maxlength="100"></div>
+      <div><label for="gh-province">استان / منطقه *</label><input id="gh-province" required maxlength="100"></div>
+      <div><label for="gh-area">مساحت (مترمربع) *</label><input id="gh-area" type="number" required min="0.01" step="0.01"></div>
+      <div><label for="gh-structure">نوع سازه *</label><select id="gh-structure" required><option value="">انتخاب نشده</option><option>پلاستیکی</option><option>شیشه‌ای</option><option>تونلی</option><option>سایر</option></select></div>
+      <div><label for="gh-system">سیستم کشت *</label><select id="gh-system" required><option value="">انتخاب نشده</option><option>خاکی</option><option>بدون خاک / هیدروپونیک</option><option>ترکیبی</option></select></div>
      </div>
-     <label for="gh-address">نشانی یا توضیحات محل</label><textarea id="gh-address" maxlength="1000"></textarea>
+     <label for="gh-address">نشانی یا توضیحات محل *</label><textarea id="gh-address" required maxlength="1000"></textarea>
      <div class="actions"><button id="save-greenhouse" type="submit">ثبت گلخانه</button></div>
      <div id="gh-message" class="notice hidden"></div>
     </form>
@@ -411,9 +411,22 @@ async function logout(){
 $("logout").addEventListener("click",logout);$("pending-logout").addEventListener("click",logout);
 $("greenhouse-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("gh-message");
- const name=$("gh-name").value.trim();if(!name){notice("gh-message","نام گلخانه الزامی است.",true);return;}
- const area=$("gh-area").value;
- const payload={owner_user_id:currentUser.id,name,city:$("gh-city").value.trim()||null,province:$("gh-province").value.trim()||null,area_m2:area?Number(area):null,structure_type:$("gh-structure").value||null,cultivation_system:$("gh-system").value||null,address:$("gh-address").value.trim()||null};
+ const requiredFields=[
+  ["gh-name","نام گلخانه"],["gh-city","شهر"],["gh-province","استان / منطقه"],
+  ["gh-area","مساحت"],["gh-structure","نوع سازه"],["gh-system","سیستم کشت"],
+  ["gh-address","نشانی یا توضیحات محل"]
+ ];
+ const missing=requiredFields.find(([id])=>!$(id).value.trim());
+ if(missing){
+  notice("gh-message","تکمیل فیلد «"+missing[1]+"» الزامی است؛ تا تکمیل همه فیلدها گلخانه ثبت نمی‌شود.",true);
+  $(missing[0]).focus();return;
+ }
+ const area=Number($("gh-area").value);
+ if(!Number.isFinite(area)||area<=0){
+  notice("gh-message","مساحت گلخانه باید عددی بزرگ‌تر از صفر باشد.",true);
+  $("gh-area").focus();return;
+ }
+ const payload={owner_user_id:currentUser.id,name:$("gh-name").value.trim(),city:$("gh-city").value.trim(),province:$("gh-province").value.trim(),area_m2:area,structure_type:$("gh-structure").value,cultivation_system:$("gh-system").value,address:$("gh-address").value.trim()};
  $("save-greenhouse").disabled=true;
  const {error}=await supabase.from("greenhouses").insert(payload);
  $("save-greenhouse").disabled=false;
