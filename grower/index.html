@@ -13,6 +13,20 @@ main{max-width:1100px;margin:24px auto;padding:0 16px}.card{background:#fff;bord
 h2{font-size:17px;margin:0 0 14px}.muted{font-size:13px;color:#62756d;line-height:1.9}
 label{display:block;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #cbd9d2;border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;background:#fff;color:#18332c}
 textarea{min-height:75px;resize:vertical}button{border:0;border-radius:9px;padding:11px 17px;background:#176b57;color:white;font:inherit;cursor:pointer}
+.jalali-date-wrap{position:relative;display:flex;gap:6px;align-items:stretch}
+.jalali-date-input{min-width:0;direction:ltr;text-align:right;flex:1}
+.date-picker-toggle{flex:0 0 44px;padding:8px;background:#e9f1ed;color:#194c3e;font-size:19px}
+.jalali-date-picker{position:absolute;z-index:30;top:calc(100% + 6px);right:0;width:min(310px,calc(100vw - 48px));padding:12px;background:#fff;border:1px solid #cbd9d2;border-radius:12px;box-shadow:0 10px 28px #163d3026}
+.jalali-date-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.jalali-date-picker-head strong{font-size:13px}
+.jalali-date-picker-head button{width:34px;height:32px;padding:0;background:#e9f1ed;color:#194c3e;font-size:21px}
+.jalali-date-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.jalali-date-grid span,.jalali-date-grid button{min-width:0;height:34px;display:flex;align-items:center;justify-content:center;padding:0;border-radius:7px;font-size:12px}
+.jalali-date-grid .weekday{color:#62756d;font-weight:bold}
+.jalali-date-grid button{background:#f1f6f3;color:#18332c}
+.jalali-date-grid button:hover,.jalali-date-grid button.today{background:#d8eee4;color:#14513d}
+.jalali-date-grid button.selected{background:#176b57;color:#fff}
+.jalali-date-grid .empty-day{visibility:hidden}
 button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cursor:not-allowed}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;line-height:1.8;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}
@@ -96,8 +110,22 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
       <div><label for="crop-name">محصول *</label><input id="crop-name" required maxlength="100" placeholder="مثلاً خیار"></div>
       <div><label for="cultivar">رقم</label><input id="cultivar" maxlength="100"></div>
       <div><label for="rootstock">پایه</label><input id="rootstock" maxlength="100"></div>
-      <div><label for="transplant-date">تاریخ انتقال نشا</label><input id="transplant-date" type="date"></div>
-      <div><label for="end-date">تاریخ پایان پیش‌بینی‌شده</label><input id="end-date" type="date"></div>
+      <div><label for="transplant-date">تاریخ انتقال نشا (شمسی)</label><div class="jalali-date-wrap">
+       <input id="transplant-date" class="jalali-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۱/۱۵" aria-haspopup="dialog" aria-expanded="false">
+       <button class="date-picker-toggle" type="button" data-date-toggle="transplant-date" aria-label="نمایش تقویم انتقال نشا">▦</button>
+       <div id="transplant-date-picker" class="jalali-date-picker hidden" role="dialog" aria-label="تقویم شمسی">
+        <div class="jalali-date-picker-head"><button type="button" data-date-prev="transplant-date" aria-label="ماه قبل">‹</button><strong id="transplant-date-month"></strong><button type="button" data-date-next="transplant-date" aria-label="ماه بعد">›</button></div>
+        <div id="transplant-date-days" class="jalali-date-grid"></div>
+       </div>
+      </div></div>
+      <div><label for="end-date">تاریخ پایان پیش‌بینی‌شده (شمسی)</label><div class="jalali-date-wrap">
+       <input id="end-date" class="jalali-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۷/۱۵" aria-haspopup="dialog" aria-expanded="false">
+       <button class="date-picker-toggle" type="button" data-date-toggle="end-date" aria-label="نمایش تقویم پایان دوره">▦</button>
+       <div id="end-date-picker" class="jalali-date-picker hidden" role="dialog" aria-label="تقویم شمسی">
+        <div class="jalali-date-picker-head"><button type="button" data-date-prev="end-date" aria-label="ماه قبل">‹</button><strong id="end-date-month"></strong><button type="button" data-date-next="end-date" aria-label="ماه بعد">›</button></div>
+        <div id="end-date-days" class="jalali-date-grid"></div>
+       </div>
+      </div></div>
       <div><label for="substrate">بستر کشت</label><input id="substrate" maxlength="150" placeholder="مثلاً کوکوپیت و پرلیت"></div>
       <div><label for="density">تراکم بوته در مترمربع</label><input id="density" type="number" min="0.001" step="0.001"></div>
      </div>
@@ -190,7 +218,77 @@ let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], act
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
-function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"T00:00:00")):"—";}
+function faDate(v){return v?new Intl.DateTimeFormat("fa-IR").format(new Date(v+"T00:00:00")):"—";
+
+// تبدیل تقویم شمسی در مرورگر؛ داده‌ها در پایگاه داده به قالب استاندارد میلادی می‌مانند
+const JALALI_BREAKS=[-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+const jDiv=(a,b)=>Math.floor(a/b),jMod=(a,b)=>a-jDiv(a,b)*b;
+function jalCal(jy,withoutLeap=false){
+ const bl=JALALI_BREAKS.length,gy=jy+621;if(jy<JALALI_BREAKS[0]||jy>=JALALI_BREAKS[bl-1])throw new RangeError("سال خارج از محدوده تقویم است.");
+ let leapJ=-14,jp=JALALI_BREAKS[0],jm=0,jump=0;
+ for(let i=1;i<bl;i++){jm=JALALI_BREAKS[i];jump=jm-jp;if(jy<jm)break;leapJ+=jDiv(jump,33)*8+jDiv(jMod(jump,33),4);jp=jm;}
+ let n=jy-jp;leapJ+=jDiv(n,33)*8+jDiv(jMod(n,33)+3,4);if(jMod(jump,33)===4&&jump-n===4)leapJ++;
+ const leapG=jDiv(gy,4)-jDiv(jDiv(gy,100)+1,4)*3-150,march=20+leapJ-leapG;if(withoutLeap)return{leap:0,gy,march};
+ if(jump-n<6)n=n-jump+jDiv(jump+4,33)*33;let leap=jMod(jMod(n+1,33)-1,4);if(leap===-1)leap=4;return{leap,gy,march};
+}
+function gregorianToDay(gy,gm,gd){
+ let d=jDiv((gy+jDiv(gm-8,6)+100100)*1461,4)+jDiv(153*jMod(gm+9,12)+2,5)+gd-34840408;
+ return d-jDiv(jDiv(gy+100100+jDiv(gm-8,6),100)*3,4)+752;
+}
+function dayToGregorian(jdn){
+ let j=4*jdn+139361631;j=j+jDiv(jDiv(4*jdn+183187720,146097)*3,4)*4-3908;
+ const x=jDiv(jMod(j,1461),4)*5+308,gd=jDiv(jMod(x,153),5)+1,gm=jMod(jDiv(x,153),12)+1;
+ return{gy:jDiv(j,1461)-100100+jDiv(8-gm,6),gm,gd};
+}
+function jalaliToDay(jy,jm,jd){const r=jalCal(jy);return gregorianToDay(r.gy,3,r.march)+(jm-1)*31-jDiv(jm,7)*(jm-7)+jd-1;}
+function dayToJalali(jdn){
+ const g=dayToGregorian(jdn);let jy=g.gy-621;const r=jalCal(jy),first=gregorianToDay(g.gy,3,r.march);let k=jdn-first,jm,jd;
+ if(k>=0){if(k<=185){jm=1+jDiv(k,31);jd=jMod(k,31)+1;return{jy,jm,jd};}k-=186;}
+ else{jy--;k+=179;if(r.leap===1)k++;}jm=7+jDiv(k,30);jd=jMod(k,30)+1;return{jy,jm,jd};
+}
+function jalaliMonthLength(jy,jm){if(jm<=6)return 31;if(jm<=11)return 30;return jalCal(jy).leap===0?30:29;}
+function jalaliToGregorian(jy,jm,jd){
+ if(!Number.isInteger(jy)||!Number.isInteger(jm)||!Number.isInteger(jd)||jm<1||jm>12||jd<1||jd>jalaliMonthLength(jy,jm))throw new Error("تاریخ شمسی معتبر نیست.");
+ return dayToGregorian(jalaliToDay(jy,jm,jd));
+}
+function gregorianToJalali(gy,gm,gd){return dayToJalali(gregorianToDay(gy,gm,gd));}
+const faNumber=n=>new Intl.NumberFormat("fa-IR",{useGrouping:false}).format(n),jalaliMonths=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+const faDigitsToLatin=s=>String(s).replace(/[۰-۹٠-٩]/g,ch=>{const a="۰۱۲۳۴۵۶۷۸۹".indexOf(ch);return String(a>=0?a:"٠١٢٣٤٥٦٧٨٩".indexOf(ch));});
+function parseJalaliDate(value){
+ const raw=faDigitsToLatin(value).trim();if(!raw)return null;const parts=raw.split(/[\/.\-]/);
+ if(parts.length!==3||parts.some(p=>!/^\d{1,4}$/.test(p)))throw new Error("تاریخ را به صورت سال/ماه/روز شمسی وارد کنید؛ مانند ۱۴۰۵/۰۱/۱۵.");
+ const [jy,jm,jd]=parts.map(Number),g=jalaliToGregorian(jy,jm,jd);return String(g.gy).padStart(4,"0")+"-"+String(g.gm).padStart(2,"0")+"-"+String(g.gd).padStart(2,"0");
+}
+function isoToJalaliText(iso){
+ if(!iso)return"";const [gy,gm,gd]=iso.split("-").map(Number),j=gregorianToJalali(gy,gm,gd);
+ return faNumber(j.jy)+"/"+faNumber(String(j.jm).padStart(2,"0"))+"/"+faNumber(String(j.jd).padStart(2,"0"));
+}
+function setupJalaliDatePicker(inputId){
+ const input=$(inputId),picker=$(inputId+"-picker"),monthLabel=$(inputId+"-month"),daysHost=$(inputId+"-days"),wrap=input.closest(".jalali-date-wrap");
+ const today=new Date(),now=gregorianToJalali(today.getFullYear(),today.getMonth()+1,today.getDate());let view={jy:now.jy,jm:now.jm};
+ function close(){picker.classList.add("hidden");input.setAttribute("aria-expanded","false");}
+ function render(){
+  monthLabel.textContent=jalaliMonths[view.jm-1]+" "+faNumber(view.jy);daysHost.replaceChildren();
+  ["ش","ی","د","س","چ","پ","ج"].forEach(w=>daysHost.append(node("span","weekday",w)));
+  const g=jalaliToGregorian(view.jy,view.jm,1),offset=(new Date(Date.UTC(g.gy,g.gm-1,g.gd)).getUTCDay()+1)%7,count=Math.ceil((offset+jalaliMonthLength(view.jy,view.jm))/7)*7;
+  let selected=null;try{const iso=parseJalaliDate(input.value);if(iso)selected=isoToJalaliText(iso);}catch{}
+  const sp=selected?faDigitsToLatin(selected).split(/[\/.\-]/).map(Number):null;
+  for(let i=0;i<count;i++){
+   const day=i-offset+1;if(day<1||day>jalaliMonthLength(view.jy,view.jm)){daysHost.append(node("span","empty-day",""));continue;}
+   const b=node("button","",faNumber(day));b.type="button";
+   if(view.jy===now.jy&&view.jm===now.jm&&day===now.jd)b.classList.add("today");
+   if(sp&&sp[0]===view.jy&&sp[1]===view.jm&&sp[2]===day)b.classList.add("selected");
+   b.addEventListener("click",()=>{input.value=faNumber(view.jy)+"/"+faNumber(String(view.jm).padStart(2,"0"))+"/"+faNumber(String(day).padStart(2,"0"));input.setCustomValidity("");close();input.dispatchEvent(new Event("change",{bubbles:true}));});daysHost.append(b);
+  }
+ }
+ function open(){document.querySelectorAll(".jalali-date-picker").forEach(p=>p.classList.add("hidden"));document.querySelectorAll(".jalali-date-input").forEach(i=>i.setAttribute("aria-expanded","false"));picker.classList.remove("hidden");input.setAttribute("aria-expanded","true");render();}
+ function shift(delta){view.jm+=delta;if(view.jm<1){view.jm=12;view.jy--;}else if(view.jm>12){view.jm=1;view.jy++;}render();}
+ wrap.querySelector("[data-date-toggle]").addEventListener("click",()=>picker.classList.contains("hidden")?open():close());
+ wrap.querySelector("[data-date-prev]").addEventListener("click",()=>shift(-1));wrap.querySelector("[data-date-next]").addEventListener("click",()=>shift(1));
+ input.addEventListener("focus",open);input.addEventListener("input",()=>input.setCustomValidity(""));
+ input.addEventListener("blur",()=>{if(!input.value.trim())return;try{const iso=parseJalaliDate(input.value);input.value=isoToJalaliText(iso);input.setCustomValidity("");}catch{input.setCustomValidity("تاریخ شمسی معتبر نیست. قالب سال/ماه/روز را وارد کنید.");}});
+ document.addEventListener("pointerdown",event=>{if(!wrap.contains(event.target))close();});
+}
 function normalizeGreenhouseName(value){
  return String(value??"").replace(/[يى]/g,"ی").replace(/ك/g,"ک")
   .replace(/[\u200c\u200d]/g," ").trim().replace(/\s+/g," ").toLowerCase();
@@ -499,17 +597,20 @@ $("greenhouse-form").addEventListener("submit",async ev=>{
 $("cycle-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("cycle-message");
  if(!$("cycle-greenhouse").value){notice("cycle-message","یک گلخانه را انتخاب کنید.",true);return;}
- const start=$("transplant-date").value,end=$("end-date").value;
+ let start,end;
+ try{start=parseJalaliDate($("transplant-date").value);end=parseJalaliDate($("end-date").value);}
+ catch(error){notice("cycle-message",error.message||"تاریخ شمسی معتبر نیست.",true);return;}
  if(start&&end&&end<start){notice("cycle-message","تاریخ پایان نمی‌تواند پیش از تاریخ انتقال نشا باشد.",true);return;}
  const density=$("density").value;
- const payload={greenhouse_id:$("cycle-greenhouse").value,crop_name:$("crop-name").value.trim(),cultivar:$("cultivar").value.trim()||null,rootstock:$("rootstock").value.trim()||null,transplant_date:start||null,expected_end_date:end||null,substrate_type:$("substrate").value.trim()||null,plant_density_m2:density?Number(density):null,notes:$("cycle-notes").value.trim()||null};
+ const payload={greenhouse_id:$("cycle-greenhouse").value,crop_name:$("crop-name").value.trim(),cultivar:$("cultivar").value.trim()||null,rootstock:$("rootstock").value.trim()||null,transplant_date:start,expected_end_date:end,substrate_type:$("substrate").value.trim()||null,plant_density_m2:density?Number(density):null,notes:$("cycle-notes").value.trim()||null};
  $("save-cycle").disabled=true;
  const {error}=await supabase.from("crop_cycles").insert(payload);
  $("save-cycle").disabled=false;
  if(error){notice("cycle-message","ثبت دوره کشت ناموفق بود: "+error.message,true);return;}
  notice("cycle-message","دوره کشت با موفقیت ثبت شد.");$("cycle-form").reset();await loadCycles();
 });
-$("refresh-greenhouses").addEventListener("click",loadGreenhouses);$("refresh-cycles").addEventListener("click",loadCycles);
+setupJalaliDatePicker("transplant-date");setupJalaliDatePicker("end-date");
+ $("refresh-greenhouses").addEventListener("click",loadGreenhouses);$("refresh-cycles").addEventListener("click",loadCycles);
 document.querySelectorAll("[data-tab]").forEach(btn=>btn.addEventListener("click",()=>{
  document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b===btn));
  document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===btn.dataset.tab));
