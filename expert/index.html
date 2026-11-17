@@ -46,8 +46,8 @@
 <div class="divider"></div><h2>شرح مسئله گلخانه‌دار</h2><p id="case-description"></p>
 <div class="divider"></div><h2>مدارک و تصاویر</h2><div id="attachments" class="empty">—</div>
 <div class="divider"></div><h2>نتایج آزمایشگاهی</h2><div id="labs" class="empty">—</div>
-<div class="divider"></div><h2>گفت‌وگوی پرونده</h2><p class="muted">پیام‌ها، پرسش‌های تخصصی و پاسخ‌های گلخانه‌دار در یک مسیر زمانی نمایش داده می‌شوند.</p><div id="conversation" class="empty">هنوز گفت‌وگویی در این پرونده ثبت نشده است.</div>
-<form id="conversation-form"><label for="conversation-type">نوع ارتباط</label><select id="conversation-type"><option value="message">ارسال پیام</option><option value="question">طرح پرسش تخصصی</option></select><label for="conversation-text">متن پیام یا پرسش</label><textarea id="conversation-text" maxlength="5000" required placeholder="متن خود را بنویسید…"></textarea><label id="conversation-required-wrap" class="hidden"><input id="conversation-required" type="checkbox" checked style="width:auto"> پاسخ به این پرسش الزامی است</label><div class="actions"><button id="send-conversation" type="submit">ارسال در گفت‌وگو</button></div><div id="conversation-msg" class="notice hidden"></div></form>
+<div class="divider"></div><h2>ارسال پیام</h2><p class="muted">پیام‌ها، پرسش‌های تخصصی و پاسخ‌های گلخانه‌دار در این بخش نمایش داده می‌شوند. پیام عادی فقط برای فرستنده، گیرنده و مدیر سامانه قابل مشاهده است.</p><div id="conversation" class="empty">هنوز پیامی یا پرسشی در این پرونده ثبت نشده است.</div>
+<form id="conversation-form"><label for="conversation-type">نوع ارسال</label><select id="conversation-type"><option value="message">ارسال پیام</option><option value="question">طرح پرسش تخصصی</option></select><div id="conversation-recipient-wrap"><label for="conversation-recipient">گیرنده پیام</label><select id="conversation-recipient" required><option value="">در حال دریافت گیرندگان…</option></select></div><label for="conversation-text">متن پیام یا پرسش</label><textarea id="conversation-text" maxlength="5000" required placeholder="متن خود را بنویسید…"></textarea><label id="conversation-required-wrap" class="hidden"><input id="conversation-required" type="checkbox" checked style="width:auto"> پاسخ به این پرسش الزامی است</label><div class="actions"><button id="send-conversation" type="submit">ثبت</button></div><div id="conversation-msg" class="notice hidden"></div></form>
 <div class="divider"></div><h2>نظر تخصصی کارشناس (داخلی)</h2><p class="muted">این بخش یادداشت تخصصی پرونده است و به گلخانه‌دار نمایش داده نمی‌شود.</p><form id="opinion-form"><label>فرضیه‌های تشخیصی (هر مورد در یک خط)</label><textarea id="hypotheses" placeholder="فرضیه اول&#10;فرضیه دوم"></textarea><label>شواهد و داده‌های مورد اتکا</label><textarea id="evidence"></textarea><label>تحلیل تخصصی</label><textarea id="analysis" required></textarea><label>توصیه‌های تخصصی (هر مورد در یک خط)</label><textarea id="recommendations"></textarea><div class="actions"><button id="save-opinion">ذخیره نظر تخصصی</button></div><div id="opinion-msg" class="notice hidden"></div></form>
 <div id="final-draft-wrap" class="hidden"><div class="divider"></div><h2>تهیه پیش‌نویس پاسخ نهایی</h2><p class="muted">پیش‌نویس برای تأیید مسئول کارشناسی آماده می‌شود و در این مرحله برای گلخانه‌دار منتشر نخواهد شد.</p><form id="final-form"><label>متن پاسخ نهایی</label><textarea id="final-text" required></textarea><label>توصیه‌های اجرایی (هر مورد در یک خط)</label><textarea id="final-recommendations"></textarea><label>هشدارها (هر مورد در یک خط)</label><textarea id="final-warnings"></textarea><div class="actions"><button>ثبت پیش‌نویس برای تأیید</button><button type="button" id="publish-final">تأیید و انتشار پاسخ نهایی</button></div><div id="final-msg" class="notice hidden"></div></form></div>
 </section></section></main>
@@ -219,7 +219,7 @@ async function openCase(c,a){
  const acts=$("case-actions");acts.replaceChildren();
  if(a.is_lead&&c.status==="assigned"){const b=el("button","","شروع بررسی کارشناسی");b.addEventListener("click",async()=>{const {error}=await supabase.rpc("start_lead_case_review",{p_case_id:c.id});if(error){alert("تغییر وضعیت ناموفق بود: "+error.message);return;}await loadAssigned();c.status="under_review";await openCase(c,a);});acts.append(b);}
  show("final-draft-wrap",a.is_lead);
- await loadConversation(c.id);
+ await Promise.all([loadConversation(c.id),loadMessageRecipients(c.id)]);
  await Promise.all([loadAttachments(c.id),loadLabs(c.id),loadOpinion(c.id),loadExistingFinalDraft(c.id)]);
  startCaseAutoRefresh(c.id);
  $("detail").scrollIntoView({behavior:"smooth"});
@@ -243,7 +243,7 @@ async function loadLabs(id){
 async function loadConversation(id){
  const host=$("conversation");host.replaceChildren();host.className="";
  const [messageResult,questionResult]=await Promise.all([
-  supabase.from("case_messages").select("sender_user_id,message_text,created_at").eq("case_id",id).eq("is_official",true).order("created_at"),
+  supabase.from("case_messages").select("sender_user_id,recipient_user_id,sender_role,recipient_role,message_text,created_at").eq("case_id",id).eq("is_official",true).order("created_at"),
   supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at")
  ]);
  if(messageResult.error){host.className="empty";host.textContent="دریافت پیام‌های گفت‌وگو ناموفق بود: "+messageResult.error.message;return;}
@@ -265,8 +265,11 @@ async function loadConversation(id){
  for(const event of events){
   const card=el("article","item");
   if(event.kind==="message"){
-   const m=event.item;
-   card.append(el("span","tag","پیام"),el("h3","",m.sender_user_id===user.id?"پیام شما":"پیام گلخانه‌دار"),el("p","",m.message_text),el("div","meta",new Date(m.created_at).toLocaleString("fa-IR")));
+   const m=event.item,roleLabels={admin:"مدیر سامانه",grower:"گلخانه‌دار پرونده",expert:"کارشناس پرونده"};
+   const heading=m.sender_user_id===user.id
+    ?"پیام شما به "+(roleLabels[m.recipient_role]||"گیرنده انتخاب‌شده")
+    :m.sender_role==="admin"?"پیام مدیر سامانه":m.sender_role==="grower"?"پیام گلخانه‌دار":"پیام دریافتی";
+   card.append(el("span","tag","پیام"),el("h3","",heading),el("p","",m.message_text),el("div","meta",new Date(m.created_at).toLocaleString("fa-IR")));
   }else if(event.kind==="question"){
    const q=event.item;
    card.append(el("span","tag","پرسش تخصصی"),el("h3","","پرسش شما از گلخانه‌دار"),el("p","",q.question_text),el("div","meta",(q.is_required?"پاسخ الزامی":"پاسخ اختیاری")+" · "+new Date(q.created_at).toLocaleString("fa-IR")));
@@ -279,9 +282,31 @@ async function loadConversation(id){
   host.append(card);
  }
 }
+async function loadMessageRecipients(id){
+ const select=$("conversation-recipient");
+ select.replaceChildren(new Option("در حال دریافت گیرندگان…",""));
+ select.disabled=true;
+ const {data,error}=await supabase.rpc("get_case_message_recipients",{p_case_id:id});
+ if(error){
+  select.replaceChildren(new Option("دریافت گیرندگان ناموفق بود",""));
+  msg("conversation-msg","فهرست گیرندگان پیام دریافت نشد: "+error.message,true);
+  return;
+ }
+ select.replaceChildren(new Option("انتخاب گیرنده پیام",""));
+ for(const recipient of (data||[])){
+  const option=new Option(recipient.display_label,recipient.user_id);
+  option.dataset.role=recipient.recipient_role;
+  select.add(option);
+ }
+ select.disabled=!(data||[]).length;
+ if(!(data||[]).length)select.replaceChildren(new Option("گیرنده فعالی برای این پرونده وجود ندارد",""));
+}
 $("conversation-type").addEventListener("change",()=>{
  const asking=$("conversation-type").value==="question";
  $("conversation-required-wrap").classList.toggle("hidden",!asking);
+ $("conversation-recipient-wrap").classList.toggle("hidden",asking);
+ $("conversation-recipient").required=!asking;
+ $("conversation-recipient").disabled=asking||$("conversation-recipient").options.length<2;
  $("conversation-text").placeholder=asking?"پرسش تخصصی خود را بنویسید…":"پیام خود را بنویسید…";
 });
 $("conversation-form").addEventListener("submit",async ev=>{
@@ -290,12 +315,17 @@ $("conversation-form").addEventListener("submit",async ev=>{
  if(!textValue)return;
  const button=$("send-conversation");button.disabled=true;
  try{
-  const result=type==="question"
-   ?await supabase.from("case_questions").insert({case_id:activeCase.id,asked_by:user.id,question_text:textValue,is_required:$("conversation-required").checked})
-   :await supabase.from("case_messages").insert({case_id:activeCase.id,sender_user_id:user.id,message_text:textValue,is_official:true});
+  let result;
+  if(type==="question"){
+   result=await supabase.from("case_questions").insert({case_id:activeCase.id,asked_by:user.id,question_text:textValue,is_required:$("conversation-required").checked});
+  }else{
+   const recipientSelect=$("conversation-recipient"),recipientId=recipientSelect.value,recipientRole=recipientSelect.selectedOptions[0]?.dataset.role;
+   if(!recipientId||!recipientRole)throw new Error("گیرنده پیام را انتخاب کنید.");
+   result=await supabase.from("case_messages").insert({case_id:activeCase.id,sender_user_id:user.id,sender_role:"expert",recipient_user_id:recipientId,recipient_role:recipientRole,message_text:textValue,is_official:true});
+  }
   if(result.error)throw result.error;
   $("conversation-text").value="";
-  msg("conversation-msg",type==="question"?"پرسش تخصصی در گفت‌وگو ثبت شد.":"پیام در گفت‌وگو ارسال شد.");
+  msg("conversation-msg",type==="question"?"پرسش تخصصی ثبت شد.":"پیام ارسال شد.");
   await loadConversation(activeCase.id);
  }catch(error){msg("conversation-msg","ثبت مورد در گفت‌وگو ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}
  finally{button.disabled=false;}
