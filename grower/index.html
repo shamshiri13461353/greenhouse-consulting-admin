@@ -142,11 +142,12 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     </form>
     <div id="attachment-list" class="empty">هنوز مدرکی پیوست نشده است.</div>
     <div class="divider"></div>
-    <h2>گفت‌وگوی پرونده</h2>
-    <p class="muted">پیام‌ها، پرسش‌های تخصصی و پاسخ‌های شما در یک مسیر زمانی ثبت و نمایش داده می‌شوند.</p>
-    <div id="case-conversation-list" class="empty">هنوز گفت‌وگویی در این پرونده ثبت نشده است.</div>
+    <h2>ارسال پیام</h2>
+    <p class="muted">گیرنده را انتخاب کنید. پیام فقط برای فرستنده، گیرنده و مدیر سامانه قابل مشاهده است.</p>
+    <div id="case-conversation-list" class="empty">هنوز پیامی یا پرسشی در این پرونده ثبت نشده است.</div>
     <form id="case-conversation-form">
-     <label for="case-conversation-text">ارسال پیام به کارشناس</label><textarea id="case-conversation-text" maxlength="5000" required placeholder="پیام خود را بنویسید…"></textarea>
+     <label for="case-message-recipient">گیرنده پیام</label><select id="case-message-recipient" required><option value="">در حال دریافت گیرندگان…</option></select>
+     <label for="case-conversation-text">متن پیام</label><textarea id="case-conversation-text" maxlength="5000" required placeholder="پیام خود را بنویسید…"></textarea>
      <div class="actions"><button id="send-case-conversation" type="submit">ارسال پیام</button></div>
      <div id="case-conversation-notice" class="notice hidden"></div>
     </form>
@@ -480,7 +481,7 @@ async function openCase(id){
    if(error){alert("درخواست بازگشایی ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
   });actions.append(reopen);
  }
- await loadCaseConversation(id);
+ await Promise.all([loadCaseConversation(id),loadCaseMessageRecipients(id)]);
  await Promise.all([loadAttachments(id),loadCaseLabResults(id),loadFinalResponses(id)]);
  startCaseMessageAutoRefresh(id);
  $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
@@ -502,7 +503,7 @@ async function loadAttachments(id){
 async function loadCaseConversation(id){
  const host=$("case-conversation-list");host.replaceChildren();host.className="";
  const [messageResult,questionResult]=await Promise.all([
-  supabase.from("case_messages").select("id,sender_user_id,message_text,is_official,created_at").eq("case_id",id).eq("is_official",true).order("created_at"),
+  supabase.from("case_messages").select("id,sender_user_id,recipient_user_id,sender_role,recipient_role,message_text,is_official,created_at").eq("case_id",id).eq("is_official",true).order("created_at"),
   supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at")
  ]);
  if(messageResult.error){host.className="empty";host.textContent="دریافت پیام‌های پرونده ناموفق بود: "+messageResult.error.message;return;}
@@ -525,8 +526,11 @@ async function loadCaseConversation(id){
  for(const event of events){
   const card=node("article","item");
   if(event.kind==="message"){
-   const m=event.item;
-   card.append(node("span","tag","پیام"),node("h3","",m.sender_user_id===currentUser.id?"پیام شما":"پیام کارشناس / سامانه"),node("p","",m.message_text),node("div","meta",new Date(m.created_at).toLocaleString("fa-IR")));
+   const m=event.item,roleLabels={admin:"مدیر سامانه",expert:"کارشناس پرونده",grower:"گلخانه‌دار پرونده"};
+   const heading=m.sender_user_id===currentUser.id
+    ?"پیام شما به "+(roleLabels[m.recipient_role]||"گیرنده انتخاب‌شده")
+    :m.sender_role==="admin"?"پیام مدیر سامانه":m.sender_role==="expert"?"پیام کارشناس پرونده":"پیام دریافتی";
+   card.append(node("span","tag","پیام"),node("h3","",heading),node("p","",m.message_text),node("div","meta",new Date(m.created_at).toLocaleString("fa-IR")));
   }else if(event.kind==="question"){
    const q=event.item,questionAnswers=answers.filter(a=>a.question_id===q.id);
    card.append(node("span","tag","پرسش تخصصی"),node("h3","","پرسش کارشناس"),node("p","",q.question_text),node("div","meta",(q.is_required?"پاسخ الزامی":"پاسخ اختیاری")+" · "+new Date(q.created_at).toLocaleString("fa-IR")));
@@ -553,6 +557,26 @@ async function loadCaseConversation(id){
   }
   host.append(card);
  }
+}
+
+async function loadCaseMessageRecipients(id){
+ const select=$("case-message-recipient");
+ select.replaceChildren(new Option("در حال دریافت گیرندگان…",""));
+ select.disabled=true;
+ const {data,error}=await supabase.rpc("get_case_message_recipients",{p_case_id:id});
+ if(error){
+  select.replaceChildren(new Option("دریافت گیرندگان ناموفق بود",""));
+  notice("case-conversation-notice","فهرست گیرندگان پیام دریافت نشد: "+error.message,true);
+  return;
+ }
+ select.replaceChildren(new Option("انتخاب گیرنده پیام",""));
+ for(const recipient of (data||[])){
+  const option=new Option(recipient.display_label,recipient.user_id);
+  option.dataset.role=recipient.recipient_role;
+  select.add(option);
+ }
+ select.disabled=!(data||[]).length;
+ if(!(data||[]).length)select.replaceChildren(new Option("گیرنده فعالی برای این پرونده وجود ندارد",""));
 }
 
 async function loadCaseLabResults(id){
@@ -648,9 +672,12 @@ $("attachment-form").addEventListener("submit",async ev=>{
 });
 $("case-conversation-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("case-conversation-notice");if(!activeCaseId)return;
- const message=$("case-conversation-text").value.trim();if(!message)return;
+ const message=$("case-conversation-text").value.trim(),recipientSelect=$("case-message-recipient");
+ const recipientId=recipientSelect.value,recipientRole=recipientSelect.selectedOptions[0]?.dataset.role;
+ if(!message)return;
+ if(!recipientId||!recipientRole){notice("case-conversation-notice","گیرنده پیام را انتخاب کنید.",true);return;}
  $("send-case-conversation").disabled=true;
- const {error}=await supabase.from("case_messages").insert({case_id:activeCaseId,sender_user_id:currentUser.id,message_text:message,is_official:true});
+ const {error}=await supabase.from("case_messages").insert({case_id:activeCaseId,sender_user_id:currentUser.id,sender_role:"grower",recipient_user_id:recipientId,recipient_role:recipientRole,message_text:message,is_official:true});
  $("send-case-conversation").disabled=false;
  if(error){
   console.error("[case_messages insert]",{message:error.message,code:error.code,details:error.details,hint:error.hint,status:error.status});
