@@ -142,17 +142,14 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     </form>
     <div id="attachment-list" class="empty">هنوز مدرکی پیوست نشده است.</div>
     <div class="divider"></div>
-    <h2>مکاتبات رسمی</h2>
-    <div id="case-message-list" class="empty">پیامی ثبت نشده است.</div>
-    <form id="case-message-form">
-     <label for="case-message-text">پیام به کارشناس / سامانه</label><textarea id="case-message-text" maxlength="5000" required placeholder="پیام خود را بنویسید…"></textarea>
-     <div class="actions"><button id="send-case-message" type="submit">ارسال پیام رسمی</button></div>
-     <div id="case-message-notice" class="notice hidden"></div>
+    <h2>گفت‌وگوی پرونده</h2>
+    <p class="muted">پیام‌ها، پرسش‌های تخصصی و پاسخ‌های شما در یک مسیر زمانی ثبت و نمایش داده می‌شوند.</p>
+    <div id="case-conversation-list" class="empty">هنوز گفت‌وگویی در این پرونده ثبت نشده است.</div>
+    <form id="case-conversation-form">
+     <label for="case-conversation-text">ارسال پیام به کارشناس</label><textarea id="case-conversation-text" maxlength="5000" required placeholder="پیام خود را بنویسید…"></textarea>
+     <div class="actions"><button id="send-case-conversation" type="submit">ارسال پیام</button></div>
+     <div id="case-conversation-notice" class="notice hidden"></div>
     </form>
-    <div class="divider"></div>
-    <h2>پرسش‌های تکمیلی کارشناس</h2>
-    <p class="muted">پرسش‌های ثبت‌شده توسط کارشناس در این بخش نمایش داده می‌شوند. پاسخ شما مستقیماً در همان پرونده ثبت خواهد شد.</p>
-    <div id="case-questions-list" class="empty">در حال دریافت پرسش‌ها…</div>
     <div class="divider"></div>
     <h2>نتایج آزمایشگاهی مرتبط</h2>
     <div id="case-lab-list" class="empty">نتیجه آزمایشگاهی ثبت نشده است.</div>
@@ -394,7 +391,7 @@ $("forgot-password").addEventListener("click",async()=>{
  notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");
 });
 function stopCaseMessageAutoRefresh(){if(caseMessageRefreshTimer){clearInterval(caseMessageRefreshTimer);caseMessageRefreshTimer=null;}caseMessageRefreshCaseId=null;}
-async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseMessages(id);}finally{caseMessageRefreshBusy=false;}}
+async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseConversation(id);}finally{caseMessageRefreshBusy=false;}}
 function startCaseMessageAutoRefresh(id){stopCaseMessageAutoRefresh();caseMessageRefreshCaseId=id;caseMessageRefreshTimer=setInterval(refreshCaseMessages,20000);}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshCaseMessages();});
 async function logout(){
@@ -464,7 +461,7 @@ async function loadCases(){
 async function openCase(id){
  stopCaseMessageAutoRefresh();activeCaseId=id;show("case-detail",true);
  $("case-detail-title").textContent="در حال بارگذاری پرونده…";
- $("attachment-list").textContent="در حال دریافت…";$("case-message-list").textContent="در حال دریافت…";$("final-response-list").textContent="در حال دریافت…";
+ $("attachment-list").textContent="در حال دریافت…";$("case-conversation-list").textContent="در حال دریافت گفت‌وگو…";$("final-response-list").textContent="در حال دریافت…";
  const {data:c,error}=await supabase.from("cases").select("id,case_number,crop_cycle_id,title,problem_category,description,severity,status,created_at").eq("id",id).maybeSingle();
  if(error||!c){$("case-detail-title").textContent="دریافت پرونده ناموفق بود";$("case-detail-meta").textContent=error?.message||"پرونده در دسترس نیست.";return;}
  $("case-detail-title").textContent="پرونده "+c.case_number+" ـ "+c.title;
@@ -483,8 +480,8 @@ async function openCase(id){
    if(error){alert("درخواست بازگشایی ناموفق بود: "+error.message);return;}await loadCases();await openCase(id);
   });actions.append(reopen);
  }
- await loadCaseMessages(id);
- await Promise.all([loadAttachments(id),loadCaseQuestions(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ await loadCaseConversation(id);
+ await Promise.all([loadAttachments(id),loadCaseLabResults(id),loadFinalResponses(id)]);
  startCaseMessageAutoRefresh(id);
  $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -502,50 +499,57 @@ async function loadAttachments(id){
   });row.append(name,meta,btn);host.append(row);
  }
 }
-async function loadCaseMessages(id){
- const host=$("case-message-list");host.replaceChildren();
- const {data,error}=await supabase.from("case_messages").select("id,sender_user_id,message_text,is_official,created_at").eq("case_id",id).eq("is_official",true).order("created_at");
- if(error){host.textContent="دریافت مکاتبات ناموفق بود: "+error.message;return;}
- if(!data?.length){host.className="empty";host.textContent="هنوز پیام رسمی ثبت نشده است.";return;}
- host.className="";
- for(const m of data){const row=node("div","item"),who=node("strong","",m.sender_user_id===currentUser.id?"پیام شما":"پیام کارشناس / سامانه"),body=node("p","",m.message_text),date=node("div","meta",new Date(m.created_at).toLocaleString("fa-IR"));row.append(who,body,date);host.append(row);}
-}
-
-async function loadCaseQuestions(id){
- const host=$("case-questions-list");host.replaceChildren();
- const {data:questions,error}=await supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at");
- if(error){host.className="empty";host.textContent="دریافت پرسش‌های کارشناس ناموفق بود: "+error.message;return;}
- if(!questions?.length){host.className="empty";host.textContent="هنوز پرسش تکمیلی از سوی کارشناس ثبت نشده است.";return;}
+async function loadCaseConversation(id){
+ const host=$("case-conversation-list");host.replaceChildren();host.className="";
+ const [messageResult,questionResult]=await Promise.all([
+  supabase.from("case_messages").select("id,sender_user_id,message_text,is_official,created_at").eq("case_id",id).eq("is_official",true).order("created_at"),
+  supabase.from("case_questions").select("id,question_text,is_required,created_at,closed_at").eq("case_id",id).order("created_at")
+ ]);
+ if(messageResult.error){host.className="empty";host.textContent="دریافت پیام‌های پرونده ناموفق بود: "+messageResult.error.message;return;}
+ if(questionResult.error){host.className="empty";host.textContent="دریافت پرسش‌های پرونده ناموفق بود: "+questionResult.error.message;return;}
+ const messages=messageResult.data||[],questions=questionResult.data||[];
  const questionIds=questions.map(q=>q.id);
- const {data:answers,error:answerError}=await supabase.from("case_answers").select("id,question_id,answer_text,created_at").in("question_id",questionIds).order("created_at");
- if(answerError){host.className="empty";host.textContent="دریافت پاسخ‌های ثبت‌شده ناموفق بود: "+answerError.message;return;}
+ let answers=[];
+ if(questionIds.length){
+  const result=await supabase.from("case_answers").select("id,question_id,answer_text,created_at,answered_by").in("question_id",questionIds).order("created_at");
+  if(result.error){host.className="empty";host.textContent="دریافت پاسخ‌های گفت‌وگو ناموفق بود: "+result.error.message;return;}
+  answers=result.data||[];
+ }
+ const events=[
+  ...messages.map(item=>({kind:"message",at:item.created_at,item})),
+  ...questions.map(item=>({kind:"question",at:item.created_at,item})),
+  ...answers.map(item=>({kind:"answer",at:item.created_at,item}))
+ ].sort((a,b)=>new Date(a.at)-new Date(b.at));
+ if(!events.length){host.className="empty";host.textContent="هنوز پیامی یا پرسشی در این پرونده ثبت نشده است.";return;}
  host.className="";
- for(const q of questions){
+ for(const event of events){
   const card=node("article","item");
-  card.append(node("h3","","پرسش کارشناس"),node("p","",q.question_text));
-  card.append(node("div","meta",(q.is_required?"پاسخ الزامی":"پاسخ اختیاری")+" · ثبت: "+new Date(q.created_at).toLocaleString("fa-IR")));
-  const questionAnswers=(answers||[]).filter(a=>a.question_id===q.id);
-  for(const answer of questionAnswers){
-   card.append(node("strong","","پاسخ شما"),node("p","",answer.answer_text),node("div","meta","ارسال: "+new Date(answer.created_at).toLocaleString("fa-IR")));
-  }
-  if(q.closed_at){
-   card.append(node("div","notice","این پرسش توسط کارشناس بسته شده است."));
-  }else if(!questionAnswers.length){
-   const form=node("form","");const label=node("label","","پاسخ به پرسش");const input=node("textarea","");input.required=true;input.maxLength=5000;input.placeholder="پاسخ خود را بنویسید…";
-   const actions=node("div","actions");const submit=node("button","","ارسال پاسخ");const status=node("div","notice hidden","");
-   actions.append(submit);form.append(label,input,actions,status);
-   form.addEventListener("submit",async ev=>{
-    ev.preventDefault();const answerText=input.value.trim();if(!answerText)return;
-    submit.disabled=true;
-    const {error}=await supabase.from("case_answers").insert({question_id:q.id,answered_by:currentUser.id,answer_text:answerText});
-    submit.disabled=false;
-    if(error){status.textContent="ارسال پاسخ ناموفق بود: "+error.message;status.classList.remove("hidden");status.classList.add("error");return;}
-    status.textContent="پاسخ شما با موفقیت ثبت شد.";status.classList.remove("hidden","error");
-    await loadCaseQuestions(id);
-   });
-   card.append(form);
+  if(event.kind==="message"){
+   const m=event.item;
+   card.append(node("span","tag","پیام"),node("h3","",m.sender_user_id===currentUser.id?"پیام شما":"پیام کارشناس / سامانه"),node("p","",m.message_text),node("div","meta",new Date(m.created_at).toLocaleString("fa-IR")));
+  }else if(event.kind==="question"){
+   const q=event.item,questionAnswers=answers.filter(a=>a.question_id===q.id);
+   card.append(node("span","tag","پرسش تخصصی"),node("h3","","پرسش کارشناس"),node("p","",q.question_text),node("div","meta",(q.is_required?"پاسخ الزامی":"پاسخ اختیاری")+" · "+new Date(q.created_at).toLocaleString("fa-IR")));
+   if(q.closed_at){
+    card.append(node("div","notice","این پرسش توسط کارشناس بسته شده است."));
+   }else if(!questionAnswers.length){
+    const form=node("form",""),label=node("label","","پاسخ به پرسش"),input=node("textarea","");
+    input.required=true;input.maxLength=5000;input.placeholder="پاسخ خود را بنویسید…";
+    const actions=node("div","actions"),submit=node("button","","ارسال پاسخ"),status=node("div","notice hidden","");
+    actions.append(submit);form.append(label,input,actions,status);
+    form.addEventListener("submit",async ev=>{
+     ev.preventDefault();const answerText=input.value.trim();if(!answerText)return;
+     submit.disabled=true;
+     const {error}=await supabase.from("case_answers").insert({question_id:q.id,answered_by:currentUser.id,answer_text:answerText});
+     submit.disabled=false;
+     if(error){status.textContent="ارسال پاسخ ناموفق بود: "+error.message;status.classList.remove("hidden");status.classList.add("error");return;}
+     await loadCaseConversation(id);
+    });
+    card.append(form);
+   }
   }else{
-   card.append(node("div","notice","پاسخ شما ثبت شده و در انتظار بررسی کارشناس است."));
+   const answer=event.item;
+   card.append(node("span","tag","پاسخ"),node("h3","","پاسخ شما"),node("p","",answer.answer_text),node("div","meta",new Date(answer.created_at).toLocaleString("fa-IR")));
   }
   host.append(card);
  }
@@ -642,18 +646,18 @@ $("attachment-form").addEventListener("submit",async ev=>{
  }
  $("upload-files").disabled=false;$("attachment-form").reset();notice("attachment-message","مدارک با موفقیت بارگذاری شدند.");await loadAttachments(activeCaseId);
 });
-$("case-message-form").addEventListener("submit",async ev=>{
- ev.preventDefault();clearNotice("case-message-notice");if(!activeCaseId)return;
- const message=$("case-message-text").value.trim();if(!message)return;
- $("send-case-message").disabled=true;
+$("case-conversation-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();clearNotice("case-conversation-notice");if(!activeCaseId)return;
+ const message=$("case-conversation-text").value.trim();if(!message)return;
+ $("send-case-conversation").disabled=true;
  const {error}=await supabase.from("case_messages").insert({case_id:activeCaseId,sender_user_id:currentUser.id,message_text:message,is_official:true});
- $("send-case-message").disabled=false;
+ $("send-case-conversation").disabled=false;
  if(error){
   console.error("[case_messages insert]",{message:error.message,code:error.code,details:error.details,hint:error.hint,status:error.status});
   const diagnostic=[error.message,error.code?("کد: "+error.code):"",error.details?("جزئیات: "+error.details):"",error.hint?("راهنما: "+error.hint):""].filter(Boolean).join(" | ");
-  notice("case-message-notice","ارسال پیام ناموفق بود: "+diagnostic,true);return;
+  notice("case-conversation-notice","ارسال پیام ناموفق بود: "+diagnostic,true);return;
  }
- $("case-message-text").value="";notice("case-message-notice","پیام رسمی ارسال شد.");await loadCaseMessages(activeCaseId);
+ $("case-conversation-text").value="";notice("case-conversation-notice","پیام ارسال شد.");await loadCaseConversation(activeCaseId);
 });
 $("refresh-cases").addEventListener("click",loadCases);
 $("close-case-detail").addEventListener("click",()=>{stopCaseMessageAutoRefresh();activeCaseId=null;show("case-detail",false);});
