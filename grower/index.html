@@ -627,7 +627,6 @@ document.querySelectorAll("[data-tab]").forEach(btn=>btn.addEventListener("click
 
 const statusLabels={draft:"پیش‌نویس",awaiting_information:"نیازمند اطلاعات تکمیلی",ready_for_review:"در انتظار بررسی",awaiting_quote_approval:"در انتظار تأیید هزینه",awaiting_payment:"در انتظار پرداخت",assigned:"ارجاع‌شده به کارشناس",under_review:"در حال بررسی",awaiting_expert_input:"در انتظار نظر تخصصی",awaiting_final_approval:"در انتظار تأیید پاسخ",answered:"پاسخ داده‌شده",follow_up:"پیگیری",closed:"بسته‌شده",reopened:"بازگشایی‌شده",cancelled:"لغوشده"};
 const categoryLabels={pests_diseases:"آفات و بیماری‌ها",nutrition:"تغذیه گیاه",environmental_stress:"تنش‌های محیطی",physiology:"فیزیولوژی و رشد",irrigation_water:"آبیاری و کیفیت آب",substrate_roots:"بستر کشت و ریشه",other:"سایر"};
-const safeName=s=>String(s||"").replace(/[\\/:*?"<>|]/g,"_").slice(0,100);
 async function loadCases(){
  const host=$("case-list");host.textContent="در حال دریافت پرونده‌های شما…";
  let data;
@@ -822,7 +821,7 @@ $("attachment-form").addEventListener("submit",async ev=>{
  if(fileTypes.some(item=>!item.mime)){notice("attachment-message","قالب فایل مجاز نیست. فقط JPG، PNG، WEBP، PDF، DOC، DOCX، XLS و XLSX پذیرفته می‌شود.",true);return;}
  $("upload-files").disabled=true;
  for(const {file,mime} of fileTypes){
-  const path=activeCaseId+"/"+crypto.randomUUID()+"_"+safeName(file.name);
+   const path=activeCaseId+"/"+crypto.randomUUID()+"."+ext;
   const {error:uploadError}=await supabase.storage.from("case-files").upload(path,file,{contentType:mime,upsert:false});
   if(uploadError){notice("attachment-message","بارگذاری "+file.name+" ناموفق بود: "+uploadError.message,true);$("upload-files").disabled=false;await loadAttachments(activeCaseId);return;}
   const kind=mime.startsWith("image/")?"photo":"document";
