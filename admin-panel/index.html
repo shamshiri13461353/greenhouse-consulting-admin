@@ -132,7 +132,7 @@
       </section>
     </div>
       <div class="topline"><h2>نظارت بر نظر کارشناسی و پاسخ‌های نهایی</h2><button id="refresh-reviews" class="secondary">به‌روزرسانی</button></div>
-      <p class="muted">مدیر می‌تواند محتوای نظر تخصصی و پیش‌نویس پاسخ را بررسی و بر روند کار نظارت کند. مطابق قاعده مصوب سامانه، تأیید نهایی و انتشار پاسخ بر عهده کارشناس مسئول پرونده است؛ مدیر در این بخش پاسخ را منتشر نمی‌کند.</p>
+      <p class="muted">مدیر پاسخ نهایی را بررسی می‌کند و می‌تواند آن را تأیید و منتشر کند یا همراه با توضیح برای اصلاح به کارشناس بازگرداند. پاسخ تا زمان تأیید مدیر برای گلخانه‌دار قابل مشاهده نیست.</p>
       <div class="divider"></div><h3>پیش‌نویس‌های منتشرنشده</h3><div id="draft-review-list" class="empty">در حال دریافت…</div>
       <div class="divider"></div><h3>آخرین نظرهای تخصصی</h3><div id="opinion-review-list" class="empty">در حال دریافت…</div>
     </div>
@@ -520,15 +520,43 @@
 
   async function loadReviewQueue(){
     const [fr,op]=await Promise.all([
-      supabase.from("final_responses").select("id,case_id,version,prepared_by,response_text,recommendations,warnings,created_at").eq("is_published",false).order("created_at",{ascending:false}).limit(60),
+      supabase.from("final_responses").select("id,case_id,version,prepared_by,response_text,recommendations,warnings,review_status,review_note,created_at").eq("is_published",false).eq("review_status","submitted").order("created_at",{ascending:false}).limit(60),
       supabase.from("expert_opinions").select("id,case_id,expert_user_id,hypotheses,evidence_summary,analysis_text,recommendations,updated_at").order("updated_at",{ascending:false}).limit(60)
     ]);
     const [draftHost,opHost]=[$("draft-review-list"),$("opinion-review-list")];
     draftHost.replaceChildren();opHost.replaceChildren();
-    if(fr.error){draftHost.textContent="دریافت پیش‌نویس‌ها ناموفق بود: "+fr.error.message;}else if(!fr.data?.length){draftHost.className="empty";draftHost.textContent="پیش‌نویس منتشرنشده‌ای وجود ندارد.";}else{
+    if(fr.error){draftHost.textContent="دریافت پاسخ‌های ارسالی ناموفق بود: "+fr.error.message;}else if(!fr.data?.length){draftHost.className="empty";draftHost.textContent="پاسخی در انتظار بررسی وجود ندارد.";}else{
       draftHost.className="";
-      for(const d of fr.data){const c=adminCases.find(x=>x.id===d.case_id),name=adminExpertDirectory.find(x=>x.user_id===d.prepared_by);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;const p=document.createElement("p");p.textContent=d.response_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="تهیه‌کننده: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||name?.professional_title||"نام ثبت نشده")+" · "+new Date(d.created_at).toLocaleString("fa-IR");box.append(h,meta,p);
-        if(d.recommendations?.length){const r=document.createElement("p");r.textContent="توصیه‌ها: "+d.recommendations.join("، ");box.append(r);}if(d.warnings?.length){const w=document.createElement("p");w.textContent="هشدارها: "+d.warnings.join("، ");box.append(w);}draftHost.append(box);}
+      for(const d of fr.data){
+        const c=adminCases.find(x=>x.id===d.case_id),name=adminExpertDirectory.find(x=>x.user_id===d.prepared_by);
+        const box=document.createElement("article");box.className="review-item";
+        const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · نسخه "+d.version;
+        const p=document.createElement("p");p.textContent=d.response_text;
+        const meta=document.createElement("div");meta.className="muted";
+        meta.textContent="کارشناس: "+([name?.user_profiles?.first_name,name?.user_profiles?.last_name].filter(Boolean).join(" ")||name?.professional_title||"نام ثبت نشده")+" · ارسال: "+new Date(d.created_at).toLocaleString("fa-IR");
+        box.append(h,meta,p);
+        if(d.recommendations?.length){const r=document.createElement("p");r.textContent="توصیه‌ها: "+d.recommendations.join("، ");box.append(r);}
+        if(d.warnings?.length){const w=document.createElement("p");w.textContent="هشدارها: "+d.warnings.join("، ");box.append(w);}
+        const actions=document.createElement("div");actions.className="actions";
+        const approve=document.createElement("button");approve.type="button";approve.textContent="تأیید و انتشار پاسخ نهایی";
+        approve.addEventListener("click",async()=>{
+          if(!confirm("پاسخ نهایی برای گلخانه‌دار منتشر شود؟"))return;
+          approve.disabled=true;returnForEdit.disabled=true;
+          const {data,error}=await supabase.from("final_responses").update({is_published:true,approved_by:adminUser.id,review_status:"approved"}).eq("id",d.id).eq("is_published",false).eq("review_status","submitted").select("id").maybeSingle();
+          if(error||!data){approve.disabled=false;returnForEdit.disabled=false;message("action-message","انتشار پاسخ انجام نشد: "+(error?.message||"پاسخ دیگر در وضعیت انتظار بررسی نیست."),true);return;}
+          message("action-message","پاسخ نهایی تأیید و برای گلخانه‌دار منتشر شد.");await Promise.all([loadReviewQueue(),loadMonitorData()]);
+        });
+        const returnForEdit=document.createElement("button");returnForEdit.type="button";returnForEdit.className="secondary";returnForEdit.textContent="بازگشت برای اصلاح";
+        returnForEdit.addEventListener("click",async()=>{
+          const note=prompt("توضیح لازم برای اصلاح پاسخ را بنویسید:");
+          if(note===null)return;if(!note.trim()){alert("برای بازگرداندن پاسخ، درج توضیح اصلاح الزامی است.");return;}
+          approve.disabled=true;returnForEdit.disabled=true;
+          const {error}=await supabase.from("final_responses").update({review_status:"changes_requested",review_note:note.trim()}).eq("id",d.id).eq("is_published",false).eq("review_status","submitted");
+          if(error){approve.disabled=false;returnForEdit.disabled=false;message("action-message","بازگرداندن پاسخ ناموفق بود: "+error.message,true);return;}
+          message("action-message","پاسخ برای اصلاح به کارشناس بازگردانده شد.");await loadReviewQueue();
+        });
+        actions.append(approve,returnForEdit);box.append(actions);draftHost.append(box);
+      }
     }
     if(op.error){opHost.textContent="دریافت نظرهای تخصصی ناموفق بود: "+op.error.message;}else if(!op.data?.length){opHost.className="empty";opHost.textContent="نظر تخصصی ثبت نشده است.";}else{
       opHost.className="";
