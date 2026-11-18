@@ -61,9 +61,9 @@ function notice(text,error=false){const el=$("message");el.textContent=text;el.c
 function show(id,on=true){$(id).classList.toggle("hidden",!on);}
 function go(role){location.replace(role==="expert"?"../expert/":"../grower/");}
 function normalizePhone(value){
- let p=String(value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\\s()-]/g,"");
+ let p=String(value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\s()-]/g,"");
  if(p.startsWith("+98"))p="0"+p.slice(3);else if(p.startsWith("0098"))p="0"+p.slice(4);else if(p.startsWith("98")&&p.length===12)p="0"+p.slice(2);
- return /^09\\d{9}$/.test(p)?p:null;
+ return /^09\d{9}$/.test(p)?p:null;
 }
 function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 function registerNotice(text,error=false){const el=$("register-message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
@@ -131,7 +131,7 @@ $("send-otp").addEventListener("click",async()=>{
 $("verify-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
  const code=$("reg-code").value.trim().replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
- if(!phone||!/^\\d{6}$/.test(code)){registerNotice("شماره موبایل و کد ۶ رقمی معتبر را وارد کنید.",true);return;}
+ if(!phone||!/^\d{6}$/.test(code)){registerNotice("شماره موبایل و کد ۶ رقمی معتبر را وارد کنید.",true);return;}
  $("verify-otp").disabled=true;
  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",phone,code}});
  $("verify-otp").disabled=false;
