@@ -178,9 +178,6 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
      <div id="case-conversation-notice" class="notice hidden"></div>
     </form>
     <div class="divider"></div>
-    <h2>نتایج آزمایشگاهی مرتبط</h2>
-    <div id="case-lab-list" class="empty">نتیجه آزمایشگاهی ثبت نشده است.</div>
-    <div class="divider"></div>
     <h2>پاسخ نهایی کارشناس</h2>
     <div id="final-response-list" class="empty">هنوز پاسخ نهایی منتشرشده‌ای برای این پرونده وجود ندارد.</div>
    </div>
@@ -689,7 +686,7 @@ async function openCase(id){
   });actions.append(reopen);
  }
  await Promise.all([loadCaseConversation(id),loadCaseMessageRecipients(id)]);
- await Promise.all([loadAttachments(id),loadCaseLabResults(id),loadFinalResponses(id)]);
+ await Promise.all([loadAttachments(id),loadFinalResponses(id)]);
  startCaseMessageAutoRefresh(id);
  $("case-detail").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -784,56 +781,6 @@ async function loadCaseMessageRecipients(id){
  }
  select.disabled=!(data||[]).length;
  if(!(data||[]).length)select.replaceChildren(new Option("گیرنده فعالی برای این پرونده وجود ندارد",""));
-}
-
-async function loadCaseLabResults(id){
- const host=$("case-lab-list");host.replaceChildren();
- const {data:samples,error}=await supabase.from("lab_samples").select("id,sample_type,sampled_at,sampling_location,sampling_depth_cm,report_date,report_storage_path,notes,laboratory_id").eq("case_id",id).order("created_at");
- if(error){host.textContent="دریافت نمونه‌های آزمایشگاهی ناموفق بود: "+error.message;return;}
- if(!samples?.length){host.className="empty";host.textContent="هنوز نمونه یا نتیجه آزمایشگاهی به این پرونده متصل نشده است.";return;}
- const ids=samples.map(s=>s.id);
- const [resultsRes,labsRes]=await Promise.all([
-  supabase.from("lab_results").select("id,sample_id,analyte_id,value_numeric,unit_id,replicate_no,result_note").in("sample_id",ids).order("replicate_no"),
-  supabase.from("laboratories").select("id,name").eq("is_active",true)
- ]);
- if(resultsRes.error){host.textContent="دریافت نتایج آزمایش ناموفق بود: "+resultsRes.error.message;return;}
- const results=resultsRes.data||[], analyteIds=[...new Set(results.map(r=>r.analyte_id))],unitIds=[...new Set(results.map(r=>r.unit_id))];
- const [analytesRes,unitsRes]=await Promise.all([
-  analyteIds.length?supabase.from("analytes").select("id,title_fa").in("id",analyteIds):Promise.resolve({data:[],error:null}),
-  unitIds.length?supabase.from("units").select("id,title_fa").in("id",unitIds):Promise.resolve({data:[],error:null})
- ]);
- if(analytesRes.error||unitsRes.error){host.textContent="دریافت مشخصات واحدها یا شاخص‌ها ناموفق بود.";return;}
- const analytes=new Map((analytesRes.data||[]).map(x=>[x.id,x.title_fa])),units=new Map((unitsRes.data||[]).map(x=>[x.id,x.title_fa])),labs=new Map((labsRes.data||[]).map(x=>[x.id,x.name]));
- host.className="";
- for(const sample of samples){
-  const card=node("article","item");
-  card.append(node("h3","","نمونه "+(sample.sample_type||"آزمایشگاهی")));
-  card.append(node("div","meta",[
-   "تاریخ نمونه‌برداری: "+faDate(sample.sampled_at),
-   "محل: "+(sample.sampling_location||"—"),
-   sample.sampling_depth_cm?"عمق: "+sample.sampling_depth_cm+" سانتی‌متر":"",
-   "آزمایشگاه: "+(labs.get(sample.laboratory_id)||"ثبت نشده"),
-   "تاریخ گزارش: "+faDate(sample.report_date)
-  ].filter(Boolean).join(" · ")));
-  if(sample.notes)card.append(node("p","",sample.notes));
-  const sampleResults=results.filter(r=>r.sample_id===sample.id);
-  if(sampleResults.length){
-   const table=node("div","item");
-   for(const result of sampleResults){
-    const line=node("div","meta",(analytes.get(result.analyte_id)||"شاخص آزمایش")+" : "+result.value_numeric+" "+(units.get(result.unit_id)||"")+(result.replicate_no>1?" · تکرار "+result.replicate_no:"")+(result.result_note?" · "+result.result_note:""));
-    table.append(line);
-   }
-   card.append(table);
-  }else card.append(node("div","meta","نتیجه عددی برای این نمونه ثبت نشده است."));
-  if(sample.report_storage_path){
-   const report=node("button","secondary","مشاهده فایل گزارش آزمایشگاه");
-   report.addEventListener("click",async()=>{
-    const {data:signed,error}=await supabase.storage.from("lab-reports").createSignedUrl(sample.report_storage_path,120);
-    if(error){alert("دریافت گزارش ناموفق بود: "+error.message);return;}window.open(signed.signedUrl,"_blank","noopener");
-   });card.append(report);
-  }
-  host.append(card);
- }
 }
 
 async function loadFinalResponses(id){
