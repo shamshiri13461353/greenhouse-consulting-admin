@@ -61,7 +61,7 @@ const fetchWithTimeout=(input,init={})=>{
  const timer=setTimeout(()=>controller.abort(),25000);
  return fetch(input,{...init,signal:controller.signal}).finally(()=>{clearTimeout(timer);originalSignal?.removeEventListener("abort",forwardAbort);});
 };
-const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:fetchWithTimeout},auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{global:{fetch:fetchWithTimeout},auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"greenhouse-expert-auth"}});
 function withLoginTimeout(promise,label="ارتباط با سرور"){
  let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+" بیش از ۱۵ ثانیه طول کشید. اتصال اینترنت یا دسترسی به سرور احراز هویت را بررسی کنید.")),15000);});
  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
