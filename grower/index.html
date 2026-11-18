@@ -693,7 +693,7 @@ async function openCase(id){
 async function loadAttachments(id){
  const host=$("attachment-list");host.replaceChildren();
  const {data,error}=await supabase.from("case_attachments").select("id,storage_bucket,storage_path,original_filename,mime_type,file_size_bytes,kind,description,created_at").eq("case_id",id).order("created_at");
- if(error){host.textContent="دریافت فهرست مدارک ناموفق بود: "+error.message;return;}
+ if(error){activeCaseAttachmentStats={caseId:id,count:10,totalBytes:10*1024*1024};host.textContent="دریافت فهرست مدارک ناموفق بود؛ برای جلوگیری از عبور از سقف مجاز، تا زمان دریافت فهرست امکان بارگذاری جدید غیرفعال است. "+error.message;return;}
  activeCaseAttachmentStats={caseId:id,count:(data||[]).length,totalBytes:(data||[]).reduce((sum,item)=>sum+Number(item.file_size_bytes||0),0)};
  if(!data?.length){host.className="empty";host.textContent="هنوز مدرکی پیوست نشده است.";return;}
  host.className="";
