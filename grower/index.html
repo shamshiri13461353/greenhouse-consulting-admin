@@ -75,6 +75,11 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     </form>
    </div>
   </section>
+  <div id="grower-tabs" class="tabs hidden" role="tablist" aria-label="بخش‌های پنل گلخانه‌دار">
+   <button type="button" class="active" data-grower-section="greenhouses-section" role="tab" aria-selected="true">گلخانه‌ها</button>
+   <button type="button" data-grower-section="cycles-section" role="tab" aria-selected="false">دوره‌های کشت</button>
+   <button type="button" data-grower-section="cases-section" role="tab" aria-selected="false">پرونده‌های مشاوره</button>
+  </div>
   <section id="greenhouses-section" class="section active hidden">
    <div class="card">
     <h2 id="gh-form-title">ثبت گلخانه جدید</h2>
@@ -209,6 +214,19 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
 const $=id=>document.getElementById(id);
 let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
+function activateGrowerSection(sectionId){
+ for(const id of ["greenhouses-section","cycles-section","cases-section"]){
+  $(id).classList.toggle("active",id===sectionId);
+ }
+ for(const button of document.querySelectorAll("[data-grower-section]")){
+  const active=button.dataset.growerSection===sectionId;
+  button.classList.toggle("active",active);
+  button.setAttribute("aria-selected",String(active));
+ }
+}
+document.querySelectorAll("[data-grower-section]").forEach(button=>{
+ button.addEventListener("click",()=>activateGrowerSection(button.dataset.growerSection));
+});
 function isInvalidCredentialsError(error){const code=String(error?.code||"").toLowerCase(),detail=String(error?.message||"").toLowerCase();return code==="invalid_credentials"||detail.includes("invalid login credentials")||detail.includes("invalid credentials");}
 function notice(id,text,error=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function clearNotice(id){$(id).classList.add("hidden");}
@@ -440,15 +458,15 @@ async function enter(user=null,accessToken=null){
   user=data?.session?.user||null;accessToken=data?.session?.access_token||null;
  }
  currentUser=user||null;currentAccessToken=accessToken||null;
- if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("greenhouses-section",false);show("logout",false);return;}
+ if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("logout",false);return;}
  const {profile,hasGrowerRole}=await requireGrower(user,accessToken);
  show("login-card",false);show("logout",true);
  if(profile?.account_status!=="active"||!hasGrowerRole){
-  show("account-pending");show("app",false);show("greenhouses-section",false);
+  show("account-pending");show("app",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);
   $("pending-message").textContent="حساب شما هنوز به‌عنوان گلخانه‌دار فعال نشده است. پس از بررسی مدیر سامانه، امکان ثبت گلخانه و دوره کشت فعال خواهد شد.";
   return;
  }
- show("account-pending",false);show("app",true);show("greenhouses-section",true);
+ show("account-pending",false);show("app",true);show("grower-tabs",true);show("greenhouses-section",true);show("cycles-section",true);show("cases-section",true);activateGrowerSection("greenhouses-section");
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
  $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
@@ -947,7 +965,7 @@ async function activatePush(userId){
  }finally{enable.disabled=false;}
 }
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("greenhouses-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
 await enter();
 
 
