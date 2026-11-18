@@ -45,8 +45,8 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 <main>
  <section id="login-card" class="card">
   <h2>ورود گلخانه‌دار</h2>
-  <p class="muted">با ایمیل و گذرواژه حساب فعال خود وارد شوید. دسترسی به اطلاعات فقط بر اساس مالکیت ثبت‌شده و مجوزهای پایگاه داده انجام می‌شود.</p>
-  <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="ایمیل ثبت‌شده">
+  <p class="muted">با شماره موبایل و گذرواژه ثبت‌نامی، یا ایمیل حساب کارشناسی/قدیمی خود وارد شوید.</p>
+  <label for="email">ایمیل یا شماره موبایل</label><input id="email" type="text" inputmode="email" autocomplete="username" placeholder="ایمیل یا 09xxxxxxxxx">
   <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
   <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
   <div id="login-message" class="notice hidden"></div>
@@ -201,7 +201,7 @@ const fetchWithTimeout=(input,init={})=>{
 };
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
  global:{fetch:fetchWithTimeout},
- auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"greenhouse-grower-auth"}
+ auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 function withLoginTimeout(promise,label="ارتباط با سرور"){
  let timer;
@@ -209,6 +209,12 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 const $=id=>document.getElementById(id);
+function normalizePhone(value){
+ let p=String(value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\\s()-]/g,"");
+ if(p.startsWith("+98"))p="0"+p.slice(3);else if(p.startsWith("0098"))p="0"+p.slice(4);else if(p.startsWith("98")&&p.length===12)p="0"+p.slice(2);
+ return /^09\\d{9}$/.test(p)?p:null;
+}
+function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,activeCaseAttachmentStats={caseId:null,count:0,totalBytes:0},caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function activateGrowerSection(sectionId){
@@ -444,7 +450,7 @@ $("grower-profile-form").addEventListener("submit",async event=>{
   notice("grower-profile-message","پروفایل با موفقیت ذخیره شد.");
   const full=[payload.first_name,payload.last_name].filter(Boolean).join(" ");
   $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
-  $("profile-line").textContent="ایمیل حساب: "+(currentUser.email||"")+(payload.phone?" · تلفن: "+payload.phone:"");
+  $("profile-line").textContent=payload.phone?"شماره موبایل: "+payload.phone:"ایمیل حساب: "+(currentUser.email||"");
  }catch(error){notice("grower-profile-message","ذخیره پروفایل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
  finally{button.disabled=false;}
 });
@@ -466,7 +472,7 @@ async function enter(user=null,accessToken=null){
  show("account-pending",false);show("app",true);show("grower-tabs",true);show("greenhouses-section",true);show("cycles-section",true);show("cases-section",true);activateGrowerSection("greenhouses-section");
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
- $("profile-line").textContent="ایمیل حساب: "+user.email+(profile.phone?" · تلفن: "+profile.phone:"");
+ $("profile-line").textContent=profile.phone?"شماره موبایل: "+profile.phone:"ایمیل حساب: "+user.email;
  void refreshPushStatus(user.id);
  void loadGrowerProfile();
  // بارگذاری اطلاعات پنل پس از نمایش موفق صفحه، بدون معطل‌کردن ورود
@@ -476,15 +482,18 @@ async function enter(user=null,accessToken=null){
  });
 }
 async function performGrowerLogin(){
- const button=$("login"),email=$("email").value.trim(),password=$("password").value;
+ const button=$("login"),identifier=$("email").value.trim(),password=$("password").value;
  clearNotice("login-message");
- if(!email||!password){notice("login-message","ایمیل و گذرواژه را وارد کنید.",true);return;}
+ const phone=normalizePhone(identifier);
+ const email=phone?authEmailForPhone(phone):identifier;
+ if(!identifier||!password){notice("login-message","ایمیل یا شماره موبایل و گذرواژه را وارد کنید.",true);return;}
+ if(!phone&&!identifier.includes("@")){notice("login-message","شماره موبایل معتبر یا ایمیل حساب را وارد کنید.",true);return;}
  button.disabled=true;
  notice("login-message","در حال بررسی اطلاعات ورود…");
  try{
   const {data,error}=await withLoginTimeout(
    supabase.auth.signInWithPassword({email,password}),
-   "بررسی ایمیل و گذرواژه"
+   "بررسی شماره موبایل/ایمیل و گذرواژه"
   );
   if(error){notice("login-message",isInvalidCredentialsError(error)?"نام کاربری یا رمز عبور اشتباه است.":"ورود انجام نشد؛ لطفاً اتصال را بررسی و دوباره تلاش کنید.",true);return;}
   await withLoginTimeout(enter(data?.user,data?.session?.access_token),"بررسی دسترسی حساب گلخانه‌دار");
@@ -498,9 +507,12 @@ async function performGrowerLogin(){
 $("login").addEventListener("click",performGrowerLogin);
 $("password").addEventListener("keydown",event=>{if(event.key==="Enter")performGrowerLogin();});
 $("forgot-password").addEventListener("click",async()=>{
- const email=$("email").value.trim();
- if(!email){notice("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
- if(!$("email").checkValidity()){notice("login-message","قالب ایمیل واردشده معتبر نیست.",true);$("email").focus();return;}
+ const entered=$("email").value.trim();
+ const phone=normalizePhone(entered);
+ if(phone){notice("login-message","بازیابی گذرواژه با پیامک هنوز فعال نشده است. لطفاً برای بازیابی با پشتیبانی سامانه تماس بگیرید.",true);return;}
+ const email=entered;
+ if(!email){notice("login-message","ابتدا ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
+ if(!email.includes("@")){notice("login-message","شماره موبایل برای بازیابی پیامکی هنوز پشتیبانی نمی‌شود؛ ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
  const button=$("forgot-password");button.disabled=true;
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://app.peyvandgostar.com/accept-grower-invitation.html"});
  button.disabled=false;
