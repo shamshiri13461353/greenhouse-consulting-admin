@@ -24,10 +24,26 @@ footer{text-align:center;padding:18px;color:#74847d;font-size:11px}
 <section id="login-card" class="card">
 <h2>ورود به سامانه</h2><p class="muted">با حساب کاربری خود وارد شوید. سامانه پس از بررسی سطح دسترسی، محیط مناسب شما را باز می‌کند.</p>
 <form id="login-form">
-<label for="email">ایمیل حساب کاربری</label><input id="email" type="email" autocomplete="username" required>
+<label for="email">ایمیل یا شماره موبایل</label><input id="email" type="text" autocomplete="username" placeholder="ایمیل یا 09xxxxxxxxx" required>
 <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password" required>
-<div class="actions"><button id="login" type="submit">ورود به سامانه</button><button id="forgot" class="secondary" type="button">فراموشی گذرواژه</button></div>
+<div class="actions"><button id="login" type="submit">ورود به سامانه</button><button id="forgot" class="secondary" type="button">فراموشی گذرواژه</button><button id="open-register" class="secondary" type="button">ثبت‌نام گلخانه‌دار</button></div>
 </form><div id="message" class="notice hidden" role="status" aria-live="polite"></div>
+</section>
+<section id="register-card" class="card hidden">
+<h2>ثبت‌نام گلخانه‌دار</h2>
+<p class="muted">با شماره موبایل خود ثبت‌نام کنید. ابتدا شماره از طریق پیامک تأیید می‌شود؛ ایمیل لازم نیست.</p>
+<form id="register-form">
+<label for="reg-phone">شماره موبایل</label><input id="reg-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx" required>
+<div class="actions"><button id="send-otp" type="button">ارسال کد تأیید</button></div>
+<label for="reg-code">کد پیامک‌شده</label><input id="reg-code" inputmode="numeric" autocomplete="one-time-code" placeholder="کد ۶ رقمی" required>
+<div class="actions"><button id="verify-otp" class="secondary" type="button">تأیید شماره موبایل</button></div>
+<label for="reg-first">نام (اختیاری)</label><input id="reg-first" autocomplete="given-name">
+<label for="reg-last">نام خانوادگی (اختیاری)</label><input id="reg-last" autocomplete="family-name">
+<label for="reg-password">گذرواژه (حداقل ۸ نویسه)</label><input id="reg-password" type="password" autocomplete="new-password" minlength="8" required>
+<label for="reg-confirm">تکرار گذرواژه</label><input id="reg-confirm" type="password" autocomplete="new-password" minlength="8" required>
+<div class="actions"><button id="create-account" type="submit" disabled>ایجاد حساب گلخانه‌دار</button><button id="back-login" class="secondary" type="button">بازگشت به ورود</button></div>
+</form>
+<div id="register-message" class="notice hidden" role="status" aria-live="polite"></div>
 </section>
 <section id="role-card" class="card hidden">
 <h2>انتخاب محیط کاری</h2><p class="muted">این حساب بیش از یک نقش فعال دارد. محیط موردنظر را انتخاب کنید.</p>
@@ -44,6 +60,15 @@ let availableRoles=[];
 function notice(text,error=false){const el=$("message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 function show(id,on=true){$(id).classList.toggle("hidden",!on);}
 function go(role){location.replace(role==="expert"?"../expert/":"../grower/");}
+function normalizePhone(value){
+ let p=String(value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[\\s()-]/g,"");
+ if(p.startsWith("+98"))p="0"+p.slice(3);else if(p.startsWith("0098"))p="0"+p.slice(4);else if(p.startsWith("98")&&p.length===12)p="0"+p.slice(2);
+ return /^09\\d{9}$/.test(p)?p:null;
+}
+function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
+function registerNotice(text,error=false){const el=$("register-message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
+let otpVerified=false;
+
 async function resolveUser(user){
  show("login-card",false);show("role-card",false);
  const [{data:profile,error:pe},{data:roles,error:re}]=await Promise.all([
@@ -66,20 +91,77 @@ async function resolveUser(user){
 }
 $("login-form").addEventListener("submit",async ev=>{
  ev.preventDefault();$("login").disabled=true;show("message",false);
- const {data,error}=await supabase.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+ const identifier=$("email").value.trim();
+ const phone=normalizePhone(identifier);
+ const loginEmail=phone?authEmailForPhone(phone):identifier;
+ const {data,error}=await supabase.auth.signInWithPassword({email:loginEmail,password:$("password").value});
  $("login").disabled=false;
  if(error){notice("ورود انجام نشد. ایمیل و گذرواژه را بررسی کنید.",true);return;}
  await resolveUser(data.user);
 });
 $("forgot").addEventListener("click",async()=>{
- const email=$("email").value.trim();
- if(!email||!$("email").checkValidity()){notice("ابتدا ایمیل معتبر حساب خود را وارد کنید.",true);$("email").focus();return;}
+ const entered=$("email").value.trim();
+ const phone=normalizePhone(entered);
+ if(phone){notice("برای بازیابی گذرواژه حساب‌های شماره‌موبایلی، لطفاً فعلاً با پشتیبانی سامانه تماس بگیرید.",true);return;}
+ const email=entered;
+ if(!email||!email.includes("@")){notice("ابتدا ایمیل معتبر حساب کاربری را وارد کنید.",true);$("email").focus();return;}
  $("forgot").disabled=true;
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://app.peyvandgostar.com/accept-grower-invitation.html"});
  $("forgot").disabled=false;
  if(error){notice("ارسال درخواست بازیابی گذرواژه انجام نشد. لطفاً بعداً تلاش کنید.",true);return;}
  notice("اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازیابی ارسال می‌شود. صندوق ورودی و هرزنامه را بررسی کنید.");
 });
+
+$("open-register").addEventListener("click",()=>{show("login-card",false);show("register-card");});
+$("back-login").addEventListener("click",()=>{show("register-card",false);show("login-card");});
+$("send-otp").addEventListener("click",async()=>{
+ const phone=normalizePhone($("reg-phone").value);
+ if(!phone){registerNotice("شماره موبایل معتبر وارد کنید؛ نمونه: 09123456789",true);return;}
+ $("send-otp").disabled=true;
+ const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"send",phone}});
+ $("send-otp").disabled=false;
+ if(error||!data?.success){
+  const code=data?.error||"";
+  const messages={phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است.",send_cooldown:"برای ارسال مجدد کد کمی صبر کنید.",invalid_phone:"شماره موبایل معتبر نیست."};
+  registerNotice(messages[code]||"ارسال پیامک انجام نشد. موجودی و وضعیت سرویس پیامکی را بررسی کنید.",true);return;
+ }
+ otpVerified=false;$("create-account").disabled=true;
+ registerNotice("کد تأیید ارسال شد. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
+});
+$("verify-otp").addEventListener("click",async()=>{
+ const phone=normalizePhone($("reg-phone").value);
+ const code=$("reg-code").value.trim().replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+ if(!phone||!/^\\d{6}$/.test(code)){registerNotice("شماره موبایل و کد ۶ رقمی معتبر را وارد کنید.",true);return;}
+ $("verify-otp").disabled=true;
+ const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",phone,code}});
+ $("verify-otp").disabled=false;
+ if(error||!data?.verified){otpVerified=false;$("create-account").disabled=true;registerNotice("کد تأیید صحیح نیست یا اعتبار آن پایان یافته است.",true);return;}
+ otpVerified=true;$("create-account").disabled=false;registerNotice("شماره موبایل تأیید شد. اکنون می‌توانید حساب خود را ایجاد کنید.");
+});
+$("register-form").addEventListener("submit",async ev=>{
+ ev.preventDefault();
+ const phone=normalizePhone($("reg-phone").value);
+ const password=$("reg-password").value;
+ if(!phone){registerNotice("شماره موبایل معتبر وارد کنید.",true);return;}
+ if(!otpVerified){registerNotice("ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);return;}
+ if(password.length<8){registerNotice("گذرواژه باید حداقل ۸ نویسه داشته باشد.",true);return;}
+ if(password!==$("reg-confirm").value){registerNotice("تکرار گذرواژه با گذرواژه یکسان نیست.",true);return;}
+ $("create-account").disabled=true;
+ const {data,error}=await supabase.functions.invoke("grower-register",{body:{
+  phone,password,first_name:$("reg-first").value.trim(),last_name:$("reg-last").value.trim()
+ }});
+ if(error||!data?.account_created){
+  $("create-account").disabled=false;
+  const code=data?.error||"";
+  const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً ثبت شده است.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد."};
+  registerNotice(messages[code]||"ساخت حساب انجام نشد. دوباره تلاش کنید.",true);return;
+ }
+ registerNotice("حساب با موفقیت ایجاد شد؛ در حال ورود...");
+ const {data:loginData,error:loginError}=await supabase.auth.signInWithPassword({email:authEmailForPhone(phone),password});
+ if(loginError){registerNotice("حساب ساخته شد، اما ورود خودکار انجام نشد. از صفحه ورود با شماره موبایل و گذرواژه وارد شوید.",true);show("register-card",false);show("login-card");$("email").value=phone;return;}
+ await resolveUser(loginData.user);
+});
+
 $("as-expert").addEventListener("click",()=>availableRoles.includes("expert")&&go("expert"));
 $("as-grower").addEventListener("click",()=>availableRoles.includes("grower")&&go("grower"));
 $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("role-card",false);show("login-card");});
