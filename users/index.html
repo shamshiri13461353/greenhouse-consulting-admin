@@ -151,8 +151,8 @@ $("send-otp").addEventListener("click",async()=>{
   registerNotice(messages[code]||"ارسال پیامک انجام نشد. موجودی و وضعیت سرویس پیامکی را بررسی کنید.",true);return;
  }
  otpVerified=false;$("create-account").disabled=true;
- startOtpCountdown(45,phone);
- registerNotice("کد تأیید ارسال شد. شمارش معکوس ۴۵ ثانیه‌ای برای درخواست مجدد روی دکمه نمایش داده می‌شود. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
+ startOtpCountdown(60,phone);
+ registerNotice("کد تأیید ارسال شد. شمارش معکوس ۶۰ ثانیه‌ای برای درخواست مجدد روی دکمه نمایش داده می‌شود. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
 });
 $("verify-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
