@@ -159,9 +159,9 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <div id="case-detail-actions" class="actions"></div>
     <div class="divider"></div>
     <h2>مدارک و تصاویر</h2>
-    <p class="muted">فایل‌های تصویری و PDF تا سقف ۱۰ مگابایت برای هر فایل قابل ارسال هستند.</p>
+    <p class="muted">حداکثر ۱۰ فایل برای هر پرونده؛ حجم هر فایل حداکثر ۱ مگابایت و حجم مجموع مدارک حداکثر ۱۰ مگابایت است. قالب‌های مجاز: JPG، PNG، WEBP، PDF، DOC، DOCX، XLS و XLSX.</p>
     <form id="attachment-form">
-     <input id="case-files" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+     <input id="case-files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
      <label for="attachment-description">توضیح پیوست (اختیاری)</label><input id="attachment-description" maxlength="250">
      <div class="actions"><button id="upload-files" type="submit">بارگذاری مدارک</button></div>
      <div id="attachment-message" class="notice hidden"></div>
@@ -209,7 +209,7 @@ function withLoginTimeout(promise,label="ارتباط با سرور"){
  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 const $=id=>document.getElementById(id);
-let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
+let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,activeCaseAttachmentStats={caseId:null,count:0,totalBytes:0},caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function activateGrowerSection(sectionId){
  for(const id of ["greenhouses-section","cycles-section","cases-section"]){
@@ -694,6 +694,7 @@ async function loadAttachments(id){
  const host=$("attachment-list");host.replaceChildren();
  const {data,error}=await supabase.from("case_attachments").select("id,storage_bucket,storage_path,original_filename,mime_type,file_size_bytes,kind,description,created_at").eq("case_id",id).order("created_at");
  if(error){host.textContent="دریافت فهرست مدارک ناموفق بود: "+error.message;return;}
+ activeCaseAttachmentStats={caseId:id,count:(data||[]).length,totalBytes:(data||[]).reduce((sum,item)=>sum+Number(item.file_size_bytes||0),0)};
  if(!data?.length){host.className="empty";host.textContent="هنوز مدرکی پیوست نشده است.";return;}
  host.className="";
  for(const a of data){
@@ -810,17 +811,27 @@ $("attachment-form").addEventListener("submit",async ev=>{
  ev.preventDefault();clearNotice("attachment-message");
  if(!activeCaseId)return;
  const files=[...$("case-files").files];if(!files.length){notice("attachment-message","ابتدا فایل یا تصویر را انتخاب کنید.",true);return;}
- if(files.some(f=>f.size>10*1024*1024)){notice("attachment-message","حجم هر فایل باید حداکثر ۱۰ مگابایت باشد.",true);return;}
- const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
- if(files.some(f=>!allowed.includes(f.type))){notice("attachment-message","فقط تصویر JPG، PNG، WebP و فایل PDF مجاز است.",true);return;}
+ const stats=activeCaseAttachmentStats.caseId===activeCaseId?activeCaseAttachmentStats:{caseId:activeCaseId,count:0,totalBytes:0};
+ const maxFileBytes=1024*1024,maxCaseBytes=10*1024*1024,maxFiles=10;
+ if(files.length+stats.count>maxFiles){notice("attachment-message","در هر پرونده حداکثر ۱۰ فایل مجاز است. تاکنون "+stats.count+" فایل ثبت شده است.",true);return;}
+ if(files.some(file=>file.size>maxFileBytes)){notice("attachment-message","حجم هر فایل باید حداکثر ۱ مگابایت باشد.",true);return;}
+ const totalBytes=files.reduce((sum,file)=>sum+file.size,stats.totalBytes);
+ if(totalBytes>maxCaseBytes){notice("attachment-message","حجم مجموع فایل‌های این پرونده نباید از ۱۰ مگابایت بیشتر شود. حجم فعلی به‌علاوه فایل‌های انتخاب‌شده: "+(totalBytes/1024/1024).toFixed(2)+" مگابایت.",true);return;}
+ const mimeByExtension={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",pdf:"application/pdf",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",xls:"application/vnd.ms-excel",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"};
+ const fileTypes=files.map(file=>{const ext=(file.name.split(".").pop()||"").toLowerCase();return {file,mime:mimeByExtension[ext]||null};});
+ if(fileTypes.some(item=>!item.mime)){notice("attachment-message","قالب فایل مجاز نیست. فقط JPG، PNG، WEBP، PDF، DOC، DOCX، XLS و XLSX پذیرفته می‌شود.",true);return;}
  $("upload-files").disabled=true;
- for(const file of files){
+ for(const {file,mime} of fileTypes){
   const path=activeCaseId+"/"+crypto.randomUUID()+"_"+safeName(file.name);
-  const {error:uploadError}=await supabase.storage.from("case-files").upload(path,file,{contentType:file.type,upsert:false});
-  if(uploadError){notice("attachment-message","بارگذاری "+file.name+" ناموفق بود: "+uploadError.message,true);$("upload-files").disabled=false;return;}
-  const kind=file.type.startsWith("image/")?"photo":file.type==="application/pdf"?"document":"other";
-  const {error:metaError}=await supabase.from("case_attachments").insert({case_id:activeCaseId,uploaded_by:currentUser.id,storage_bucket:"case-files",storage_path:path,original_filename:file.name,mime_type:file.type,file_size_bytes:file.size,kind,description:$("attachment-description").value.trim()||null});
-  if(metaError){notice("attachment-message","فایل بارگذاری شد اما ثبت مشخصات آن ناموفق بود. لطفاً با پشتیبانی تماس بگیرید. "+metaError.message,true);$("upload-files").disabled=false;return;}
+  const {error:uploadError}=await supabase.storage.from("case-files").upload(path,file,{contentType:mime,upsert:false});
+  if(uploadError){notice("attachment-message","بارگذاری "+file.name+" ناموفق بود: "+uploadError.message,true);$("upload-files").disabled=false;await loadAttachments(activeCaseId);return;}
+  const kind=mime.startsWith("image/")?"photo":"document";
+  const {error:metaError}=await supabase.from("case_attachments").insert({case_id:activeCaseId,uploaded_by:currentUser.id,storage_bucket:"case-files",storage_path:path,original_filename:file.name,mime_type:mime,file_size_bytes:file.size,kind,description:$("attachment-description").value.trim()||null});
+  if(metaError){
+   await supabase.storage.from("case-files").remove([path]);
+   notice("attachment-message","ثبت مشخصات فایل "+file.name+" ناموفق بود؛ فایل موقت پاک‌سازی شد. "+metaError.message,true);
+   $("upload-files").disabled=false;await loadAttachments(activeCaseId);return;
+  }
  }
  $("upload-files").disabled=false;$("attachment-form").reset();notice("attachment-message","مدارک با موفقیت بارگذاری شدند.");await loadAttachments(activeCaseId);
 });
