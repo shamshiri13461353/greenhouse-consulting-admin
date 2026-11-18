@@ -199,7 +199,7 @@ const fetchWithTimeout=(input,init={})=>{
 };
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
  global:{fetch:fetchWithTimeout},
- auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+ auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"greenhouse-grower-auth"}
 });
 function withLoginTimeout(promise,label="ارتباط با سرور"){
  let timer;
