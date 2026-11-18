@@ -49,8 +49,9 @@
     <div class="card">
       <div class="topline"><h2>اعلان‌های سامانه</h2><span class="pill">دریافت خودکار</span></div>
       <p class="muted">با فعال‌سازی اعلان‌ها، ثبت‌نام گلخانه‌دار جدید و رویدادهای مهم سامانه مستقیماً روی گوشی یا رایانه شما نمایش داده می‌شود.</p>
-      <div class="actions"><button id="enable-push" type="button" class="secondary">فعال‌سازی اعلان‌ها</button></div>
+      <div class="actions"><button id="enable-push" type="button" class="secondary">فعال‌سازی اعلان‌ها</button><button id="test-push" type="button">ارسال اعلان آزمایشی</button></div>
       <p id="push-status" class="muted" role="status">برای دریافت اعلان‌های مدیریتی، مجوز اعلان را فعال کنید.</p>
+      <p id="push-test-status" class="notice hidden" role="status"></p>
     </div>
     <div class="card">
       <div class="topline"><h2>پیام‌های خطاب به مدیر سامانه</h2><button id="refresh-admin-inbox" class="secondary" type="button">به‌روزرسانی</button></div>
@@ -618,6 +619,23 @@
   }
 
   $("enable-push").addEventListener("click",()=>activateAdminPush(adminUser?.id));
+  $("test-push").addEventListener("click",async()=>{
+    const button=$("test-push"),status=$("push-test-status");
+    if(!adminUser){message("push-test-status","ابتدا وارد حساب مدیر شوید.",true);return;}
+    button.disabled=true;status.classList.remove("hidden","error");status.textContent="در حال ارسال اعلان آزمایشی…";
+    try{
+      const {data,error}=await supabase.functions.invoke("admin-push-test",{body:{}});
+      if(error)throw error;
+      if(!data?.ok)throw new Error(data?.error||"پاسخی از سرویس اعلان دریافت نشد.");
+      status.textContent=data.sent>0
+        ? "درخواست ارسال موفق بود: "+data.sent+" از "+data.total+" دستگاه ثبت‌شده. اکنون اعلان دستگاه را بررسی کنید."
+        : "ارسال انجام شد، اما برای این حساب اشتراک فعال اعلان پیدا نشد. ابتدا «فعال‌سازی اعلان‌ها» را در همین دستگاه انجام دهید.";
+    }catch(error){
+      console.error("Admin push test failed",error);
+      status.textContent="ارسال اعلان آزمایشی ناموفق بود: "+(error?.message||"خطای ارتباط");
+      status.classList.add("error");
+    }finally{button.disabled=false;}
+  });
 
   async function performAdminLogin(){
     const button=$("login");
