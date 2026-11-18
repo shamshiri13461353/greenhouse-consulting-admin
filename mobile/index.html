@@ -32,6 +32,7 @@
     .role p{font-size:11px;color:#6b7b74;line-height:1.8;margin:0}
     .arrow{font-size:21px;color:#82948c}
     .install-wrap{text-align:center;margin:18px 0 10px}
+    .install-wrap[hidden],.install-help[hidden]{display:none!important}
     .install{display:inline-block;border:0;border-radius:10px;background:#176b57;color:#fff;padding:12px 22px;font:inherit;font-size:13px;cursor:pointer}
     .install:disabled{opacity:.65;cursor:wait}
     .help{text-align:center;font-size:11px;line-height:1.9;color:#73837c;margin:12px 10px}
@@ -63,14 +64,26 @@
       </a>
     </nav>
     <div class="install-wrap"><button id="install-app" class="install" type="button">نصب سامانه روی گوشی یا رایانه</button></div>
-    <p id="install-help" class="help" role="status" aria-live="polite">اگر پنجره نصب خودکار باز نشد، از منوی مرورگر گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.</p>
+    <p id="install-help" class="help install-help" role="status" aria-live="polite">اگر پنجره نصب خودکار باز نشد، از منوی مرورگر گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید.</p>
     <p class="help">برای ورود و دریافت اطلاعات پرونده‌ها و پیام‌ها، اتصال اینترنت لازم است.</p>
   </main>
   <footer>نسخه همراه سامانه مشاوره گلخانه · پیوندگستر پارسان</footer>
   <script type="module">
     const installButton = document.getElementById("install-app");
+    const installWrap = document.querySelector(".install-wrap");
     const installHelp = document.getElementById("install-help");
     let installPrompt = null;
+
+    function isInstalledApp() {
+      return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    }
+
+    function hideInstallUI() {
+      installWrap.hidden = true;
+      installHelp.hidden = true;
+    }
+
+    if (isInstalledApp()) hideInstallUI();
 
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
@@ -98,11 +111,7 @@
       }
     });
 
-    window.addEventListener("appinstalled", () => {
-      installButton.textContent = "سامانه نصب شد";
-      installButton.disabled = true;
-      installHelp.textContent = "سامانه با موفقیت روی دستگاه نصب شد.";
-    });
+    window.addEventListener("appinstalled", hideInstallUI);
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
