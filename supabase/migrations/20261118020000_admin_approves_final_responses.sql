@@ -93,3 +93,37 @@ begin
   return new;
 end;
 $function$;
+
+-- Keep the case lifecycle aligned with the response review lifecycle.
+create or replace function app_private.sync_case_status_for_final_response_review()
+returns trigger
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+begin
+  if new.is_published then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' or new.review_status is distinct from old.review_status then
+    if new.review_status = 'submitted' then
+      update public.cases
+         set status = 'awaiting_final_approval'
+       where id = new.case_id
+         and status in ('assigned','under_review','awaiting_expert_input');
+    elsif new.review_status = 'changes_requested' then
+      update public.cases
+         set status = 'under_review'
+       where id = new.case_id
+         and status = 'awaiting_final_approval';
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists final_response_sync_review_case_status on public.final_responses;
+create trigger final_response_sync_review_case_status
+after insert or update of review_status on public.final_responses
+for each row execute function app_private.sync_case_status_for_final_response_review();
