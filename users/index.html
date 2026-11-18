@@ -68,6 +68,30 @@ function normalizePhone(value){
 function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 function registerNotice(text,error=false){const el=$("register-message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
 let otpVerified=false;
+let otpCountdownInterval=null;
+let otpCountdownPhone=null;
+let otpCountdownDeadline=0;
+const toFaDigits=value=>String(value).replace(/\\d/g,d=>"۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+function stopOtpCountdown(){
+ if(otpCountdownInterval)clearInterval(otpCountdownInterval);
+ otpCountdownInterval=null;otpCountdownDeadline=0;otpCountdownPhone=null;
+ $("send-otp").disabled=false;$("send-otp").textContent="ارسال کد تأیید";
+}
+function startOtpCountdown(seconds,phone){
+ if(otpCountdownInterval)clearInterval(otpCountdownInterval);
+ otpCountdownPhone=phone;otpCountdownDeadline=Date.now()+seconds*1000;
+ const tick=()=>{
+  const remaining=Math.max(0,Math.ceil((otpCountdownDeadline-Date.now())/1000));
+  if(remaining===0){stopOtpCountdown();return;}
+  $("send-otp").disabled=true;
+  $("send-otp").textContent="ارسال مجدد کد ("+toFaDigits(remaining)+" ثانیه)";
+ };
+ tick();otpCountdownInterval=setInterval(tick,250);
+}
+$("reg-phone").addEventListener("input",()=>{
+ const current=normalizePhone($("reg-phone").value);
+ if(otpCountdownInterval&&current!==otpCountdownPhone)stopOtpCountdown();
+});
 
 async function resolveUser(user){
  show("login-card",false);show("role-card",false);
@@ -117,16 +141,18 @@ $("back-login").addEventListener("click",()=>{show("register-card",false);show("
 $("send-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
  if(!phone){registerNotice("شماره موبایل معتبر وارد کنید؛ نمونه: 09123456789",true);return;}
- $("send-otp").disabled=true;
+ if(otpCountdownInterval&&otpCountdownPhone===phone){registerNotice("برای ارسال مجدد کد، "+toFaDigits(Math.max(0,Math.ceil((otpCountdownDeadline-Date.now())/1000)))+" ثانیه صبر کنید.");return;}
+ $("send-otp").disabled=true;$("send-otp").textContent="در حال ارسال...";
  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"send",phone}});
- $("send-otp").disabled=false;
  if(error||!data?.success){
+  $("send-otp").disabled=false;$("send-otp").textContent="ارسال کد تأیید";
   const code=data?.error||"";
   const messages={phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است.",send_cooldown:"برای ارسال مجدد کد کمی صبر کنید.",invalid_phone:"شماره موبایل معتبر نیست."};
   registerNotice(messages[code]||"ارسال پیامک انجام نشد. موجودی و وضعیت سرویس پیامکی را بررسی کنید.",true);return;
  }
  otpVerified=false;$("create-account").disabled=true;
- registerNotice("کد تأیید ارسال شد. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
+ startOtpCountdown(45,phone);
+ registerNotice("کد تأیید ارسال شد. شمارش معکوس ۴۵ ثانیه‌ای برای درخواست مجدد روی دکمه نمایش داده می‌شود. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
 });
 $("verify-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
