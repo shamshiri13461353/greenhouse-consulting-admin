@@ -817,10 +817,10 @@ $("attachment-form").addEventListener("submit",async ev=>{
  const totalBytes=files.reduce((sum,file)=>sum+file.size,stats.totalBytes);
  if(totalBytes>maxCaseBytes){notice("attachment-message","حجم مجموع فایل‌های این پرونده نباید از ۱۰ مگابایت بیشتر شود. حجم فعلی به‌علاوه فایل‌های انتخاب‌شده: "+(totalBytes/1024/1024).toFixed(2)+" مگابایت.",true);return;}
  const mimeByExtension={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",pdf:"application/pdf",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",xls:"application/vnd.ms-excel",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"};
- const fileTypes=files.map(file=>{const ext=(file.name.split(".").pop()||"").toLowerCase();return {file,mime:mimeByExtension[ext]||null};});
+  const fileTypes=files.map(file=>{const ext=(file.name.split(".").pop()||"").toLowerCase();return {file,ext,mime:mimeByExtension[ext]||null};});
  if(fileTypes.some(item=>!item.mime)){notice("attachment-message","قالب فایل مجاز نیست. فقط JPG، PNG، WEBP، PDF، DOC، DOCX، XLS و XLSX پذیرفته می‌شود.",true);return;}
  $("upload-files").disabled=true;
- for(const {file,mime} of fileTypes){
+  for(const {file,ext,mime} of fileTypes){
    const path=activeCaseId+"/"+crypto.randomUUID()+"."+ext;
   const {error:uploadError}=await supabase.storage.from("case-files").upload(path,file,{contentType:mime,upsert:false});
   if(uploadError){notice("attachment-message","بارگذاری "+file.name+" ناموفق بود: "+uploadError.message,true);$("upload-files").disabled=false;await loadAttachments(activeCaseId);return;}
