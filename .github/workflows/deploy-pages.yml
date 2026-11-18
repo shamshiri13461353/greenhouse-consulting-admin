@@ -167,9 +167,6 @@ jobs:
           pathlib.Path("_site/management/icons").mkdir(parents=True,exist_ok=True)
           png("_site/management/icons/icon-192.png",192)
           png("_site/management/icons/icon-512.png",512)
-          pathlib.Path("_site/mobile/icons").mkdir(parents=True,exist_ok=True)
-          png("_site/mobile/icons/icon-192.png",192)
-          png("_site/mobile/icons/icon-512.png",512)
           PY
           cp /tmp/supabase-sdk/package/LICENSE _site/supabase-js-LICENSE.txt
           touch _site/.nojekyll
