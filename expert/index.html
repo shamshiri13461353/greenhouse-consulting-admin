@@ -48,7 +48,7 @@
 <div class="divider"></div><h2>نتایج آزمایشگاهی</h2><div id="labs" class="empty">—</div>
 <div class="divider"></div><h2>ارسال پیام</h2><p class="muted">پیام‌ها، پرسش‌های تخصصی و پاسخ‌های گلخانه‌دار در این بخش نمایش داده می‌شوند. پیام عادی فقط برای فرستنده، گیرنده و مدیر سامانه قابل مشاهده است.</p><div id="conversation" class="empty">هنوز پیامی یا پرسشی در این پرونده ثبت نشده است.</div>
 <form id="conversation-form"><label for="conversation-type">نوع ارسال</label><select id="conversation-type"><option value="message">ارسال پیام</option><option value="question">طرح پرسش تخصصی</option></select><div id="conversation-recipient-wrap"><label for="conversation-recipient">گیرنده پیام</label><select id="conversation-recipient" required><option value="">در حال دریافت گیرندگان…</option></select></div><label for="conversation-text">متن پیام یا پرسش</label><textarea id="conversation-text" maxlength="5000" required placeholder="متن خود را بنویسید…"></textarea><label id="conversation-required-wrap" class="hidden"><input id="conversation-required" type="checkbox" checked style="width:auto"> پاسخ به این پرسش الزامی است</label><div class="actions"><button id="send-conversation" type="submit">ثبت</button></div><div id="conversation-msg" class="notice hidden"></div></form>
-<div id="final-draft-wrap" class="hidden"><div class="divider"></div><h2>تهیه پیش‌نویس پاسخ نهایی</h2><p class="muted">پس از تکمیل متن، پاسخ را ارسال کنید تا بررسی شود. پاسخ تا زمان تأیید و انتشار نهایی در پنل گلخانه‌دار نمایش داده نمی‌شود.</p><form id="final-form"><label for="final-text">متن کامل پاسخ نهایی</label><textarea id="final-text" required rows="12" placeholder="پاسخ و جمع‌بندی تشخیص را بنویسید؛ سپس توصیه‌های اجرایی و در صورت نیاز هشدارها و ملاحظات را در ادامه همین متن اضافه کنید."></textarea><p class="muted">پاسخ، توصیه‌های اجرایی و هشدارها را به‌ترتیب در همین کادر وارد کنید. برای خوانایی می‌توانید از تیترهای جداگانه استفاده کنید.</p><div class="actions"><button id="submit-final-response" type="submit">ارسال نهایی پاسخ</button></div><div id="final-msg" class="notice hidden"></div></form></div>
+<div id="final-draft-wrap" class="hidden"><div class="divider"></div><h2>ارسال پاسخ نهایی</h2><p class="muted">پس از تکمیل متن، پاسخ را ارسال کنید تا بررسی شود. پاسخ تا زمان تأیید و انتشار نهایی در پنل گلخانه‌دار نمایش داده نمی‌شود.</p><form id="final-form"><label for="final-text">متن کامل پاسخ نهایی</label><textarea id="final-text" required rows="12" placeholder="پاسخ و جمع‌بندی تشخیص را بنویسید؛ سپس توصیه‌های اجرایی و در صورت نیاز هشدارها و ملاحظات را در ادامه همین متن اضافه کنید."></textarea><p class="muted">پاسخ، توصیه‌های اجرایی و هشدارها را به‌ترتیب در همین کادر وارد کنید. برای خوانایی می‌توانید از تیترهای جداگانه استفاده کنید.</p><div class="actions"><button id="submit-final-response" type="submit">ارسال نهایی پاسخ</button></div><div id="final-msg" class="notice hidden"></div></form></div>
 </section></section></main>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
@@ -179,7 +179,7 @@ async function loadInvites(){
  const {data,error}=await supabase.from("case_assignments").select("id,case_id,is_lead,assigned_at,status").eq("expert_user_id",user.id).eq("status","invited").order("assigned_at",{ascending:false});
  if(error){host.textContent="دریافت دعوت‌ها ناموفق بود: "+error.message;return;}
  host.replaceChildren();if(!data?.length){host.className="empty";host.textContent="دعوت جدیدی ندارید.";return;}host.className="";
- for(const a of data){const card=el("article","item"),title=el("h3","","دعوت به پرونده"+(a.is_lead?" · کارشناس مسئول":" · همکار تخصصی")),meta=el("div","meta","زمان ارجاع: "+new Date(a.assigned_at).toLocaleString("fa-IR")),actions=el("div","actions");
+ for(const a of data){const card=el("article","item"),title=el("h3","","دعوت به همکاری در پرونده"),meta=el("div","meta","زمان ارجاع: "+new Date(a.assigned_at).toLocaleString("fa-IR")),actions=el("div","actions");
  const accept=el("button","","پذیرش دعوت");accept.addEventListener("click",async()=>{accept.disabled=true;const {error}=await supabase.rpc("accept_case_assignment",{p_assignment_id:a.id});accept.disabled=false;if(error){alert("پذیرش ناموفق بود: "+error.message);return;}await loadInvites();await loadAssigned();});
  const decline=el("button","alt","رد دعوت");decline.addEventListener("click",async()=>{decline.disabled=true;const {error}=await supabase.rpc("decline_case_assignment",{p_assignment_id:a.id});decline.disabled=false;if(error){alert("رد دعوت ناموفق بود: "+error.message);return;}await loadInvites();});
  actions.append(accept,decline);card.append(title,meta,actions);host.append(card);}
@@ -207,7 +207,7 @@ async function loadAssigned(){
   const map=new Map((cs||[]).map(c=>[c.id,c]));
   for(const a of assignments){
    const c=map.get(a.case_id);if(!c)continue;
-   const card=el("article","item"),top=el("div","top"),title=el("h3","","پرونده "+c.case_number+" ـ "+c.title),tag=el("span","tag",statuses[c.status]||c.status),meta=el("div","meta",(a.is_lead?"کارشناس مسئول":"همکار")+" · شدت: "+(c.severity||"نامشخص")+" · "+new Date(c.created_at).toLocaleDateString("fa-IR")),btn=el("button","alt","بررسی پرونده");
+   const card=el("article","item"),top=el("div","top"),title=el("h3","","پرونده "+c.case_number+" ـ "+c.title),tag=el("span","tag",statuses[c.status]||c.status),meta=el("div","meta","ارجاع پرونده · شدت: "+(c.severity||"نامشخص")+" · "+new Date(c.created_at).toLocaleDateString("fa-IR")),btn=el("button","alt","بررسی پرونده");
    top.append(title,tag);btn.addEventListener("click",()=>openCase(c,a));card.append(top,meta,btn);host.append(card);
   }
  }catch(e){host.textContent="دریافت ارجاعات ناموفق بود: "+(e?.message||"خطای نامشخص");}
@@ -215,7 +215,7 @@ async function loadAssigned(){
 }
 async function openCase(c,a){
  stopCaseAutoRefresh();
- activeCase=c;activeAssignment=a;show("detail");$("case-title").textContent="پرونده "+c.case_number+" ـ "+c.title;$("case-meta").textContent=(statuses[c.status]||c.status)+" · "+(a.is_lead?"کارشناس مسئول":"همکار تخصصی")+" · شدت: "+(c.severity||"نامشخص");$("case-description").textContent=c.description;
+ activeCase=c;activeAssignment=a;show("detail");$("case-title").textContent="پرونده "+c.case_number+" ـ "+c.title;$("case-meta").textContent=(statuses[c.status]||c.status)+" · شدت: "+(c.severity||"نامشخص");$("case-description").textContent=c.description;
  const acts=$("case-actions");acts.replaceChildren();
  if(a.is_lead&&c.status==="assigned"){const b=el("button","","شروع بررسی کارشناسی");b.addEventListener("click",async()=>{const {error}=await supabase.rpc("start_lead_case_review",{p_case_id:c.id});if(error){alert("تغییر وضعیت ناموفق بود: "+error.message);return;}await loadAssigned();c.status="under_review";await openCase(c,a);});acts.append(b);}
  show("final-draft-wrap",a.is_lead&&c.status!=="answered");
