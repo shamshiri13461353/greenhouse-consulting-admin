@@ -107,6 +107,12 @@ jobs:
           cp users/index.html _site/users/index.html
           cp mobile/manifest.webmanifest _site/mobile/manifest.webmanifest
           cp mobile/icons/icon.svg _site/mobile/icons/icon.svg
+          python3 -m pip install --quiet CairoSVG
+          python3 - <<'PY'
+          import cairosvg
+          cairosvg.svg2png(url="mobile/icons/icon.svg", write_to="_site/mobile/icons/icon-192.png", output_width=192, output_height=192)
+          cairosvg.svg2png(url="mobile/icons/icon.svg", write_to="_site/mobile/icons/icon-512.png", output_width=512, output_height=512)
+          PY
           cp sw.js _site/sw.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/users/supabase.js
           cp /tmp/supabase-sdk/package/dist/umd/supabase.js _site/management/supabase.js
