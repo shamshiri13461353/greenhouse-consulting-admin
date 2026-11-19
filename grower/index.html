@@ -32,7 +32,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;line-height:1.8;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}
 .topline{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{font-size:12px;border-radius:20px;padding:5px 10px;background:#edf3ef;color:#3f6255}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tabs button{background:#e6efea;color:#255344}.tabs button.active{background:#176b57;color:#fff}
-.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0}
+.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0}.behrost-shared-description{margin-top:20px;padding:18px;border-top:1px solid #e2ebe6;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px}
 .empty{padding:22px;text-align:center;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}
 @media(max-width:650px){header{padding:16px}h1{font-size:16px}.card{padding:15px}main{margin:15px auto}.grid{grid-template-columns:1fr}.topline{align-items:flex-start;flex-direction:column}}
 </style>
@@ -214,6 +214,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <h2>محصولات پیوندگستر پارسان</h2>
     <p class="muted">در این بخش با محصولات تولیدی و دارای برند شرکت آشنا می‌شوید.</p>
     <div id="company-products-grid" class="product-grid"><div class="empty">در حال دریافت فهرست محصولات…</div></div>
+    <div id="behrost-shared-description" class="behrost-shared-description hidden" aria-live="polite"></div>
    </div>
    <div class="card">
     <h2>محصولات تأمین و توزیع</h2>
@@ -994,13 +995,23 @@ async function loadCompanyProducts(){
  if(error)throw error;if(settingsError)throw settingsError;
  $("distribution-coming-soon").textContent=settings?.distribution_coming_soon_text||"به‌زودی";
  if(!products?.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="در حال حاضر محصولی برای معرفی ثبت نشده است.";host.append(empty);return;}
+ const behrostProducts=products.filter(product=>product.description_group==="behrost");
  for(const product of products){
   const card=document.createElement("article");card.className="product-card";
   if(product.image_url){try{const url=new URL(product.image_url);if(url.protocol==="https:"){const img=document.createElement("img");img.src=url.href;img.alt=product.title;img.loading="lazy";card.append(img);}}catch{}}
   const body=document.createElement("div");body.className="product-card-body";
   const title=document.createElement("h3");title.textContent=product.title;
-  const description=document.createElement("p");description.textContent=product.description_group==="behrost"?(settings?.behrost_shared_description||product.description||""):(product.description||"");
-  body.append(title,description);card.append(body);host.append(card);
+  body.append(title);
+  if(product.description_group!=="behrost"&&product.description){
+   const description=document.createElement("p");description.textContent=product.description;body.append(description);
+  }
+  card.append(body);host.append(card);
+ }
+ const sharedDescription=$("behrost-shared-description");
+ if(sharedDescription){
+  const text=(settings?.behrost_shared_description||"").trim();
+  sharedDescription.textContent=text;
+  sharedDescription.classList.toggle("hidden",behrostProducts.length===0||!text);
  }
 }
 async function loadServiceWorkspace(){
