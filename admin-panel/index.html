@@ -1154,7 +1154,7 @@
       ["گزارش",sample.report_published_at?"منتشرشده":"منتشرنشده"]];
     for(const [k,v] of meta){const d=document.createElement("div");d.textContent=k+" · "+v;$("lab-sample-admin-meta").append(d);}
     const [processingResult,resultsResult]=await Promise.all([
-      supabase.from("lab_sample_processing").select("sample_id,analyst_user_id,analysis_method,quality_note,approval_status,reviewed_by,reviewed_at").eq("sample_id",sampleId).maybeSingle(),
+      supabase.from("lab_sample_processing").select("sample_id,received_by,analyst_user_id,analysis_method,quality_note,approval_status,reviewed_by,reviewed_at").eq("sample_id",sampleId).maybeSingle(),
       supabase.from("lab_results").select("id,analyte_id,value_numeric,unit_id,replicate_no,detection_limit,result_note").eq("sample_id",sampleId).order("analyte_id")
     ]);
     if(processingResult.error)throw processingResult.error;
@@ -1198,7 +1198,7 @@
     if(qualityError){labAdminMessage("lab-sample-detail-message","ثبت وضعیت کنترل کیفیت ناموفق بود: "+qualityError.message,true);return;}
     const newQualityStatus=$("lab-sample-quality-status").value;
     const keepApproval=newQualityStatus==="accepted";
-    const payload={sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
+    const payload={sample_id:selectedLabSampleAdmin.id,received_by:selectedLabProcessingAdmin?.received_by||adminUser.id,
       analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
       analysis_method:$("lab-analysis-method").value.trim()||null,
       quality_note:$("lab-quality-note").value.trim()||null,
@@ -1234,7 +1234,7 @@
     if(!selectedLabSampleAdmin)return;
     if(selectedLabSampleAdmin.quality_status!=="accepted"){labAdminMessage("lab-sample-detail-message","ابتدا وضعیت کنترل کیفیت را «پذیرفته‌شده» ثبت کنید.",true);return;}
     const saveResult=await supabase.from("lab_sample_processing").upsert({
-      sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
+      sample_id:selectedLabSampleAdmin.id,received_by:selectedLabProcessingAdmin?.received_by||adminUser.id,
       analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
       analysis_method:$("lab-analysis-method").value.trim()||null,
       quality_note:$("lab-quality-note").value.trim()||null,approval_status:"approved",
