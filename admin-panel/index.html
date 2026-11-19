@@ -929,24 +929,12 @@
     if(!serviceId||!Number.isFinite(amount)||amount<0){serviceAdminMessage("service-admin-message","خدمت و مبلغ معتبر را انتخاب کنید.",true);return;}
     const button=$("save-service-price");button.disabled=true;
     try{
-      const {data:latest,error:latestError}=await supabase.from("service_price_versions")
-        .select("version_no").eq("service_id",serviceId).order("version_no",{ascending:false}).limit(1).maybeSingle();
-      if(latestError)throw latestError;
-      const now=new Date().toISOString();
-      const {error:closeError}=await supabase.from("service_price_versions")
-        .update({is_active:false,effective_until:now}).eq("service_id",serviceId).eq("is_active",true);
-      if(closeError)throw closeError;
-      const {error:insertError}=await supabase.from("service_price_versions").insert({
-        service_id:serviceId,version_no:(latest?.version_no||0)+1,unit_price:amount,currency_code:"IRR",
-        effective_from:now,is_active:true,created_by:adminUser.id
+      const {data,error}=await supabase.rpc("set_service_price",{
+        p_service_id:serviceId,p_unit_price:amount,p_activate_after_save:$("service-activate-after-save").checked
       });
-      if(insertError)throw insertError;
-      if($("service-activate-after-save").checked){
-        const {error:activateError}=await supabase.from("services").update({is_active:true}).eq("id",serviceId);
-        if(activateError)throw activateError;
-      }
+      if(error)throw error;
       $("service-price-amount").value="";
-      serviceAdminMessage("service-admin-message","تعرفه جدید ثبت شد. نسخه‌های قبلی برای حفظ سوابق درخواست‌ها نگهداری شدند.");
+      serviceAdminMessage("service-admin-message","تعرفه جدید به‌صورت یکپارچه ثبت شد. نسخه‌های قبلی برای حفظ سوابق درخواست‌ها نگهداری شدند.");
       await loadServiceCatalogAdmin();
     }catch(error){serviceAdminMessage("service-admin-message","ثبت تعرفه ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}
     finally{button.disabled=false;}
