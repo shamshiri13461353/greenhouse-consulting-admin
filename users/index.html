@@ -75,7 +75,8 @@ function normalizePhone(value){
 }
 function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 function registerNotice(text,error=false){const el=$("register-message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
-let otpVerified=false;\nlet otpVerifiedPhone=null;
+let otpVerified=false;
+let otpVerifiedPhone=null;
 let otpCountdownInterval=null;
 let otpCountdownPhone=null;
 let otpCountdownDeadline=0;
@@ -156,7 +157,8 @@ function resetRegistrationFlow(){
  $("otp-phone-display").textContent="";setRegistrationStep("phone");show("register-message",false);
 }
 $("open-register").addEventListener("click",()=>{resetRegistrationFlow();show("login-card",false);show("register-card");});
-$("back-login").addEventListener("click",()=>{stopOtpCountdown();show("register-card",false);show("login-card");});\n$("change-register-phone").addEventListener("click",()=>{otpVerified=false;otpVerifiedPhone=null;$("reg-phone").readOnly=false;$("reg-code").value="";stopOtpCountdown();setRegistrationStep("phone");registerNotice("شماره موبایل را اصلاح کنید و کد جدید بگیرید.");});
+$("back-login").addEventListener("click",()=>{stopOtpCountdown();show("register-card",false);show("login-card");});
+$("change-register-phone").addEventListener("click",()=>{otpVerified=false;otpVerifiedPhone=null;$("reg-phone").readOnly=false;$("reg-code").value="";stopOtpCountdown();setRegistrationStep("phone");registerNotice("شماره موبایل را اصلاح کنید و کد جدید بگیرید.");});
 $("send-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
  if(!phone){registerNotice("شماره موبایل معتبر وارد کنید؛ نمونه: 09123456789",true);return;}
