@@ -156,7 +156,7 @@
        <input id="company-product-id" type="hidden">
        <div class="grid">
         <div><label for="company-product-title">نام محصول *</label><input id="company-product-title" maxlength="160" required></div>
-        <div><label for="company-product-image-file">تصویر محصول</label><input id="company-product-image-file" type="file" accept="image/jpeg,image/png,image/webp"><p class="muted">فرمت‌های JPG، PNG و WebP؛ حداکثر ۴ مگابایت</p><img id="company-product-image-preview" class="hidden" alt="پیش‌نمایش تصویر محصول" style="max-width:180px;max-height:150px;object-fit:contain;border:1px solid #dce8e1;border-radius:10px;padding:6px"></div>
+        <div><label for="company-product-image-file">تصویر محصول (برای جایگزینی، تصویر جدید انتخاب کنید)</label><input id="company-product-image-file" type="file" accept="image/jpeg,image/png,image/webp"><p class="muted">فرمت‌های JPG، PNG و WebP؛ حداکثر ۴ مگابایت</p><img id="company-product-image-preview" class="hidden" alt="پیش‌نمایش تصویر محصول" style="max-width:180px;max-height:150px;object-fit:contain;border:1px solid #dce8e1;border-radius:10px;padding:6px"><div class="actions"><button id="remove-company-product-image" type="button" class="secondary hidden">حذف تصویر فعلی</button></div></div>
        </div>
        <label for="company-product-description">معرفی و توضیحات محصول</label><textarea id="company-product-description" maxlength="5000" rows="4"></textarea>
        <label for="company-product-order">ترتیب نمایش</label><input id="company-product-order" type="number" step="1" value="0">
@@ -171,7 +171,7 @@
       </div>
       <div id="distribution-setting-message" class="notice hidden" role="status"></div>
       <div class="divider"></div><h3>فهرست محصولات</h3>
-      <div class="table-wrap"><table><thead><tr><th>محصول</th><th>ترتیب</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="company-product-admin-rows"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>تصویر</th><th>محصول</th><th>ترتیب</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="company-product-admin-rows"></tbody></table></div>
       <div id="company-product-admin-empty" class="empty hidden">هنوز محصولی ثبت نشده است.</div>
     </div>
     <div class="card" id="service-requests-admin-card">
@@ -848,9 +848,9 @@
     $("company-product-id").value="";$("company-product-title").value="";
     $("company-product-image-file").value="";$("company-product-description").value="";
     $("company-product-order").value="0";$("save-company-product").textContent="ذخیره محصول";
-    companyProductEditingImageUrl=null;setCompanyProductPreview(null);
+    companyProductEditingImageUrl=null;setCompanyProductPreview(null);$("remove-company-product-image").classList.add("hidden");
   }
-  $("company-product-image-file").addEventListener("change",()=>{
+  $("remove-company-product-image").addEventListener("click",()=>{\n    companyProductEditingImageUrl=null;$("company-product-image-file").value="";setCompanyProductPreview(null);\n    $("remove-company-product-image").classList.add("hidden");\n    companyProductMessage("company-product-message","تصویر فعلی حذف می‌شود؛ برای ثبت نهایی، دکمه «ثبت ویرایش» را بزنید.");\n  });\n  $("company-product-image-file").addEventListener("change",()=>{
     const file=$("company-product-image-file").files?.[0];
     if(!file){setCompanyProductPreview(companyProductEditingImageUrl);return;}
     if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>4*1024*1024){
