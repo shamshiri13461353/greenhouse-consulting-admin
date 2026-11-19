@@ -890,22 +890,14 @@
     for(const [k,v] of metaValues){const box=document.createElement("div");box.textContent=k+" · "+v;$("service-request-admin-meta").append(box);}
     $("service-request-admin-items").textContent="در حال دریافت خدمات انتخاب‌شده…";
     const {data:selections,error}=await supabase.from("service_request_selections")
-      .select("service_id,quantity,selection_note").eq("request_id",id);
+      .select("service_id,quantity,selection_note,service_title_snapshot,service_code_snapshot").eq("request_id",id);
     if(error){$("service-request-admin-items").textContent="دریافت خدمات انتخاب‌شده ناموفق بود: "+error.message;return;}
     selectedServiceRequestItems=selections||[];
-    const serviceIds=[...new Set(selectedServiceRequestItems.map(x=>x.service_id))];
-    let services=[];
-    if(serviceIds.length){
-      const result=await supabase.from("services").select("id,title_fa,service_group").in("id",serviceIds);
-      if(result.error){$("service-request-admin-items").textContent="دریافت نام خدمات ناموفق بود: "+result.error.message;return;}
-      services=result.data||[];
-    }
-    const serviceMap=new Map(services.map(x=>[x.id,x]));
     const host=$("service-request-admin-items");host.replaceChildren();
     if(!selectedServiceRequestItems.length){host.textContent="برای این درخواست خدمتی انتخاب نشده است.";return;}
     for(const item of selectedServiceRequestItems){
-      const line=document.createElement("div"),s=serviceMap.get(item.service_id);
-      line.textContent=(s?.title_fa||"خدمت")+ " · تعداد: "+new Intl.NumberFormat("fa-IR").format(item.quantity)+(item.selection_note?" · "+item.selection_note:"");
+      const line=document.createElement("div");
+      line.textContent=(item.service_title_snapshot||"خدمت")+" · تعداد: "+new Intl.NumberFormat("fa-IR").format(item.quantity)+(item.selection_note?" · "+item.selection_note:"");
       host.append(line);
     }
     $("service-request-discount").value="0";
