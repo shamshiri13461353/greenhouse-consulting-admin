@@ -171,6 +171,54 @@
       </section>
     </div>
 
+    <div class="card" id="lab-management-card">
+      <div class="topline"><h2>مدیریت آزمایشگاه و نتایج</h2><button id="refresh-lab-management" type="button" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">پذیرش نمونه، ثبت نتایج ساختاریافته، کنترل کیفیت، تأیید تخصصی و انتشار گزارش از این بخش انجام می‌شود. نتایج تا زمان انتشار گزارش برای گلخانه‌دار قابل مشاهده نیست.</p>
+      <div class="grid">
+        <div><label for="lab-intake-request">درخواست آماده پذیرش نمونه</label><select id="lab-intake-request"></select></div>
+        <div><label for="lab-receipt-method">روش دریافت نمونه</label><select id="lab-receipt-method"><option value="in_person">تحویل حضوری</option><option value="courier">پیک</option><option value="postal">پست</option><option value="other">سایر روش‌ها</option></select></div>
+        <div><label for="lab-sampled-at">تاریخ نمونه‌برداری</label><input id="lab-sampled-at" type="date"></div>
+      </div>
+      <div id="lab-intake-sample-options" class="review-item">ابتدا یک درخواست آماده پذیرش انتخاب کنید.</div>
+      <div class="grid">
+        <div><label for="lab-sampling-location">محل نمونه‌برداری (اختیاری)</label><input id="lab-sampling-location" type="text" placeholder="مثلاً مخزن ورودی یا زهکش ردیف ۳"></div>
+        <div><label for="lab-intake-analyst">مسئول آزمایشگاه تخصیص‌یافته</label><select id="lab-intake-analyst"><option value="">بدون تعیین مسئول</option></select></div>
+      </div>
+      <label for="lab-intake-note">توضیحات پذیرش / کنترل اولیه</label><textarea id="lab-intake-note" rows="2" placeholder="وضعیت بسته‌بندی، مقدار نمونه یا نکات اولیه"></textarea>
+      <div class="actions"><button id="receive-lab-samples" type="button">ثبت پذیرش نمونه‌های انتخاب‌شده</button></div>
+      <div id="lab-management-message" class="notice hidden" role="status"></div>
+      <div class="divider"></div>
+      <h3>فهرست نمونه‌های ثبت‌شده</h3>
+      <div class="table-wrap"><table><thead><tr><th>کد نمونه</th><th>نوع نمونه</th><th>وضعیت کنترل کیفیت</th><th>وضعیت گزارش</th><th></th></tr></thead><tbody id="lab-sample-admin-rows"></tbody></table></div>
+      <div id="lab-sample-admin-empty" class="empty hidden">هنوز نمونه‌ای ثبت نشده است.</div>
+      <section id="lab-sample-admin-detail" class="monitor-detail hidden">
+        <h3 id="lab-sample-admin-title">جزئیات نمونه</h3>
+        <div id="lab-sample-admin-meta" class="monitor-meta"></div>
+        <div class="grid">
+          <div><label for="lab-analysis-method">روش تجزیه</label><input id="lab-analysis-method" type="text" placeholder="روش یا دستگاه مورد استفاده"></div>
+          <div><label for="lab-quality-note">یادداشت داخلی کنترل کیفیت</label><input id="lab-quality-note" type="text" placeholder="یادداشت داخلی"></div>
+        </div>
+        <div class="actions"><button id="save-lab-processing" type="button" class="secondary">ذخیره اطلاعات تجزیه</button></div>
+        <div class="divider"></div>
+        <h3>ثبت شاخص آزمایش</h3>
+        <div class="grid">
+          <div><label for="lab-result-analyte">شاخص</label><select id="lab-result-analyte"></select></div>
+          <div><label for="lab-result-value">مقدار اندازه‌گیری‌شده</label><input id="lab-result-value" type="number" step="any"></div>
+          <div><label for="lab-result-unit">واحد</label><select id="lab-result-unit"></select></div>
+          <div><label for="lab-result-replicate">شماره تکرار</label><input id="lab-result-replicate" type="number" min="1" step="1" value="1"></div>
+          <div><label for="lab-result-detection-limit">حد تشخیص (اختیاری)</label><input id="lab-result-detection-limit" type="number" min="0" step="any"></div>
+        </div>
+        <label for="lab-result-note">توضیح نتیجه (اختیاری)</label><input id="lab-result-note" type="text">
+        <div class="actions"><button id="add-lab-result" type="button">ثبت نتیجه شاخص</button></div>
+        <div class="table-wrap"><table><thead><tr><th>شاخص</th><th>مقدار</th><th>واحد</th><th>تکرار</th><th>توضیح</th></tr></thead><tbody id="lab-result-admin-rows"></tbody></table></div>
+        <div class="actions">
+          <button id="approve-lab-sample" type="button" class="secondary">تأیید تخصصی نتایج</button>
+          <button id="publish-lab-report" type="button">انتشار گزارش برای گلخانه‌دار</button>
+        </div>
+        <div id="lab-sample-detail-message" class="notice hidden" role="status"></div>
+      </section>
+    </div>
+
   </section>
 </main>
 <script type="module">
@@ -906,6 +954,7 @@
   async function loadServiceManagement(){
     try{
       await Promise.all([loadServiceCatalogAdmin(),loadServiceExpertsAdmin(),loadServiceRequestsAdmin()]);
+      await loadLabManagement();
     }catch(error){
       console.error("Service management loading failed",error);
       serviceAdminMessage("service-admin-message","بارگذاری بخش خدمات ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
@@ -960,6 +1009,250 @@
     button.disabled=false;
     if(error){serviceAdminMessage("service-request-admin-detail-message","ثبت مسئول رسیدگی ناموفق بود: "+error.message,true);return;}
     serviceAdminMessage("service-request-admin-detail-message","مسئول رسیدگی ثبت شد. نام کارشناس برای گلخانه‌دار نمایش داده نمی‌شود.");
+  });
+
+  // مدیریت پذیرش نمونه، ثبت نتایج و انتشار گزارش آزمایشگاه
+  let labAdminSamples=[],selectedLabSampleAdmin=null,selectedLabProcessingAdmin=null;
+  let labAdminAnalytes=[],labAdminUnits=[];
+  const labTypeFa={irrigation_water:"آب آبیاری",drainage:"زهاب",soil:"خاک",substrate:"بستر کشت",plant_tissue:"برگ / بافت گیاهی",nutrient_solution:"محلول غذایی",other:"سایر"};
+  const labQualityFa={pending:"در انتظار کنترل",accepted:"پذیرفته‌شده",rejected:"ردشده",resampling_required:"نیازمند نمونه‌گیری مجدد"};
+  function labAdminMessage(id,text,isError=false){message(id,text,isError);}
+  function sampleTypesForSelections(rows){
+    const allowed=new Set();
+    for(const row of rows){
+      const code=row.service_code_snapshot;
+      if(code==="irrigation_water_drainage_analysis"){allowed.add("irrigation_water");allowed.add("drainage");}
+      else if(code==="soil_analysis")allowed.add("soil");
+      else if(code==="substrate_analysis")allowed.add("substrate");
+      else if(code==="plant_tissue_analysis")allowed.add("plant_tissue");
+      else if(code==="combined_lab_nutrition"){
+        for(const t of ["irrigation_water","drainage","soil","substrate","plant_tissue","nutrient_solution","other"])allowed.add(t);
+      }
+    }
+    return [...allowed];
+  }
+  async function renderLabIntakeOptions(){
+    const host=$("lab-intake-sample-options"),requestId=$("lab-intake-request").value;
+    host.replaceChildren();
+    if(!requestId){host.textContent="ابتدا یک درخواست آماده پذیرش انتخاب کنید.";return;}
+    const request=labEligibleRequests.find(x=>x.id===requestId);
+    const selections=labSelectionsByRequest.get(requestId)||[];
+    const existing=labAdminSamples.filter(x=>x.service_request_id===requestId).map(x=>x.sample_type);
+    const types=sampleTypesForSelections(selections).filter(t=>!existing.includes(t));
+    if(!types.length){host.textContent="نمونه‌های موردنیاز این درخواست قبلاً ثبت شده‌اند یا این خدمت به نمونه آزمایشگاهی نیاز ندارد.";return;}
+    host.textContent="";
+    const isCombined=selections.some(x=>x.service_code_snapshot==="combined_lab_nutrition");
+    for(const type of types){
+      const label=document.createElement("label");label.style.display="inline-flex";label.style.alignItems="center";label.style.gap="8px";label.style.margin="8px 18px 8px 0";
+      const check=document.createElement("input");check.type="checkbox";check.value=type;check.dataset.labSampleType="true";check.style.width="auto";
+      check.checked=!isCombined;
+      label.append(check,document.createTextNode(labTypeFa[type]||type));host.append(label);
+    }
+  }
+  let labEligibleRequests=[],labSelectionsByRequest=new Map();
+  async function loadLabManagement(){
+    try{
+      const [requestResult,sampleResult,analyteResult,unitResult]=await Promise.all([
+        supabase.from("service_requests")
+          .select("id,request_number,greenhouse_id,crop_cycle_id,request_group,status,payment_status,fulfillment_status")
+          .in("payment_status",["paid","not_required"]).in("status",["confirmed","in_progress"]).order("created_at",{ascending:false}),
+        supabase.from("lab_samples")
+          .select("id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,created_at")
+          .order("created_at",{ascending:false}).limit(150),
+        supabase.from("analytes").select("id,code,title_fa,default_unit_id,category").eq("is_active",true).order("title_fa"),
+        supabase.from("units").select("id,code,title_fa,dimension").eq("is_active",true).order("title_fa")
+      ]);
+      if(requestResult.error)throw requestResult.error;
+      if(sampleResult.error)throw sampleResult.error;
+      if(analyteResult.error)throw analyteResult.error;
+      if(unitResult.error)throw unitResult.error;
+      labEligibleRequests=requestResult.data||[];
+      labAdminSamples=sampleResult.data||[];
+      labAdminAnalytes=analyteResult.data||[];
+      labAdminUnits=unitResult.data||[];
+      labSelectionsByRequest=new Map();
+      if(labEligibleRequests.length){
+        const ids=labEligibleRequests.map(x=>x.id);
+        const sr=await supabase.from("service_request_selections")
+          .select("request_id,service_code_snapshot,service_title_snapshot,quantity").in("request_id",ids);
+        if(sr.error)throw sr.error;
+        for(const row of sr.data||[]){
+          if(!labSelectionsByRequest.has(row.request_id))labSelectionsByRequest.set(row.request_id,[]);
+          labSelectionsByRequest.get(row.request_id).push(row);
+        }
+      }
+      const requestSelect=$("lab-intake-request"),old=requestSelect.value;
+      requestSelect.replaceChildren(new Option("انتخاب درخواست آماده پذیرش",""));
+      for(const r of labEligibleRequests){
+        const label="درخواست "+new Intl.NumberFormat("fa-IR").format(r.request_number)+" · "+(serviceGroupFa[r.request_group]||r.request_group);
+        requestSelect.add(new Option(label,r.id));
+      }
+      if(labEligibleRequests.some(x=>x.id===old))requestSelect.value=old;
+      const analystSelect=$("lab-intake-analyst"),oldAnalyst=analystSelect.value;
+      analystSelect.replaceChildren(new Option("بدون تعیین مسئول",""));
+      if(oldAnalyst)analystSelect.value=oldAnalyst;
+      renderLabSampleAdminRows();
+      await renderLabIntakeOptions();
+      if(selectedLabSampleAdmin&&labAdminSamples.some(x=>x.id===selectedLabSampleAdmin.id)){
+        await selectLabSampleAdmin(selectedLabSampleAdmin.id);
+      }else if(selectedLabSampleAdmin){selectedLabSampleAdmin=null;show("lab-sample-admin-detail",false);}
+    }catch(error){
+      console.error("Lab management loading failed",error);
+      labAdminMessage("lab-management-message","بارگذاری بخش آزمایشگاه ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
+    }
+  }
+  function renderLabSampleAdminRows(){
+    const body=$("lab-sample-admin-rows");body.replaceChildren();
+    $("lab-sample-admin-empty").classList.toggle("hidden",labAdminSamples.length>0);
+    for(const sample of labAdminSamples){
+      const tr=document.createElement("tr");
+      const values=[sample.sample_code||"—",labTypeFa[sample.sample_type]||sample.sample_type,
+        labQualityFa[sample.quality_status]||sample.quality_status,
+        sample.report_published_at?"منتشرشده":"منتشرنشده"];
+      for(const value of values){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+      const td=document.createElement("td"),button=document.createElement("button");
+      button.type="button";button.className="secondary";button.textContent="ثبت / مشاهده نتایج";
+      button.addEventListener("click",()=>selectLabSampleAdmin(sample.id));td.append(button);tr.append(td);body.append(tr);
+    }
+  }
+  async function loadLabAssignedAnalysts(requestId){
+    const select=$("lab-intake-analyst"),old=select.value;
+    select.replaceChildren(new Option("بدون تعیین مسئول",""));
+    const {data,error}=await supabase.from("service_request_assignments")
+      .select("assigned_user_id").eq("request_id",requestId).eq("assignment_role","lab_analyst").eq("status","active");
+    if(error)throw error;
+    const ids=(data||[]).map(x=>x.assigned_user_id);
+    for(const expert of serviceAdminExperts.filter(x=>ids.includes(x.user_id))){
+      const p=expert.profile||{},name=[p.first_name,p.last_name].filter(Boolean).join(" ")||expert.professional_title||"کارشناس";
+      select.add(new Option(name,expert.user_id));
+    }
+    if(ids.includes(old))select.value=old;
+  }
+  $("lab-intake-request").addEventListener("change",async()=>{
+    try{await renderLabIntakeOptions();const id=$("lab-intake-request").value;if(id)await loadLabAssignedAnalysts(id);}
+    catch(error){labAdminMessage("lab-management-message","دریافت اطلاعات پذیرش ناموفق بود: "+error.message,true);}
+  });
+  $("receive-lab-samples").addEventListener("click",async()=>{
+    const requestId=$("lab-intake-request").value;
+    const types=[...document.querySelectorAll("[data-lab-sample-type]:checked")].map(x=>x.value);
+    if(!requestId){labAdminMessage("lab-management-message","ابتدا درخواست را انتخاب کنید.",true);return;}
+    if(!types.length){labAdminMessage("lab-management-message","حداقل یک نوع نمونه را انتخاب کنید.",true);return;}
+    const button=$("receive-lab-samples");button.disabled=true;
+    try{
+      const {data,error}=await supabase.rpc("receive_lab_samples",{
+        p_request_id:requestId,p_sample_types:types,p_receipt_method:$("lab-receipt-method").value,
+        p_sampled_at:$("lab-sampled-at").value||null,p_sampling_location:$("lab-sampling-location").value.trim()||null,
+        p_notes:$("lab-intake-note").value.trim()||null,p_analyst_user_id:$("lab-intake-analyst").value||null
+      });
+      if(error)throw error;
+      labAdminMessage("lab-management-message","پذیرش نمونه‌ها ثبت شد: "+(Array.isArray(data)?data.map(x=>x.sample_code).join("، "):"موفق"));
+      $("lab-intake-note").value="";$("lab-sampling-location").value="";
+      await loadLabManagement();
+    }catch(error){labAdminMessage("lab-management-message","ثبت پذیرش نمونه ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}
+    finally{button.disabled=false;}
+  });
+  async function selectLabSampleAdmin(sampleId){
+    const sample=labAdminSamples.find(x=>x.id===sampleId);if(!sample)return;
+    selectedLabSampleAdmin=sample;show("lab-sample-admin-detail",true);
+    $("lab-sample-admin-title").textContent="نمونه "+(sample.sample_code||"بدون کد");
+    $("lab-sample-admin-meta").replaceChildren();
+    const meta=[["نوع نمونه",labTypeFa[sample.sample_type]||sample.sample_type],
+      ["کنترل کیفیت",labQualityFa[sample.quality_status]||sample.quality_status],
+      ["گزارش",sample.report_published_at?"منتشرشده":"منتشرنشده"]];
+    for(const [k,v] of meta){const d=document.createElement("div");d.textContent=k+" · "+v;$("lab-sample-admin-meta").append(d);}
+    const [processingResult,resultsResult]=await Promise.all([
+      supabase.from("lab_sample_processing").select("sample_id,analyst_user_id,analysis_method,quality_note,approval_status,reviewed_by,reviewed_at").eq("sample_id",sampleId).maybeSingle(),
+      supabase.from("lab_results").select("id,analyte_id,value_numeric,unit_id,replicate_no,detection_limit,result_note").eq("sample_id",sampleId).order("analyte_id")
+    ]);
+    if(processingResult.error)throw processingResult.error;
+    if(resultsResult.error)throw resultsResult.error;
+    selectedLabProcessingAdmin=processingResult.data||null;
+    $("lab-analysis-method").value=selectedLabProcessingAdmin?.analysis_method||"";
+    $("lab-quality-note").value=selectedLabProcessingAdmin?.quality_note||"";
+    const analyteSelect=$("lab-result-analyte"),unitSelect=$("lab-result-unit");
+    analyteSelect.replaceChildren(new Option("انتخاب شاخص",""));
+    for(const a of labAdminAnalytes)analyteSelect.add(new Option(a.title_fa+" · "+a.code,a.id));
+    unitSelect.replaceChildren(new Option("انتخاب واحد",""));
+    for(const u of labAdminUnits)unitSelect.add(new Option(u.title_fa+" · "+u.code,u.id));
+    analyteSelect.onchange=()=>{
+      const a=labAdminAnalytes.find(x=>x.id===analyteSelect.value);
+      if(a?.default_unit_id)unitSelect.value=a.default_unit_id;
+    };
+    const analyteMap=new Map(labAdminAnalytes.map(x=>[x.id,x.title_fa]));
+    const unitMap=new Map(labAdminUnits.map(x=>[x.id,x.title_fa]));
+    const body=$("lab-result-admin-rows");body.replaceChildren();
+    for(const result of resultsResult.data||[]){
+      const tr=document.createElement("tr");
+      for(const value of [analyteMap.get(result.analyte_id)||"—",result.value_numeric,unitMap.get(result.unit_id)||"—",result.replicate_no,result.result_note||"—"]){
+        const td=document.createElement("td");td.textContent=String(value);tr.append(td);
+      }
+      body.append(tr);
+    }
+    const published=!!sample.report_published_at;
+    $("add-lab-result").disabled=published;
+    $("save-lab-processing").disabled=published;
+    $("approve-lab-sample").disabled=published||selectedLabProcessingAdmin?.approval_status==="approved";
+    $("publish-lab-report").disabled=published||selectedLabProcessingAdmin?.approval_status!=="approved";
+    $("lab-sample-detail-message").classList.add("hidden");
+  }
+  $("refresh-lab-management").addEventListener("click",loadLabManagement);
+  $("save-lab-processing").addEventListener("click",async()=>{
+    if(!selectedLabSampleAdmin)return;
+    const payload={sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
+      analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
+      analysis_method:$("lab-analysis-method").value.trim()||null,
+      quality_note:$("lab-quality-note").value.trim()||null,
+      approval_status:selectedLabProcessingAdmin?.approval_status||"pending",
+      reviewed_by:selectedLabProcessingAdmin?.reviewed_by||null,reviewed_at:selectedLabProcessingAdmin?.reviewed_at||null};
+    const {error}=await supabase.from("lab_sample_processing").upsert(payload,{onConflict:"sample_id"});
+    if(error){labAdminMessage("lab-sample-detail-message","ذخیره اطلاعات تجزیه ناموفق بود: "+error.message,true);return;}
+    labAdminMessage("lab-sample-detail-message","اطلاعات تجزیه ذخیره شد.");
+    await selectLabSampleAdmin(selectedLabSampleAdmin.id);
+  });
+  $("add-lab-result").addEventListener("click",async()=>{
+    if(!selectedLabSampleAdmin)return;
+    const analyteId=$("lab-result-analyte").value,unitId=$("lab-result-unit").value;
+    const valueText=$("lab-result-value").value.trim(),value=Number(valueText);
+    const replicate=Number($("lab-result-replicate").value||1);
+    const detectionText=$("lab-result-detection-limit").value.trim();
+    if(!analyteId||!unitId||valueText===""||!Number.isFinite(value)||!Number.isInteger(replicate)||replicate<1){
+      labAdminMessage("lab-sample-detail-message","شاخص، مقدار، واحد و شماره تکرار را به‌درستی وارد کنید.",true);return;
+    }
+    const payload={sample_id:selectedLabSampleAdmin.id,analyte_id:analyteId,value_numeric:value,unit_id:unitId,
+      replicate_no:replicate,detection_limit:detectionText===""?null:Number(detectionText),result_note:$("lab-result-note").value.trim()||null};
+    const {error}=await supabase.from("lab_results").insert(payload);
+    if(error){labAdminMessage("lab-sample-detail-message","ثبت نتیجه ناموفق بود: "+error.message,true);return;}
+    if(selectedLabSampleAdmin.service_request_id){
+      await supabase.from("service_requests").update({fulfillment_status:"analysis_in_progress"}).eq("id",selectedLabSampleAdmin.service_request_id);
+    }
+    $("lab-result-value").value="";$("lab-result-detection-limit").value="";$("lab-result-note").value="";
+    labAdminMessage("lab-sample-detail-message","نتیجه شاخص ثبت شد.");
+    await selectLabSampleAdmin(selectedLabSampleAdmin.id);
+  });
+  $("approve-lab-sample").addEventListener("click",async()=>{
+    if(!selectedLabSampleAdmin)return;
+    const saveResult=await supabase.from("lab_sample_processing").upsert({
+      sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
+      analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
+      analysis_method:$("lab-analysis-method").value.trim()||null,
+      quality_note:$("lab-quality-note").value.trim()||null,approval_status:"approved",
+      reviewed_by:adminUser.id,reviewed_at:new Date().toISOString()
+    },{onConflict:"sample_id"});
+    if(saveResult.error){labAdminMessage("lab-sample-detail-message","تأیید نتایج ناموفق بود: "+saveResult.error.message,true);return;}
+    await supabase.from("lab_sample_events").insert({sample_id:selectedLabSampleAdmin.id,event_type:"reviewed",event_status:"approved",performed_by:adminUser.id});
+    labAdminMessage("lab-sample-detail-message","نتایج این نمونه تأیید تخصصی شد.");
+    await loadLabManagement();
+  });
+  $("publish-lab-report").addEventListener("click",async()=>{
+    if(!selectedLabSampleAdmin)return;
+    const button=$("publish-lab-report");button.disabled=true;
+    const {error}=await supabase.from("lab_samples").update({
+      report_published_at:new Date().toISOString(),report_date:new Date().toISOString().slice(0,10)
+    }).eq("id",selectedLabSampleAdmin.id);
+    if(error){labAdminMessage("lab-sample-detail-message","انتشار گزارش انجام نشد: "+error.message,true);button.disabled=false;return;}
+    await supabase.from("lab_sample_events").insert({sample_id:selectedLabSampleAdmin.id,event_type:"report_published",event_status:"published",performed_by:adminUser.id});
+    labAdminMessage("lab-sample-detail-message","گزارش منتشر شد و نتایج برای گلخانه‌دار قابل مشاهده است.");
+    await loadLabManagement();button.disabled=false;
   });
 </script>
 </body>
