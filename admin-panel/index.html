@@ -1095,6 +1095,7 @@
       if(oldAnalyst)analystSelect.value=oldAnalyst;
       renderLabSampleAdminRows();
       await renderLabIntakeOptions();
+      if(requestSelect.value)await loadLabAssignedAnalysts(requestSelect.value);
       if(selectedLabSampleAdmin&&labAdminSamples.some(x=>x.id===selectedLabSampleAdmin.id)){
         await selectLabSampleAdmin(selectedLabSampleAdmin.id);
       }else if(selectedLabSampleAdmin){selectedLabSampleAdmin=null;show("lab-sample-admin-detail",false);}
@@ -1205,16 +1206,19 @@
     const {error:qualityError}=await supabase.from("lab_samples")
       .update({quality_status:$("lab-sample-quality-status").value}).eq("id",selectedLabSampleAdmin.id);
     if(qualityError){labAdminMessage("lab-sample-detail-message","ثبت وضعیت کنترل کیفیت ناموفق بود: "+qualityError.message,true);return;}
+    const newQualityStatus=$("lab-sample-quality-status").value;
+    const keepApproval=newQualityStatus==="accepted";
     const payload={sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
       analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
       analysis_method:$("lab-analysis-method").value.trim()||null,
       quality_note:$("lab-quality-note").value.trim()||null,
-      approval_status:selectedLabProcessingAdmin?.approval_status||"pending",
-      reviewed_by:selectedLabProcessingAdmin?.reviewed_by||null,reviewed_at:selectedLabProcessingAdmin?.reviewed_at||null};
+      approval_status:keepApproval?(selectedLabProcessingAdmin?.approval_status||"pending"):"pending",
+      reviewed_by:keepApproval?(selectedLabProcessingAdmin?.reviewed_by||null):null,
+      reviewed_at:keepApproval?(selectedLabProcessingAdmin?.reviewed_at||null):null};
     const {error}=await supabase.from("lab_sample_processing").upsert(payload,{onConflict:"sample_id"});
     if(error){labAdminMessage("lab-sample-detail-message","ذخیره اطلاعات تجزیه ناموفق بود: "+error.message,true);return;}
     labAdminMessage("lab-sample-detail-message","اطلاعات تجزیه ذخیره شد.");
-    await selectLabSampleAdmin(selectedLabSampleAdmin.id);
+    await loadLabManagement();
   });
   $("add-lab-result").addEventListener("click",async()=>{
     if(!selectedLabSampleAdmin)return;
