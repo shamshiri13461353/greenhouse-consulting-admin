@@ -142,7 +142,7 @@
       <p class="muted">تعرفه‌ها و فعال‌بودن خدمات از این بخش کنترل می‌شود. خدمت تا زمانی که تعرفه ثبت و فعال‌سازی آن تأیید نشود، در پنل گلخانه‌دار نمایش داده نمی‌شود.</p>
       <div class="grid">
         <div><label for="service-price-service">انتخاب خدمت</label><select id="service-price-service"></select></div>
-        <div><label for="service-price-amount">تعرفه جدید (ریال)</label><input id="service-price-amount" type="number" min="0" step="1" placeholder="مبلغ را وارد کنید"></div>
+        <div><label for="service-price-amount">تعرفه جدید (تومان)</label><input id="service-price-amount" type="number" min="0" step="1" placeholder="مبلغ را وارد کنید"></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px"><input id="service-activate-after-save" type="checkbox" style="width:auto"> پس از ثبت تعرفه، خدمت برای گلخانه‌داران فعال شود</label>
       <div class="actions"><button id="save-service-price" type="button">ثبت تعرفه جدید</button></div>
@@ -159,7 +159,7 @@
         <div id="service-request-admin-meta" class="monitor-meta"></div>
         <div class="divider"></div><h3>خدمات انتخاب‌شده</h3><div id="service-request-admin-items" class="review-item">درخواستی انتخاب نشده است.</div>
         <div class="grid">
-          <div><label for="service-request-discount">تخفیف کل (ریال)</label><input id="service-request-discount" type="number" min="0" step="1" value="0"></div>
+          <div><label for="service-request-discount">تخفیف کل (تومان)</label><input id="service-request-discount" type="number" min="0" step="1" value="0"></div>
           <div><label for="service-request-assignee">کارشناس / مسئول رسیدگی</label><select id="service-request-assignee"><option value="">انتخاب مسئول</option></select></div>
           <div><label for="service-request-assignment-role">نقش در درخواست</label><select id="service-request-assignment-role"><option value="expert">کارشناس مسئول</option><option value="lab_analyst">مسئول آزمایشگاه</option><option value="reviewer">بازبین تخصصی</option></select></div>
         </div>
@@ -807,7 +807,7 @@
   let selectedServiceRequestAdmin=null,selectedServiceRequestItems=[];
   const serviceGroupFa={consultation:"مشاوره تخصصی",laboratory:"آزمایشگاه",nutrition:"توصیه تغذیه‌ای",bundle:"بسته ترکیبی"};
   const serviceRequestStatusFa={submitted:"ثبت‌شده",under_review:"در حال بررسی",quoted:"پیش‌فاکتور صادر شده",awaiting_customer_approval:"در انتظار تأیید گلخانه‌دار",awaiting_payment:"در انتظار پرداخت",confirmed:"تأیید و آماده اجرا",in_progress:"در حال انجام",awaiting_final_approval:"در انتظار تأیید نهایی",completed:"تکمیل‌شده",cancelled:"لغوشده",rejected:"ردشده"};
-  const moneyFa=value=>value===null||value===undefined?"—":new Intl.NumberFormat("fa-IR").format(Number(value))+" ریال";
+  const moneyFa=value=>value===null||value===undefined?"—":new Intl.NumberFormat("fa-IR").format(Number(value))+" تومان";
   function serviceAdminMessage(id,text,isError=false){message(id,text,isError);}
   async function loadServiceCatalogAdmin(){
     const {data:services,error}=await supabase.from("services")
@@ -981,7 +981,7 @@
       const items=selectedServiceRequestItems.map(x=>({service_id:x.service_id,quantity:x.quantity}));
       const {data,error}=await supabase.rpc("issue_service_request_quote",{
         p_request_id:selectedServiceRequestAdmin.id,p_items:items,p_discount_amount:discount,
-        p_currency_code:selectedServiceRequestAdmin.currency_code||"IRR"
+        p_currency_code:selectedServiceRequestAdmin.currency_code||"IRT"
       });
       if(error)throw error;
       serviceAdminMessage("service-request-admin-detail-message","پیش‌فاکتور مبلغ نهایی صادر شد. شناسه نسخه: "+String(data||"ثبت شد"));
