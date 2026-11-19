@@ -1,4 +1,4 @@
-const CACHE_NAME = "peyvand-management-pwa-v1";
+const CACHE_NAME = "peyvand-management-pwa-v2";
 const SHELL = [
   "/management/",
   "/management/index.html",
