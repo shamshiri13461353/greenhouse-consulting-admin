@@ -988,8 +988,8 @@ function serviceMoney(value,currency="IRT"){
 async function loadCompanyProducts(){
  const host=$("company-products-grid");host.replaceChildren();
  const [{data:products,error},{data:settings,error:settingsError}]=await Promise.all([
-  supabase.from("company_products").select("id,title,description,image_url,sort_order").eq("is_active",true).order("sort_order").order("created_at"),
-  supabase.from("company_product_settings").select("distribution_coming_soon_text").eq("id",true).maybeSingle()
+  supabase.from("company_products").select("id,title,description,description_group,image_url,sort_order").eq("is_active",true).order("sort_order").order("created_at"),
+  supabase.from("company_product_settings").select("distribution_coming_soon_text,behrost_shared_description").eq("id",true).maybeSingle()
  ]);
  if(error)throw error;if(settingsError)throw settingsError;
  $("distribution-coming-soon").textContent=settings?.distribution_coming_soon_text||"به‌زودی";
@@ -999,7 +999,7 @@ async function loadCompanyProducts(){
   if(product.image_url){try{const url=new URL(product.image_url);if(url.protocol==="https:"){const img=document.createElement("img");img.src=url.href;img.alt=product.title;img.loading="lazy";card.append(img);}}catch{}}
   const body=document.createElement("div");body.className="product-card-body";
   const title=document.createElement("h3");title.textContent=product.title;
-  const description=document.createElement("p");description.textContent=product.description||"";
+  const description=document.createElement("p");description.textContent=product.description_group==="behrost"?(settings?.behrost_shared_description||product.description||""):(product.description||"");
   body.append(title,description);card.append(body);host.append(card);
  }
 }
