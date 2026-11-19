@@ -496,7 +496,7 @@
       remove.disabled=p.account_status==="disabled";
       remove.title=p.account_status==="disabled"?"این حساب قبلاً حذف شده است.":"قطع دسترسی حساب با حفظ سوابق";
       remove.addEventListener("click",async()=>{
-        const confirmText="حساب «"+displayName+"» حذف شود؟\\n\\nدسترسی این کاربر به سامانه قطع می‌شود؛ اما پرونده‌ها، گلخانه‌ها، درخواست‌ها و سوابق مالی او برای حفظ سوابق سامانه باقی می‌مانند.";
+        const confirmText="حساب «"+displayName+"» حذف شود؟\n\nدسترسی این کاربر به سامانه قطع می‌شود؛ اما پرونده‌ها، گلخانه‌ها، درخواست‌ها و سوابق مالی او برای حفظ سوابق سامانه باقی می‌مانند.";
         if(!window.confirm(confirmText))return;
         remove.disabled=true;
         const {data,error}=await supabase.functions.invoke("admin-delete-grower",{body:{user_id:p.id}});
