@@ -1048,7 +1048,7 @@
           .select("id,request_number,greenhouse_id,crop_cycle_id,request_group,status,payment_status,fulfillment_status")
           .in("payment_status",["paid","not_required"]).in("status",["confirmed","in_progress","awaiting_final_approval"]).in("request_group",["laboratory","bundle"]).order("created_at",{ascending:false}),
         supabase.from("lab_samples")
-          .select("id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,created_at")
+          .select("id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,sampling_location,sample_receipt_method,received_at,notes,created_at")
           .order("created_at",{ascending:false}).limit(150),
         supabase.from("analytes").select("id,code,title_fa,default_unit_id,category").eq("is_active",true).order("title_fa"),
         supabase.from("units").select("id,code,title_fa,dimension").eq("is_active",true).order("title_fa")
@@ -1149,8 +1149,12 @@
     selectedLabSampleAdmin=sample;show("lab-sample-admin-detail",true);
     $("lab-sample-admin-title").textContent="نمونه "+(sample.sample_code||"بدون کد");
     $("lab-sample-admin-meta").replaceChildren();
+    const receiptLabels={in_person:"تحویل حضوری",courier:"پیک",postal:"پست",other:"سایر روش‌ها"};
     const meta=[["نوع نمونه",labTypeFa[sample.sample_type]||sample.sample_type],
       ["کنترل کیفیت",labQualityFa[sample.quality_status]||sample.quality_status],
+      ["روش دریافت",receiptLabels[sample.sample_receipt_method]||"—"],
+      ["تاریخ نمونه‌برداری",sample.sampled_at||"—"],
+      ["محل نمونه‌برداری",sample.sampling_location||"—"],
       ["گزارش",sample.report_published_at?"منتشرشده":"منتشرنشده"]];
     for(const [k,v] of meta){const d=document.createElement("div");d.textContent=k+" · "+v;$("lab-sample-admin-meta").append(d);}
     const [processingResult,resultsResult]=await Promise.all([
