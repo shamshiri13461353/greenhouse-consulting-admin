@@ -88,7 +88,7 @@
         <div class="actions"><button id="set-grower-password">ثبت گذرواژه موقت</button></div>
         <div id="grower-password-message" class="notice hidden"></div>
       </div>
-      <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
+      <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><div class="actions"><button id="refresh-growers" class="secondary">به‌روزرسانی</button><button id="toggle-disabled-growers" class="secondary" type="button">نمایش حساب‌های حذف‌شده</button></div></div>
       <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>شماره موبایل</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
       <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
     </div>
@@ -454,6 +454,7 @@
   }
 
 
+  let showDisabledGrowers=false;
   function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"حذف‌شده"})[s]||s||"—";}
   async function loadGrowers(){
     const body=$("growers"); body.innerHTML='<tr><td colspan="5">در حال دریافت…</td></tr>';
@@ -472,8 +473,11 @@
     }
     const expertIds=new Set((expertResult.data||[]).map(x=>x.user_id));
     const roleMap=new Map((roleResult.data||[]).map(x=>[x.user_id,x.role_code]));
-    const rows=profiles.filter(p=>!expertIds.has(p.id) && p.id!=="41b9b271-e818-4525-bfd0-6bc5f1c8a34a");
-    body.innerHTML=""; show("growers-empty",rows.length===0);
+    const rows=profiles.filter(p=>!expertIds.has(p.id) && p.id!=="41b9b271-e818-4525-bfd0-6bc5f1c8a34a"
+      && (showDisabledGrowers ? p.account_status==="disabled" : p.account_status!=="disabled"));
+    body.innerHTML="";
+    $("growers-empty").textContent=showDisabledGrowers?"حساب حذف‌شده‌ای در فهرست وجود ندارد.":"حساب گلخانه‌داری ثبت نشده است.";
+    show("growers-empty",rows.length===0);
     for(const p of rows){
       const tr=document.createElement("tr");
       const displayName=[p.first_name,p.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";
@@ -857,6 +861,11 @@
     $("grower-password-email").value="";
   });
   $("refresh-growers").addEventListener("click",loadGrowers);
+  $("toggle-disabled-growers").addEventListener("click",()=>{
+    showDisabledGrowers=!showDisabledGrowers;
+    $("toggle-disabled-growers").textContent=showDisabledGrowers?"بازگشت به فهرست اصلی":"نمایش حساب‌های حذف‌شده";
+    loadGrowers();
+  });
 
     $("refresh").addEventListener("click",loadExperts);
   $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
