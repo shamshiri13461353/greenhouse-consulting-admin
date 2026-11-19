@@ -214,7 +214,7 @@ $("register-form").addEventListener("submit",async ev=>{
    try{errorData=await error.context.clone().json();}catch{}
   }
   const code=errorData?.error||"";
-  const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است؛ لطفاً شماره دیگری وارد نمایید.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد."};
+  const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است؛ لطفاً شماره دیگری وارد نمایید.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد.",previous_account_release_failed:"آزادسازی شماره از حساب حذف‌شده انجام نشد؛ لطفاً با پشتیبانی سامانه تماس بگیرید."};
   registerNotice(messages[code]||"ساخت حساب انجام نشد. دوباره تلاش کنید.",true);return;
  }
  registerNotice("حساب با موفقیت ایجاد شد؛ در حال ورود...");
