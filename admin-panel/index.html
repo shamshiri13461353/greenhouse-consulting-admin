@@ -1160,6 +1160,12 @@
     if(processingResult.error)throw processingResult.error;
     if(resultsResult.error)throw resultsResult.error;
     selectedLabProcessingAdmin=processingResult.data||null;
+    if(selectedLabProcessingAdmin?.analyst_user_id){
+      const analyst=serviceAdminExperts.find(x=>x.user_id===selectedLabProcessingAdmin.analyst_user_id);
+      const p=analyst?.profile||{};
+      const name=[p.first_name,p.last_name].filter(Boolean).join(" ")||analyst?.professional_title||"کارشناس";
+      const d=document.createElement("div");d.textContent="مسئول آزمایشگاه · "+name;$("lab-sample-admin-meta").append(d);
+    }
     $("lab-sample-quality-status").value=sample.quality_status||"pending";
     $("lab-analysis-method").value=selectedLabProcessingAdmin?.analysis_method||"";
     $("lab-quality-note").value=selectedLabProcessingAdmin?.quality_note||"";
@@ -1207,6 +1213,7 @@
       reviewed_at:keepApproval?(selectedLabProcessingAdmin?.reviewed_at||null):null};
     const {error}=await supabase.from("lab_sample_processing").upsert(payload,{onConflict:"sample_id"});
     if(error){labAdminMessage("lab-sample-detail-message","ذخیره اطلاعات تجزیه ناموفق بود: "+error.message,true);return;}
+    await supabase.from("lab_sample_events").insert({sample_id:selectedLabSampleAdmin.id,event_type:"quality_check",event_status:newQualityStatus,performed_by:adminUser.id});
     labAdminMessage("lab-sample-detail-message","اطلاعات تجزیه ذخیره شد.");
     await loadLabManagement();
   });
