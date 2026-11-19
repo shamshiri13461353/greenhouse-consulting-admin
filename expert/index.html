@@ -10,7 +10,7 @@
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
 <div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
-<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
+<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="lab-assignments">کارهای آزمایشگاه</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
 <section id="expert-profile-section" class="section card">
  <h2>پروفایل من</h2>
  <p class="muted">اطلاعات فردی، تخصصی و بانکی خود را تکمیل یا اصلاح کنید. اطلاعات بانکی فقط برای شما و مدیر سامانه قابل مشاهده است.</p>
@@ -42,6 +42,34 @@
 </section>
 <section id="invites" class="section active card"><div class="top"><h2>دعوت به همکاری در پرونده</h2><button class="alt" id="refresh-invites">به‌روزرسانی</button></div><div id="invite-list" class="empty">در حال دریافت…</div></section>
 <section id="assigned" class="section card"><div class="top"><h2>پرونده‌های ارجاع‌شده</h2><button class="alt" id="refresh-assigned">به‌روزرسانی</button></div><div id="assigned-list" class="empty">در حال دریافت…</div></section>
+<section id="lab-assignments" class="section card">
+ <div class="top"><h2>کارهای آزمایشگاه</h2><button id="refresh-lab-assignments" class="alt" type="button">به‌روزرسانی</button></div>
+ <p class="muted">نمونه‌هایی که به‌عنوان مسئول آزمایشگاه به شما تخصیص یافته‌اند در این بخش نمایش داده می‌شوند. پس از کنترل کیفیت، نتایج را ثبت کنید؛ تأیید نهایی و انتشار گزارش توسط مدیر یا متخصص مسئول انجام می‌شود.</p>
+ <div id="lab-assignment-list" class="empty">در حال دریافت نمونه‌های تخصیص‌یافته…</div>
+ <div id="expert-lab-sample-detail" class="item hidden">
+  <div class="top"><div><h3 id="expert-lab-sample-title">جزئیات نمونه</h3><div id="expert-lab-sample-meta" class="meta"></div></div><button id="close-expert-lab-sample" type="button" class="alt">بستن</button></div>
+  <div class="grid">
+   <div><label for="expert-lab-quality-status">وضعیت کنترل کیفیت</label><select id="expert-lab-quality-status"><option value="pending">در انتظار کنترل</option><option value="accepted">پذیرفته‌شده</option><option value="rejected">ردشده</option><option value="resampling_required">نیازمند نمونه‌گیری مجدد</option></select></div>
+   <div><label for="expert-lab-analysis-method">روش تجزیه</label><input id="expert-lab-analysis-method" type="text" placeholder="روش یا دستگاه مورد استفاده"></div>
+  </div>
+  <label for="expert-lab-quality-note">یادداشت کنترل کیفیت / تجزیه</label><textarea id="expert-lab-quality-note" rows="2"></textarea>
+  <div class="actions"><button id="save-expert-lab-processing" type="button">ذخیره اطلاعات نمونه</button></div>
+  <div class="divider"></div>
+  <h3>ثبت نتایج شاخص‌ها</h3>
+  <div class="grid">
+   <div><label for="expert-lab-analyte">شاخص</label><select id="expert-lab-analyte"></select></div>
+   <div><label for="expert-lab-value">مقدار</label><input id="expert-lab-value" type="number" step="any"></div>
+   <div><label for="expert-lab-unit">واحد</label><select id="expert-lab-unit"></select></div>
+   <div><label for="expert-lab-replicate">شماره تکرار</label><input id="expert-lab-replicate" type="number" min="1" step="1" value="1"></div>
+   <div><label for="expert-lab-detection-limit">حد تشخیص (اختیاری)</label><input id="expert-lab-detection-limit" type="number" min="0" step="any"></div>
+  </div>
+  <label for="expert-lab-result-note">توضیح نتیجه (اختیاری)</label><input id="expert-lab-result-note" type="text">
+  <div class="actions"><button id="add-expert-lab-result" type="button">ثبت نتیجه شاخص</button></div>
+  <div class="table-wrap"><table><thead><tr><th>شاخص</th><th>مقدار</th><th>واحد</th><th>تکرار</th><th>توضیح</th></tr></thead><tbody id="expert-lab-results"></tbody></table></div>
+  <div id="expert-lab-message" class="notice hidden" role="status"></div>
+ </div>
+</section>
+
 <section id="detail" class="card hidden"><div class="top"><div><h2 id="case-title">جزئیات پرونده</h2><div id="case-meta" class="muted"></div></div><button id="close-detail" class="alt">بستن</button></div><div class="actions" id="case-actions"></div>
 <div class="divider"></div><h2>شرح مسئله گلخانه‌دار</h2><p id="case-description"></p>
 <div class="divider"></div><h2>مدارک و تصاویر</h2><div id="attachments" class="empty">—</div>
