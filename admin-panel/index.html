@@ -1190,7 +1190,7 @@
     }
     const published=!!sample.report_published_at;
     const qualityAccepted=sample.quality_status==="accepted";
-    $("add-lab-result").disabled=published||!qualityAccepted;
+    $("add-lab-result").disabled=published||!qualityAccepted||selectedLabProcessingAdmin?.approval_status==="approved";
     $("save-lab-processing").disabled=published;
     $("approve-lab-sample").disabled=published||!qualityAccepted||selectedLabProcessingAdmin?.approval_status==="approved";
     $("publish-lab-report").disabled=published||selectedLabProcessingAdmin?.approval_status!=="approved";
