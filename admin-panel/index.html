@@ -865,7 +865,7 @@
         moneyFa(r.final_amount)
       ];
       for(const v of values){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
-      const date=document.createElement("td");date.textContent=monitorDate(r.created_at);tr.appendChild(date);
+      const date=document.createElement("td");date.textContent=new Date(r.created_at).toLocaleDateString("fa-IR");tr.appendChild(date);
       const action=document.createElement("td"),button=document.createElement("button");
       button.type="button";button.className="secondary";button.textContent="جزئیات";
       button.addEventListener("click",()=>selectServiceRequestAdmin(r.id));action.append(button);tr.append(action);
@@ -925,8 +925,8 @@
     catch(error){serviceAdminMessage("service-request-admin-detail-message","به‌روزرسانی درخواست‌ها ناموفق بود: "+error.message,true);}
   });
   $("save-service-price").addEventListener("click",async()=>{
-    const serviceId=$("service-price-service").value,amount=Number($("service-price-amount").value);
-    if(!serviceId||!Number.isFinite(amount)||amount<0){serviceAdminMessage("service-admin-message","خدمت و مبلغ معتبر را انتخاب کنید.",true);return;}
+    const serviceId=$("service-price-service").value,amountText=$("service-price-amount").value.trim(),amount=Number(amountText);
+    if(!serviceId||amountText===""||!Number.isFinite(amount)||amount<0){serviceAdminMessage("service-admin-message","خدمت و مبلغ معتبر را انتخاب کنید.",true);return;}
     const button=$("save-service-price");button.disabled=true;
     try{
       const {data,error}=await supabase.rpc("set_service_price",{
