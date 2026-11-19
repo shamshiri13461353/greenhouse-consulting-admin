@@ -1028,7 +1028,7 @@
     if(!requestId){host.textContent="ابتدا یک درخواست آماده پذیرش انتخاب کنید.";return;}
     const request=labEligibleRequests.find(x=>x.id===requestId);
     const selections=labSelectionsByRequest.get(requestId)||[];
-    const existing=labAdminSamples.filter(x=>x.service_request_id===requestId).map(x=>x.sample_type);
+    const existing=labAdminSamples.filter(x=>x.service_request_id===requestId&&!["rejected","resampling_required"].includes(x.quality_status)).map(x=>x.sample_type);
     const types=sampleTypesForSelections(selections).filter(t=>!existing.includes(t));
     if(!types.length){host.textContent="نمونه‌های موردنیاز این درخواست قبلاً ثبت شده‌اند یا این خدمت به نمونه آزمایشگاهی نیاز ندارد.";return;}
     host.textContent="";
