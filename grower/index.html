@@ -1034,13 +1034,15 @@ async function loadServiceWorkspace(){
   if(!requests.length){requestHost.className="empty";requestHost.textContent="هنوز درخواست خدمات تخصصی ثبت نکرده‌اید.";return;}
   requestHost.className="";
   const ids=requests.map(x=>x.id);
-  const [selectionResult,quoteResult]=await Promise.all([
+  const [selectionResult,quoteResult,labResultsResult]=await Promise.all([
    supabase.from("service_request_selections").select("request_id,service_id,quantity,service_title_snapshot").in("request_id",ids),
-   supabase.from("service_request_customer_quotes").select("id,request_id,version_no,final_amount,currency_code,status,issued_at,approved_at").in("request_id",ids)
+   supabase.from("service_request_customer_quotes").select("id,request_id,version_no,final_amount,currency_code,status,issued_at,approved_at").in("request_id",ids),
+   supabase.from("service_request_customer_lab_results").select("request_id,sample_id,sample_code,sample_type,sampled_at,report_published_at,analyte_title,value_numeric,unit_title,replicate_no,result_note").in("request_id",ids)
   ]);
   if(selectionResult.error)throw selectionResult.error;
   if(quoteResult.error)throw quoteResult.error;
-  const selections=selectionResult.data||[],quotes=quoteResult.data||[];
+  if(labResultsResult.error)throw labResultsResult.error;
+  const selections=selectionResult.data||[],quotes=quoteResult.data||[],labResults=labResultsResult.data||[];
   for(const request of requests){
    const card=node("article","item"),top=node("div","topline");
    const title=node("h3","","درخواست "+new Intl.NumberFormat("fa-IR").format(request.request_number));
@@ -1057,6 +1059,31 @@ async function loadServiceWorkspace(){
    const amount=node("p","","مبلغ نهایی: "+serviceMoney(request.final_amount,request.currency_code));
    const payment=node("p","muted","وضعیت پرداخت: "+(servicePaymentStatusFa[request.payment_status]||request.payment_status));
    card.append(top,meta,servicesLine,amount,payment);
+   const publishedResults=labResults.filter(x=>x.request_id===request.id);
+   if(publishedResults.length){
+    const resultPanel=node("div","review-item");
+    resultPanel.append(node("h3","","نتایج آزمایش منتشرشده"));
+    const sampleIds=[...new Set(publishedResults.map(x=>x.sample_id))];
+    for(const sampleId of sampleIds){
+     const sampleRows=publishedResults.filter(x=>x.sample_id===sampleId);
+     const sample=sampleRows[0];
+     const typeLabel={irrigation_water:"آب آبیاری",drainage:"زهاب",soil:"خاک",substrate:"بستر کشت",plant_tissue:"برگ / بافت گیاهی",nutrient_solution:"محلول غذایی",other:"سایر"}[sample.sample_type]||sample.sample_type;
+     resultPanel.append(node("h4","",typeLabel+(sample.sample_code?" · "+sample.sample_code:"")));
+     const wrap=node("div","table-wrap"),table=document.createElement("table"),thead=document.createElement("thead"),headRow=document.createElement("tr");
+     for(const heading of ["شاخص","نتیجه","واحد","تکرار"]){const th=document.createElement("th");th.textContent=heading;headRow.append(th);}
+     thead.append(headRow);table.append(thead);
+     const tbody=document.createElement("tbody");
+     for(const result of sampleRows){
+      const tr=document.createElement("tr");
+      for(const value of [result.analyte_title,new Intl.NumberFormat("fa-IR",{maximumFractionDigits:4}).format(Number(result.value_numeric)),result.unit_title,result.replicate_no]){
+       const td=document.createElement("td");td.textContent=String(value);tr.append(td);
+      }
+      tbody.append(tr);
+     }
+     table.append(tbody);wrap.append(table);resultPanel.append(wrap);
+    }
+    card.append(resultPanel);
+   }
    const issuedQuote=quotes.find(q=>q.request_id===request.id&&q.status==="issued");
    const acceptedQuote=quotes.find(q=>q.request_id===request.id&&q.status==="accepted");
    if(issuedQuote){
