@@ -850,7 +850,12 @@
     $("company-product-order").value="0";$("save-company-product").textContent="ذخیره محصول";
     companyProductEditingImageUrl=null;setCompanyProductPreview(null);$("remove-company-product-image").classList.add("hidden");
   }
-  $("remove-company-product-image").addEventListener("click",()=>{\n    companyProductEditingImageUrl=null;$("company-product-image-file").value="";setCompanyProductPreview(null);\n    $("remove-company-product-image").classList.add("hidden");\n    companyProductMessage("company-product-message","تصویر فعلی حذف می‌شود؛ برای ثبت نهایی، دکمه «ثبت ویرایش» را بزنید.");\n  });\n  $("company-product-image-file").addEventListener("change",()=>{
+  $("remove-company-product-image").addEventListener("click",()=>{
+    companyProductEditingImageUrl=null;$("company-product-image-file").value="";setCompanyProductPreview(null);
+    $("remove-company-product-image").classList.add("hidden");
+    companyProductMessage("company-product-message","تصویر فعلی حذف می‌شود؛ برای ثبت نهایی، دکمه «ثبت ویرایش» را بزنید.");
+  });
+  $("company-product-image-file").addEventListener("change",()=>{
     const file=$("company-product-image-file").files?.[0];
     if(!file){setCompanyProductPreview(companyProductEditingImageUrl);return;}
     if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>4*1024*1024){
@@ -888,7 +893,7 @@
       edit.type="button";edit.className="secondary";edit.textContent="ویرایش";
       edit.addEventListener("click",()=>{
         $("company-product-id").value=product.id;$("company-product-title").value=product.title;
-        $("company-product-image-file").value="";companyProductEditingImageUrl=product.image_url||null;setCompanyProductPreview(companyProductEditingImageUrl);$("company-product-description").value=product.description||"";
+        $("company-product-image-file").value="";companyProductEditingImageUrl=product.image_url||null;setCompanyProductPreview(companyProductEditingImageUrl);$("remove-company-product-image").classList.toggle("hidden",!companyProductEditingImageUrl);$("company-product-description").value=product.description||"";
         $("company-product-order").value=String(product.sort_order??0);$("save-company-product").textContent="ثبت ویرایش";
         $("company-product-title").focus();
       });
