@@ -165,13 +165,19 @@ $("send-otp").addEventListener("click",async()=>{
  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"send",phone}});
  if(error||!data?.success){
   $("send-otp").disabled=false;$("send-otp").textContent="ارسال کد تأیید";
-  const code=data?.error||"";
-  const messages={phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است.",send_cooldown:"برای ارسال مجدد کد کمی صبر کنید.",invalid_phone:"شماره موبایل معتبر نیست."};
+  let errorData=data;
+  if(error&&error.context&&typeof error.context.json==="function"){
+   try{errorData=await error.context.clone().json();}catch{}
+  }
+  const code=errorData?.error||"";
+  const messages={phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است؛ لطفاً شماره دیگری وارد نمایید.",send_cooldown:"برای ارسال مجدد کد کمی صبر کنید.",invalid_phone:"شماره موبایل معتبر نیست."};
   registerNotice(messages[code]||"ارسال پیامک انجام نشد. موجودی و وضعیت سرویس پیامکی را بررسی کنید.",true);return;
  }
- otpVerified=false;$("create-account").disabled=true;
+ otpVerified=false;otpVerifiedPhone=null;
+ $("reg-phone").value=phone;$("reg-phone").readOnly=true;$("otp-phone-display").textContent=phone;
+ $("reg-code").value="";setRegistrationStep("otp");
  startOtpCountdown(60,phone);
- registerNotice("کد تأیید ارسال شد. شمارش معکوس ۶۰ ثانیه‌ای برای درخواست مجدد روی دکمه نمایش داده می‌شود. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
+ registerNotice("کد تأیید ارسال شد. اعتبار کد: "+Math.ceil((data.ttl_seconds||300)/60)+" دقیقه.");
 });
 $("verify-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
@@ -180,15 +186,19 @@ $("verify-otp").addEventListener("click",async()=>{
  $("verify-otp").disabled=true;
  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",phone,code}});
  $("verify-otp").disabled=false;
- if(error||!data?.verified){otpVerified=false;$("create-account").disabled=true;registerNotice("کد تأیید صحیح نیست یا اعتبار آن پایان یافته است.",true);return;}
- otpVerified=true;otpVerifiedPhone=phone;setRegistrationStep("details");registerNotice("شماره موبایل تأیید شد. اکنون مشخصات خود را تکمیل کنید.");
+ if(error||!data?.verified){otpVerified=false;otpVerifiedPhone=null;registerNotice("کد تأیید صحیح نیست یا اعتبار آن پایان یافته است.",true);return;}
+ otpVerified=true;otpVerifiedPhone=phone;setRegistrationStep("details");
+ registerNotice("شماره موبایل تأیید شد. اکنون مشخصات خود را تکمیل کنید.");
 });
 $("register-form").addEventListener("submit",async ev=>{
  ev.preventDefault();
  const phone=normalizePhone($("reg-phone").value);
  const password=$("reg-password").value;
+ const firstName=$("reg-first").value.trim();
+ const lastName=$("reg-last").value.trim();
  if(!phone){registerNotice("شماره موبایل معتبر وارد کنید.",true);return;}
- if(!otpVerified||otpVerifiedPhone!==phone){registerNotice("ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);setRegistrationStep("phone");return;}\n const firstName=$("reg-first").value.trim();const lastName=$("reg-last").value.trim();\n if(!firstName||!lastName){registerNotice("تکمیل نام و نام خانوادگی الزامی است.",true);return;}
+ if(!otpVerified||otpVerifiedPhone!==phone){registerNotice("ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);setRegistrationStep("phone");return;}
+ if(!firstName||!lastName){registerNotice("تکمیل نام و نام خانوادگی الزامی است.",true);return;}
  if(password.length<8){registerNotice("گذرواژه باید حداقل ۸ نویسه داشته باشد.",true);return;}
  if(password!==$("reg-confirm").value){registerNotice("تکرار گذرواژه با گذرواژه یکسان نیست.",true);return;}
  $("create-account").disabled=true;
@@ -197,7 +207,11 @@ $("register-form").addEventListener("submit",async ev=>{
  }});
  if(error||!data?.account_created){
   $("create-account").disabled=false;
-  const code=data?.error||"";
+  let errorData=data;
+  if(error&&error.context&&typeof error.context.json==="function"){
+   try{errorData=await error.context.clone().json();}catch{}
+  }
+  const code=errorData?.error||"";
   const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است؛ لطفاً شماره دیگری وارد نمایید.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد."};
   registerNotice(messages[code]||"ساخت حساب انجام نشد. دوباره تلاش کنید.",true);return;
  }
@@ -206,7 +220,6 @@ $("register-form").addEventListener("submit",async ev=>{
  if(loginError){registerNotice("حساب ساخته شد، اما ورود خودکار انجام نشد. از صفحه ورود با شماره موبایل و گذرواژه وارد شوید.",true);show("register-card",false);show("login-card");$("email").value=phone;return;}
  await resolveUser(loginData.user);
 });
-
 $("as-expert").addEventListener("click",()=>availableRoles.includes("expert")&&go("expert"));
 $("as-grower").addEventListener("click",()=>availableRoles.includes("grower")&&go("grower"));
 $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("role-card",false);show("login-card");});
