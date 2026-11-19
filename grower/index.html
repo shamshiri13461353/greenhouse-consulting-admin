@@ -969,9 +969,9 @@ const serviceRequestStatusFa={submitted:"ثبت‌شده",under_review:"در ح�
 const servicePaymentStatusFa={not_required:"نیازی به پرداخت ندارد",pending:"در انتظار پرداخت",paid:"پرداخت‌شده",failed:"پرداخت ناموفق",partially_refunded:"بازپرداخت بخشی",refunded:"بازپرداخت‌شده"};
 const serviceGroupFa={consultation:"مشاوره تخصصی",laboratory:"خدمات آزمایشگاهی",nutrition:"توصیه تغذیه‌ای",bundle:"بسته ترکیبی"};
 let growerServiceCatalog=[],growerServiceCases=[];
-function serviceMoney(value,currency="IRR"){
+function serviceMoney(value,currency="IRT"){
  if(value===null||value===undefined)return"پس از بررسی اعلام می‌شود";
- return new Intl.NumberFormat("fa-IR").format(Number(value))+(currency==="IRR"?" ریال":" "+currency);
+ return new Intl.NumberFormat("fa-IR").format(Number(value))+(currency==="IRT"?" تومان":currency==="IRR"?" ریال قدیم":" "+currency);
 }
 async function loadServiceWorkspace(){
  if(!currentUser?.id)return;
