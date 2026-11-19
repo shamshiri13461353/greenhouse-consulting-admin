@@ -196,8 +196,8 @@ async function verifyAndEnter(inputUser=null,inputToken=null){
  $("profile").textContent=(e.professional_title||"کارشناس")+(e.organization?" · "+e.organization:"")+" · "+user.email;
  const activeUserId=user.id;
  void loadExpertProfile();
- Promise.allSettled([loadInvites(),loadAssigned()]).then(results=>{
-  results.forEach((result,index)=>{if(result.status==="rejected"){const target=index===0?"invite-list":"assigned-list";$(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";console.error("Expert case list load failed",result.reason);}});
+ Promise.allSettled([loadInvites(),loadAssigned(),loadAssignedLabSamples()]).then(results=>{
+  results.forEach((result,index)=>{if(result.status==="rejected"){const target=index===0?"invite-list":index===1?"assigned-list":"lab-assignment-list";$(target).textContent="بارگذاری این بخش ناموفق بود؛ از دکمه «به‌روزرسانی» استفاده کنید.";console.error("Expert workspace load failed",result.reason);}});
  });
  syncPushStatus(activeUserId).catch(error=>{$("push-status").textContent="وضعیت اعلان‌ها فعلاً قابل بررسی نیست.";console.error("Expert push status sync failed",error);});
  return true;
@@ -477,6 +477,136 @@ $("forgot-password").addEventListener("click",async()=>{
 });
 $("refresh-invites").addEventListener("click",loadInvites);$("refresh-assigned").addEventListener("click",loadAssigned);
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));}));
+
+
+let expertLabSamples=[],activeExpertLabSample=null,activeExpertLabProcessing=null,expertLabAnalytes=[],expertLabUnits=[];
+const expertLabTypeFa={irrigation_water:"آب آبیاری",drainage:"زهاب",soil:"خاک",substrate:"بستر کشت",plant_tissue:"برگ / بافت گیاهی",nutrient_solution:"محلول غذایی",other:"سایر"};
+const expertLabQualityFa={pending:"در انتظار کنترل",accepted:"پذیرفته‌شده",rejected:"ردشده",resampling_required:"نیازمند نمونه‌گیری مجدد"};
+async function loadAssignedLabSamples(){
+ const host=$("lab-assignment-list");host.textContent="در حال دریافت نمونه‌های تخصیص‌یافته…";
+ const {data:assignments,error}=await supabase.from("service_request_assignments")
+  .select("request_id").eq("assigned_user_id",user.id).eq("assignment_role","lab_analyst").eq("status","active");
+ if(error){host.textContent="دریافت ارجاعات آزمایشگاه ناموفق بود: "+error.message;throw error;}
+ const requestIds=[...new Set((assignments||[]).map(x=>x.request_id))];
+ if(!requestIds.length){host.className="empty";host.textContent="نمونه‌ای برای تجزیه به شما تخصیص داده نشده است.";expertLabSamples=[];show("expert-lab-sample-detail",false);return;}
+ const [sampleResult,requestResult,analyteResult,unitResult]=await Promise.all([
+  supabase.from("lab_samples").select("id,service_request_id,sample_code,sample_type,sampled_at,quality_status,report_published_at,created_at")
+   .in("service_request_id",requestIds).order("created_at",{ascending:false}),
+  supabase.from("service_requests").select("id,request_number").in("id",requestIds),
+  supabase.from("analytes").select("id,code,title_fa,default_unit_id").eq("is_active",true).order("title_fa"),
+  supabase.from("units").select("id,code,title_fa").eq("is_active",true).order("title_fa")
+ ]);
+ if(sampleResult.error)throw sampleResult.error;
+ if(requestResult.error)throw requestResult.error;
+ if(analyteResult.error)throw analyteResult.error;
+ if(unitResult.error)throw unitResult.error;
+ expertLabSamples=sampleResult.data||[];
+ expertLabAnalytes=analyteResult.data||[];
+ expertLabUnits=unitResult.data||[];
+ const requestMap=new Map((requestResult.data||[]).map(x=>[x.id,x.request_number]));
+ const body=host;body.replaceChildren();
+ if(!expertLabSamples.length){body.className="empty";body.textContent="در حال حاضر نمونه‌ای برای تجزیه ثبت نشده است.";show("expert-lab-sample-detail",false);return;}
+ body.className="";
+ const ids=expertLabSamples.map(x=>x.id);
+ const {data:processing,error:processingError}=await supabase.from("lab_sample_processing")
+  .select("sample_id,analyst_user_id,approval_status").in("sample_id",ids);
+ if(processingError)throw processingError;
+ const processingMap=new Map((processing||[]).map(x=>[x.sample_id,x]));
+ for(const sample of expertLabSamples){
+  const card=el("article","item"),top=el("div","top"),type=el("span","tag",expertLabTypeFa[sample.sample_type]||sample.sample_type);
+  const title=el("h3","","درخواست "+new Intl.NumberFormat("fa-IR").format(requestMap.get(sample.service_request_id)||0)+" · "+(sample.sample_code||"نمونه بدون کد"));
+  const processingRow=processingMap.get(sample.id);
+  const status=sample.report_published_at?"گزارش منتشرشده":processingRow?.approval_status==="approved"?"تأییدشده":expertLabQualityFa[sample.quality_status]||sample.quality_status;
+  const meta=el("div","meta","نوع نمونه: "+(expertLabTypeFa[sample.sample_type]||sample.sample_type)+" · وضعیت: "+status+(sample.sampled_at?" · تاریخ: "+sample.sampled_at:""));
+  const button=el("button","alt","ثبت / مشاهده نتایج");
+  button.disabled=!!sample.report_published_at||processingRow?.approval_status==="approved"||(processingRow?.analyst_user_id&&processingRow.analyst_user_id!==user.id);
+  if(button.disabled&&!sample.report_published_at&&processingRow?.analyst_user_id&&processingRow.analyst_user_id!==user.id)button.textContent="تخصیص‌یافته به مسئول دیگر";
+  button.addEventListener("click",()=>openExpertLabSample(sample.id));
+  top.append(title,type);card.append(top,meta,button);body.append(card);
+ }
+ if(activeExpertLabSample&&expertLabSamples.some(x=>x.id===activeExpertLabSample.id))await openExpertLabSample(activeExpertLabSample.id);
+ else if(activeExpertLabSample){activeExpertLabSample=null;show("expert-lab-sample-detail",false);}
+}
+async function openExpertLabSample(sampleId){
+ const {data:sample,error}=await supabase.from("lab_samples")
+  .select("id,service_request_id,sample_code,sample_type,sampled_at,quality_status,report_published_at")
+  .eq("id",sampleId).single();
+ if(error)throw error;
+ const [processingResult,resultsResult]=await Promise.all([
+  supabase.from("lab_sample_processing").select("sample_id,received_by,analyst_user_id,analysis_method,quality_note,approval_status,reviewed_by,reviewed_at").eq("sample_id",sampleId).maybeSingle(),
+  supabase.from("lab_results").select("id,analyte_id,value_numeric,unit_id,replicate_no,detection_limit,result_note").eq("sample_id",sampleId).order("analyte_id")
+ ]);
+ if(processingResult.error)throw processingResult.error;
+ if(resultsResult.error)throw resultsResult.error;
+ activeExpertLabSample=sample;activeExpertLabProcessing=processingResult.data||null;
+ show("expert-lab-sample-detail",true);
+ $("expert-lab-sample-title").textContent="نمونه "+(sample.sample_code||"بدون کد");
+ $("expert-lab-sample-meta").textContent=(expertLabTypeFa[sample.sample_type]||sample.sample_type)+" · "+(sample.sampled_at||"تاریخ نامشخص")+
+  (sample.report_published_at?" · گزارش منتشر شده":"");
+ $("expert-lab-quality-status").value=sample.quality_status||"pending";
+ $("expert-lab-analysis-method").value=activeExpertLabProcessing?.analysis_method||"";
+ $("expert-lab-quality-note").value=activeExpertLabProcessing?.quality_note||"";
+ const analyteSelect=$("expert-lab-analyte"),unitSelect=$("expert-lab-unit");
+ analyteSelect.replaceChildren(new Option("انتخاب شاخص",""));
+ for(const a of expertLabAnalytes)analyteSelect.add(new Option(a.title_fa+" · "+a.code,a.id));
+ unitSelect.replaceChildren(new Option("انتخاب واحد",""));
+ for(const u of expertLabUnits)unitSelect.add(new Option(u.title_fa+" · "+u.code,u.id));
+ analyteSelect.onchange=()=>{const a=expertLabAnalytes.find(x=>x.id===analyteSelect.value);if(a?.default_unit_id)unitSelect.value=a.default_unit_id;};
+ const am=new Map(expertLabAnalytes.map(x=>[x.id,x.title_fa])),um=new Map(expertLabUnits.map(x=>[x.id,x.title_fa]));
+ const resultHost=$("expert-lab-results");resultHost.replaceChildren();
+ for(const result of resultsResult.data||[]){
+  const tr=document.createElement("tr");
+  for(const value of [am.get(result.analyte_id)||"—",result.value_numeric,um.get(result.unit_id)||"—",result.replicate_no,result.result_note||"—"]){
+   const td=document.createElement("td");td.textContent=String(value);tr.append(td);
+  }
+  resultHost.append(tr);
+ }
+ const assignedToOther=!!activeExpertLabProcessing?.analyst_user_id&&activeExpertLabProcessing.analyst_user_id!==user.id;
+ const locked=!!sample.report_published_at||activeExpertLabProcessing?.approval_status==="approved"||assignedToOther;
+ $("save-expert-lab-processing").disabled=locked;
+ $("add-expert-lab-result").disabled=locked||sample.quality_status!=="accepted";
+ if(assignedToOther)msg("expert-lab-message","این نمونه به مسئول آزمایشگاه دیگری تخصیص یافته است.",true);
+ else if(locked)msg("expert-lab-message","این نمونه پس از تأیید تخصصی یا انتشار گزارش قفل شده است.");
+ else if(sample.quality_status!=="accepted")msg("expert-lab-message","پس از ثبت کنترل کیفیت و انتخاب وضعیت «پذیرفته‌شده»، امکان ورود نتایج فعال می‌شود.");
+ else $("expert-lab-message").classList.add("hidden");
+}
+$("refresh-lab-assignments").addEventListener("click",loadAssignedLabSamples);
+$("close-expert-lab-sample").addEventListener("click",()=>{activeExpertLabSample=null;show("expert-lab-sample-detail",false);});
+$("save-expert-lab-processing").addEventListener("click",async()=>{
+ if(!activeExpertLabSample)return;
+ const quality=$("expert-lab-quality-status").value;
+ const {error:sampleError}=await supabase.from("lab_samples").update({quality_status:quality}).eq("id",activeExpertLabSample.id);
+ if(sampleError){msg("expert-lab-message","ثبت کنترل کیفیت ناموفق بود: "+sampleError.message,true);return;}
+ const payload={sample_id:activeExpertLabSample.id,received_by:activeExpertLabProcessing?.received_by||user.id,
+  analyst_user_id:user.id,analysis_method:$("expert-lab-analysis-method").value.trim()||null,
+  quality_note:$("expert-lab-quality-note").value.trim()||null,
+  approval_status:activeExpertLabProcessing?.approval_status||"pending",
+  reviewed_by:activeExpertLabProcessing?.reviewed_by||null,reviewed_at:activeExpertLabProcessing?.reviewed_at||null};
+ const {error}=await supabase.from("lab_sample_processing").upsert(payload,{onConflict:"sample_id"});
+ if(error){msg("expert-lab-message","ذخیره اطلاعات تجزیه ناموفق بود: "+error.message,true);return;}
+ await supabase.from("lab_sample_events").insert({sample_id:activeExpertLabSample.id,event_type:"quality_check",event_status:quality,performed_by:user.id});
+ msg("expert-lab-message","اطلاعات کنترل کیفیت و تجزیه ذخیره شد.");
+ await loadAssignedLabSamples();
+});
+$("add-expert-lab-result").addEventListener("click",async()=>{
+ if(!activeExpertLabSample)return;
+ if(activeExpertLabSample.quality_status!=="accepted"){msg("expert-lab-message","ابتدا وضعیت کنترل کیفیت را پذیرفته‌شده ثبت کنید.",true);return;}
+ const analyteId=$("expert-lab-analyte").value,unitId=$("expert-lab-unit").value;
+ const valueText=$("expert-lab-value").value.trim(),value=Number(valueText);
+ const replicate=Number($("expert-lab-replicate").value||1),detectionText=$("expert-lab-detection-limit").value.trim();
+ if(!analyteId||!unitId||valueText===""||!Number.isFinite(value)||!Number.isInteger(replicate)||replicate<1){
+  msg("expert-lab-message","شاخص، مقدار، واحد و شماره تکرار را به‌درستی وارد کنید.",true);return;
+ }
+ const {error}=await supabase.from("lab_results").insert({
+  sample_id:activeExpertLabSample.id,analyte_id:analyteId,value_numeric:value,unit_id:unitId,
+  replicate_no:replicate,detection_limit:detectionText===""?null:Number(detectionText),
+  result_note:$("expert-lab-result-note").value.trim()||null
+ });
+ if(error){msg("expert-lab-message","ثبت نتیجه ناموفق بود: "+error.message,true);return;}
+ $("expert-lab-value").value="";$("expert-lab-detection-limit").value="";$("expert-lab-result-note").value="";
+ msg("expert-lab-message","نتیجه شاخص ثبت شد.");
+ await openExpertLabSample(activeExpertLabSample.id);
+});
 
 const WEB_PUSH_PUBLIC_KEY="BKZeyPi0RNRZe1dVRggJ6hS_jAI5LdWMUMJ2GmccGuS6NvhVK140dalJvPtOoC94oStMMFy4nAkcQAev0o9G2jE";
 function base64UrlToBytes(value){
