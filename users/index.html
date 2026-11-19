@@ -32,16 +32,24 @@ footer{text-align:center;padding:18px;color:#74847d;font-size:11px}
 <section id="register-card" class="card hidden">
 <h2>ثبت‌نام گلخانه‌دار</h2>
 <p class="muted">با شماره موبایل خود ثبت‌نام کنید. ابتدا شماره از طریق پیامک تأیید می‌شود؛ ایمیل لازم نیست.</p>
-<form id="register-form">
+<form id="register-form" novalidate>
+<div id="register-phone-step">
 <label for="reg-phone">شماره موبایل</label><input id="reg-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx" required>
-<div class="actions"><button id="send-otp" type="button">ارسال کد تأیید</button></div>
-<label for="reg-code">کد پیامک‌شده</label><input id="reg-code" inputmode="numeric" autocomplete="one-time-code" placeholder="کد ۶ رقمی" required>
-<div class="actions"><button id="verify-otp" class="secondary" type="button">تأیید شماره موبایل</button></div>
-<label for="reg-first">نام (اختیاری)</label><input id="reg-first" autocomplete="given-name">
-<label for="reg-last">نام خانوادگی (اختیاری)</label><input id="reg-last" autocomplete="family-name">
-<label for="reg-password">گذرواژه (حداقل ۸ نویسه)</label><input id="reg-password" type="password" autocomplete="new-password" minlength="8" required>
-<label for="reg-confirm">تکرار گذرواژه</label><input id="reg-confirm" type="password" autocomplete="new-password" minlength="8" required>
-<div class="actions"><button id="create-account" type="submit" disabled>ایجاد حساب گلخانه‌دار</button><button id="back-login" class="secondary" type="button">بازگشت به ورود</button></div>
+<div class="actions"><button id="send-otp" type="button">ارسال کد تأیید</button><button id="back-login" class="secondary" type="button">بازگشت به ورود</button></div>
+</div>
+<div id="register-otp-step" class="hidden">
+<p class="muted">کد تأیید ارسال‌شده به شماره <strong id="otp-phone-display"></strong> را وارد کنید.</p>
+<label for="reg-code">کد پیامک‌شده *</label><input id="reg-code" inputmode="numeric" autocomplete="one-time-code" placeholder="کد ۶ رقمی" required maxlength="6">
+<div class="actions"><button id="verify-otp" type="button">تأیید شماره موبایل</button><button id="change-register-phone" class="secondary" type="button">اصلاح شماره موبایل</button></div>
+</div>
+<div id="register-details-step" class="hidden">
+<p class="muted">شماره موبایل تأیید شد. لطفاً تمام اطلاعات زیر را تکمیل کنید.</p>
+<label for="reg-first">نام *</label><input id="reg-first" autocomplete="given-name" required maxlength="80">
+<label for="reg-last">نام خانوادگی *</label><input id="reg-last" autocomplete="family-name" required maxlength="80">
+<label for="reg-password">گذرواژه (حداقل ۸ نویسه) *</label><input id="reg-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
+<label for="reg-confirm">تکرار گذرواژه *</label><input id="reg-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
+<div class="actions"><button id="create-account" type="submit">ایجاد حساب گلخانه‌دار</button></div>
+</div>
 </form>
 <div id="register-message" class="notice hidden" role="status" aria-live="polite"></div>
 </section>
@@ -67,7 +75,7 @@ function normalizePhone(value){
 }
 function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 function registerNotice(text,error=false){const el=$("register-message");el.textContent=text;el.classList.remove("hidden","error");if(error)el.classList.add("error");}
-let otpVerified=false;
+let otpVerified=false;\nlet otpVerifiedPhone=null;
 let otpCountdownInterval=null;
 let otpCountdownPhone=null;
 let otpCountdownDeadline=0;
@@ -136,8 +144,19 @@ $("forgot").addEventListener("click",async()=>{
  notice("اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازیابی ارسال می‌شود. صندوق ورودی و هرزنامه را بررسی کنید.");
 });
 
-$("open-register").addEventListener("click",()=>{show("login-card",false);show("register-card");});
-$("back-login").addEventListener("click",()=>{show("register-card",false);show("login-card");});
+function setRegistrationStep(step){
+ show("register-phone-step",step==="phone");
+ show("register-otp-step",step==="otp");
+ show("register-details-step",step==="details");
+}
+function resetRegistrationFlow(){
+ otpVerified=false;otpVerifiedPhone=null;stopOtpCountdown();
+ $("reg-phone").readOnly=false;$("reg-phone").value="";$("reg-code").value="";
+ $("reg-first").value="";$("reg-last").value="";$("reg-password").value="";$("reg-confirm").value="";
+ $("otp-phone-display").textContent="";setRegistrationStep("phone");show("register-message",false);
+}
+$("open-register").addEventListener("click",()=>{resetRegistrationFlow();show("login-card",false);show("register-card");});
+$("back-login").addEventListener("click",()=>{stopOtpCountdown();show("register-card",false);show("login-card");});\n$("change-register-phone").addEventListener("click",()=>{otpVerified=false;otpVerifiedPhone=null;$("reg-phone").readOnly=false;$("reg-code").value="";stopOtpCountdown();setRegistrationStep("phone");registerNotice("شماره موبایل را اصلاح کنید و کد جدید بگیرید.");});
 $("send-otp").addEventListener("click",async()=>{
  const phone=normalizePhone($("reg-phone").value);
  if(!phone){registerNotice("شماره موبایل معتبر وارد کنید؛ نمونه: 09123456789",true);return;}
@@ -162,24 +181,24 @@ $("verify-otp").addEventListener("click",async()=>{
  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",phone,code}});
  $("verify-otp").disabled=false;
  if(error||!data?.verified){otpVerified=false;$("create-account").disabled=true;registerNotice("کد تأیید صحیح نیست یا اعتبار آن پایان یافته است.",true);return;}
- otpVerified=true;$("create-account").disabled=false;registerNotice("شماره موبایل تأیید شد. اکنون می‌توانید حساب خود را ایجاد کنید.");
+ otpVerified=true;otpVerifiedPhone=phone;setRegistrationStep("details");registerNotice("شماره موبایل تأیید شد. اکنون مشخصات خود را تکمیل کنید.");
 });
 $("register-form").addEventListener("submit",async ev=>{
  ev.preventDefault();
  const phone=normalizePhone($("reg-phone").value);
  const password=$("reg-password").value;
  if(!phone){registerNotice("شماره موبایل معتبر وارد کنید.",true);return;}
- if(!otpVerified){registerNotice("ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);return;}
+ if(!otpVerified||otpVerifiedPhone!==phone){registerNotice("ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);setRegistrationStep("phone");return;}\n const firstName=$("reg-first").value.trim();const lastName=$("reg-last").value.trim();\n if(!firstName||!lastName){registerNotice("تکمیل نام و نام خانوادگی الزامی است.",true);return;}
  if(password.length<8){registerNotice("گذرواژه باید حداقل ۸ نویسه داشته باشد.",true);return;}
  if(password!==$("reg-confirm").value){registerNotice("تکرار گذرواژه با گذرواژه یکسان نیست.",true);return;}
  $("create-account").disabled=true;
  const {data,error}=await supabase.functions.invoke("grower-register",{body:{
-  phone,password,first_name:$("reg-first").value.trim(),last_name:$("reg-last").value.trim()
+  phone,password,first_name:firstName,last_name:lastName
  }});
  if(error||!data?.account_created){
   $("create-account").disabled=false;
   const code=data?.error||"";
-  const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً ثبت شده است.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد."};
+  const messages={phone_not_verified_or_expired:"تأیید شماره منقضی شده است؛ دوباره کد بگیرید.",phone_already_registered:"این شماره قبلاً در سامانه ثبت شده است؛ لطفاً شماره دیگری وارد نمایید.",password_length_invalid:"گذرواژه باید بین ۸ تا ۷۲ نویسه باشد."};
   registerNotice(messages[code]||"ساخت حساب انجام نشد. دوباره تلاش کنید.",true);return;
  }
  registerNotice("حساب با موفقیت ایجاد شد؛ در حال ورود...");
