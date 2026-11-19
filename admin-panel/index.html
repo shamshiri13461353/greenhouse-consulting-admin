@@ -137,6 +137,40 @@
       <div class="divider"></div><h3>پاسخ‌های ارسال‌شده برای بررسی</h3><div id="draft-review-list" class="empty">در حال دریافت…</div>
       <div class="divider"></div><h3>آخرین نظرهای تخصصی</h3><div id="opinion-review-list" class="empty">در حال دریافت…</div>
     </div>
+    <div class="card" id="service-admin-card">
+      <div class="topline"><h2>مدیریت خدمات تخصصی پیوندگستر</h2><button id="refresh-service-admin" type="button" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">تعرفه‌ها و فعال‌بودن خدمات از این بخش کنترل می‌شود. خدمت تا زمانی که تعرفه ثبت و فعال‌سازی آن تأیید نشود، در پنل گلخانه‌دار نمایش داده نمی‌شود.</p>
+      <div class="grid">
+        <div><label for="service-price-service">انتخاب خدمت</label><select id="service-price-service"></select></div>
+        <div><label for="service-price-amount">تعرفه جدید (ریال)</label><input id="service-price-amount" type="number" min="0" step="1" placeholder="مبلغ را وارد کنید"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px"><input id="service-activate-after-save" type="checkbox" style="width:auto"> پس از ثبت تعرفه، خدمت برای گلخانه‌داران فعال شود</label>
+      <div class="actions"><button id="save-service-price" type="button">ثبت تعرفه جدید</button></div>
+      <div id="service-admin-message" class="notice hidden" role="status"></div>
+      <div class="table-wrap"><table><thead><tr><th>خدمت</th><th>گروه</th><th>تعرفه فعال</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="service-catalog-admin-rows"></tbody></table></div>
+    </div>
+    <div class="card" id="service-requests-admin-card">
+      <div class="topline"><h2>مدیریت درخواست‌های خدمات تخصصی</h2><button id="refresh-service-requests-admin" type="button" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">درخواست‌های جدید را بررسی کنید، خدمات انتخاب‌شده را ببینید، پیش‌فاکتور مبلغ نهایی را صادر کنید و مسئول رسیدگی را تعیین کنید. اطلاعات قیمت و هزینه داخلی فقط در این پنل مدیریتی نگهداری می‌شود.</p>
+      <div class="table-wrap"><table><thead><tr><th>شماره</th><th>گلخانه‌دار</th><th>گلخانه</th><th>نوع خدمت</th><th>وضعیت</th><th>مبلغ نهایی</th><th>تاریخ</th><th></th></tr></thead><tbody id="service-request-admin-rows"></tbody></table></div>
+      <div id="service-request-admin-empty" class="empty hidden">هنوز درخواستی برای خدمات تخصصی ثبت نشده است.</div>
+      <section id="service-request-admin-detail" class="monitor-detail hidden">
+        <h3 id="service-request-admin-title">جزئیات درخواست</h3>
+        <div id="service-request-admin-meta" class="monitor-meta"></div>
+        <div class="divider"></div><h3>خدمات انتخاب‌شده</h3><div id="service-request-admin-items" class="review-item">درخواستی انتخاب نشده است.</div>
+        <div class="grid">
+          <div><label for="service-request-discount">تخفیف کل (ریال)</label><input id="service-request-discount" type="number" min="0" step="1" value="0"></div>
+          <div><label for="service-request-assignee">کارشناس / مسئول رسیدگی</label><select id="service-request-assignee"><option value="">انتخاب مسئول</option></select></div>
+          <div><label for="service-request-assignment-role">نقش در درخواست</label><select id="service-request-assignment-role"><option value="expert">کارشناس مسئول</option><option value="lab_analyst">مسئول آزمایشگاه</option><option value="reviewer">بازبین تخصصی</option></select></div>
+        </div>
+        <div class="actions">
+          <button id="issue-service-quote" type="button">صدور پیش‌فاکتور مبلغ نهایی</button>
+          <button id="assign-service-staff" type="button" class="secondary">ثبت مسئول رسیدگی</button>
+        </div>
+        <div id="service-request-admin-detail-message" class="notice hidden" role="status"></div>
+      </section>
+    </div>
+
   </section>
 </main>
 <script type="module">
@@ -599,7 +633,7 @@
 
   async function loadDashboardData(){
     try{
-      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox()]);
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox(),loadServiceManagement()]);
       await loadReviewQueue();
     }catch(error){
       console.error("Admin dashboard data loading failed",error);
@@ -728,6 +762,225 @@
   }
 
 
+
+  // مدیریت خدمات تخصصی و درخواست‌های مستقل از پرونده مشاوره
+  let serviceAdminCatalog=[],serviceAdminPriceMap=new Map(),serviceAdminExperts=[],serviceAdminRequests=[];
+  let selectedServiceRequestAdmin=null,selectedServiceRequestItems=[];
+  const serviceGroupFa={consultation:"مشاوره تخصصی",laboratory:"آزمایشگاه",nutrition:"توصیه تغذیه‌ای",bundle:"بسته ترکیبی"};
+  const serviceRequestStatusFa={submitted:"ثبت‌شده",under_review:"در حال بررسی",quoted:"پیش‌فاکتور صادر شده",awaiting_customer_approval:"در انتظار تأیید گلخانه‌دار",awaiting_payment:"در انتظار پرداخت",confirmed:"تأیید و آماده اجرا",in_progress:"در حال انجام",awaiting_final_approval:"در انتظار تأیید نهایی",completed:"تکمیل‌شده",cancelled:"لغوشده",rejected:"ردشده"};
+  const moneyFa=value=>value===null||value===undefined?"—":new Intl.NumberFormat("fa-IR").format(Number(value))+" ریال";
+  function serviceAdminMessage(id,text,isError=false){message(id,text,isError);}
+  async function loadServiceCatalogAdmin(){
+    const {data:services,error}=await supabase.from("services")
+      .select("id,code,title_fa,description,is_active,service_group,requires_case,requires_sample,is_bundle")
+      .order("title_fa");
+    if(error)throw error;
+    const {data:prices,error:priceError}=await supabase.from("service_price_versions")
+      .select("id,service_id,version_no,unit_price,currency_code,effective_from")
+      .eq("is_active",true);
+    if(priceError)throw priceError;
+    serviceAdminCatalog=services||[];
+    serviceAdminPriceMap=new Map((prices||[]).map(p=>[p.service_id,p]));
+    const select=$("service-price-service"),previous=select.value;
+    select.replaceChildren(new Option("انتخاب خدمت",""));
+    for(const s of serviceAdminCatalog)select.add(new Option(s.title_fa,s.id));
+    if(serviceAdminCatalog.some(s=>s.id===previous))select.value=previous;
+    else if(serviceAdminCatalog.length)select.value=serviceAdminCatalog[0].id;
+    renderServiceCatalogAdmin();
+  }
+  function renderServiceCatalogAdmin(){
+    const body=$("service-catalog-admin-rows");body.replaceChildren();
+    for(const s of serviceAdminCatalog){
+      const tr=document.createElement("tr"),price=serviceAdminPriceMap.get(s.id);
+      const values=[s.title_fa,serviceGroupFa[s.service_group]||s.service_group,price?moneyFa(price.unit_price):"تعرفه ثبت نشده",s.is_active?"فعال":"غیرفعال"];
+      for(const v of values){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const td=document.createElement("td"),choose=document.createElement("button");
+      choose.type="button";choose.className="secondary";choose.textContent="تعریف تعرفه";
+      choose.addEventListener("click",()=>{$("service-price-service").value=s.id;$("service-price-amount").focus();});
+      const toggle=document.createElement("button");toggle.type="button";toggle.className=s.is_active?"danger":"secondary";
+      toggle.textContent=s.is_active?"غیرفعال‌کردن":"فعال‌سازی";
+      toggle.disabled=!s.is_active&&!price;
+      toggle.title=toggle.disabled?"ابتدا تعرفه فعال ثبت کنید.":"";
+      toggle.addEventListener("click",async()=>{
+        toggle.disabled=true;
+        const {error}=await supabase.from("services").update({is_active:!s.is_active}).eq("id",s.id);
+        if(error){serviceAdminMessage("service-admin-message","تغییر وضعیت خدمت ناموفق بود: "+error.message,true);toggle.disabled=false;return;}
+        serviceAdminMessage("service-admin-message",s.is_active?"خدمت غیرفعال شد.":"خدمت فعال شد.");
+        await loadServiceCatalogAdmin();
+      });
+      td.append(choose,toggle);tr.appendChild(td);body.appendChild(tr);
+    }
+  }
+  async function loadServiceExpertsAdmin(){
+    const {data:experts,error}=await supabase.from("expert_profiles")
+      .select("user_id,professional_title,organization,invitation_status,is_verified")
+      .eq("invitation_status","accepted").eq("is_verified",true);
+    if(error)throw error;
+    const ids=(experts||[]).map(x=>x.user_id);
+    let profiles=[];
+    if(ids.length){
+      const result=await supabase.from("user_profiles").select("id,first_name,last_name,account_status").in("id",ids);
+      if(result.error)throw result.error;profiles=result.data||[];
+    }
+    const map=new Map(profiles.map(x=>[x.id,x]));
+    serviceAdminExperts=(experts||[]).filter(e=>map.get(e.user_id)?.account_status==="active")
+      .map(e=>({...e,profile:map.get(e.user_id)}));
+    const select=$("service-request-assignee"),old=select.value;
+    select.replaceChildren(new Option("انتخاب مسئول",""));
+    for(const e of serviceAdminExperts){
+      const p=e.profile||{},name=[p.first_name,p.last_name].filter(Boolean).join(" ")||e.professional_title||"کارشناس";
+      select.add(new Option(name+" · "+(e.professional_title||"کارشناس"),e.user_id));
+    }
+    if(serviceAdminExperts.some(e=>e.user_id===old))select.value=old;
+  }
+  async function loadServiceRequestsAdmin(){
+    const body=$("service-request-admin-rows");
+    body.replaceChildren();
+    const {data:requests,error}=await supabase.from("service_requests")
+      .select("id,request_number,created_by,greenhouse_id,crop_cycle_id,case_id,request_group,status,payment_status,fulfillment_status,final_amount,currency_code,created_at")
+      .order("created_at",{ascending:false}).limit(150);
+    if(error)throw error;
+    serviceAdminRequests=requests||[];
+    const userIds=[...new Set(serviceAdminRequests.map(r=>r.created_by))];
+    const greenhouseIds=[...new Set(serviceAdminRequests.map(r=>r.greenhouse_id))];
+    let profiles=[],greenhouses=[];
+    if(userIds.length){
+      const x=await supabase.from("user_profiles").select("id,first_name,last_name").in("id",userIds);
+      if(x.error)throw x.error;profiles=x.data||[];
+    }
+    if(greenhouseIds.length){
+      const x=await supabase.from("greenhouses").select("id,name").in("id",greenhouseIds);
+      if(x.error)throw x.error;greenhouses=x.data||[];
+    }
+    const profileMap=new Map(profiles.map(x=>[x.id,x])),greenhouseMap=new Map(greenhouses.map(x=>[x.id,x.name]));
+    $("service-request-admin-empty").classList.toggle("hidden",serviceAdminRequests.length>0);
+    for(const r of serviceAdminRequests){
+      const tr=document.createElement("tr"),p=profileMap.get(r.created_by)||{};
+      const values=[
+        "درخواست "+new Intl.NumberFormat("fa-IR").format(r.request_number),
+        [p.first_name,p.last_name].filter(Boolean).join(" ")||"—",
+        greenhouseMap.get(r.greenhouse_id)||"—",
+        serviceGroupFa[r.request_group]||r.request_group,
+        serviceRequestStatusFa[r.status]||r.status,
+        moneyFa(r.final_amount)
+      ];
+      for(const v of values){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      const date=document.createElement("td");date.textContent=monitorDate(r.created_at);tr.appendChild(date);
+      const action=document.createElement("td"),button=document.createElement("button");
+      button.type="button";button.className="secondary";button.textContent="جزئیات";
+      button.addEventListener("click",()=>selectServiceRequestAdmin(r.id));action.append(button);tr.append(action);
+      body.append(tr);
+    }
+    if(selectedServiceRequestAdmin&&!serviceAdminRequests.some(r=>r.id===selectedServiceRequestAdmin.id)){
+      selectedServiceRequestAdmin=null;show("service-request-admin-detail",false);
+    }
+  }
+  async function selectServiceRequestAdmin(id){
+    const request=serviceAdminRequests.find(r=>r.id===id);if(!request)return;
+    selectedServiceRequestAdmin=request;show("service-request-admin-detail",true);
+    $("service-request-admin-title").textContent="درخواست "+new Intl.NumberFormat("fa-IR").format(request.request_number);
+    $("service-request-admin-meta").replaceChildren();
+    const metaValues=[
+      ["وضعیت",serviceRequestStatusFa[request.status]||request.status],
+      ["نوع خدمت",serviceGroupFa[request.request_group]||request.request_group],
+      ["مبلغ نهایی",moneyFa(request.final_amount)],
+      ["وضعیت پرداخت",request.payment_status],
+      ["وضعیت اجرا",request.fulfillment_status]
+    ];
+    for(const [k,v] of metaValues){const box=document.createElement("div");box.textContent=k+" · "+v;$("service-request-admin-meta").append(box);}
+    $("service-request-admin-items").textContent="در حال دریافت خدمات انتخاب‌شده…";
+    const {data:selections,error}=await supabase.from("service_request_selections")
+      .select("service_id,quantity,selection_note").eq("request_id",id);
+    if(error){$("service-request-admin-items").textContent="دریافت خدمات انتخاب‌شده ناموفق بود: "+error.message;return;}
+    selectedServiceRequestItems=selections||[];
+    const serviceIds=[...new Set(selectedServiceRequestItems.map(x=>x.service_id))];
+    let services=[];
+    if(serviceIds.length){
+      const result=await supabase.from("services").select("id,title_fa,service_group").in("id",serviceIds);
+      if(result.error){$("service-request-admin-items").textContent="دریافت نام خدمات ناموفق بود: "+result.error.message;return;}
+      services=result.data||[];
+    }
+    const serviceMap=new Map(services.map(x=>[x.id,x]));
+    const host=$("service-request-admin-items");host.replaceChildren();
+    if(!selectedServiceRequestItems.length){host.textContent="برای این درخواست خدمتی انتخاب نشده است.";return;}
+    for(const item of selectedServiceRequestItems){
+      const line=document.createElement("div"),s=serviceMap.get(item.service_id);
+      line.textContent=(s?.title_fa||"خدمت")+ " · تعداد: "+new Intl.NumberFormat("fa-IR").format(item.quantity)+(item.selection_note?" · "+item.selection_note:"");
+      host.append(line);
+    }
+    $("service-request-discount").value="0";
+    $("service-request-admin-detail-message").classList.add("hidden");
+  }
+  async function loadServiceManagement(){
+    try{
+      await Promise.all([loadServiceCatalogAdmin(),loadServiceExpertsAdmin(),loadServiceRequestsAdmin()]);
+    }catch(error){
+      console.error("Service management loading failed",error);
+      serviceAdminMessage("service-admin-message","بارگذاری بخش خدمات ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
+    }
+  }
+  $("refresh-service-admin").addEventListener("click",loadServiceManagement);
+  $("refresh-service-requests-admin").addEventListener("click",async()=>{
+    try{await loadServiceRequestsAdmin();if(selectedServiceRequestAdmin)await selectServiceRequestAdmin(selectedServiceRequestAdmin.id);}
+    catch(error){serviceAdminMessage("service-request-admin-detail-message","به‌روزرسانی درخواست‌ها ناموفق بود: "+error.message,true);}
+  });
+  $("save-service-price").addEventListener("click",async()=>{
+    const serviceId=$("service-price-service").value,amount=Number($("service-price-amount").value);
+    if(!serviceId||!Number.isFinite(amount)||amount<0){serviceAdminMessage("service-admin-message","خدمت و مبلغ معتبر را انتخاب کنید.",true);return;}
+    const button=$("save-service-price");button.disabled=true;
+    try{
+      const {data:latest,error:latestError}=await supabase.from("service_price_versions")
+        .select("version_no").eq("service_id",serviceId).order("version_no",{ascending:false}).limit(1).maybeSingle();
+      if(latestError)throw latestError;
+      const now=new Date().toISOString();
+      const {error:closeError}=await supabase.from("service_price_versions")
+        .update({is_active:false,effective_until:now}).eq("service_id",serviceId).eq("is_active",true);
+      if(closeError)throw closeError;
+      const {error:insertError}=await supabase.from("service_price_versions").insert({
+        service_id:serviceId,version_no:(latest?.version_no||0)+1,unit_price:amount,currency_code:"IRR",
+        effective_from:now,is_active:true,created_by:adminUser.id
+      });
+      if(insertError)throw insertError;
+      if($("service-activate-after-save").checked){
+        const {error:activateError}=await supabase.from("services").update({is_active:true}).eq("id",serviceId);
+        if(activateError)throw activateError;
+      }
+      $("service-price-amount").value="";
+      serviceAdminMessage("service-admin-message","تعرفه جدید ثبت شد. نسخه‌های قبلی برای حفظ سوابق درخواست‌ها نگهداری شدند.");
+      await loadServiceCatalogAdmin();
+    }catch(error){serviceAdminMessage("service-admin-message","ثبت تعرفه ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}
+    finally{button.disabled=false;}
+  });
+  $("issue-service-quote").addEventListener("click",async()=>{
+    if(!selectedServiceRequestAdmin){serviceAdminMessage("service-request-admin-detail-message","ابتدا یک درخواست را انتخاب کنید.",true);return;}
+    if(!selectedServiceRequestItems.length){serviceAdminMessage("service-request-admin-detail-message","در این درخواست خدمتی انتخاب نشده است.",true);return;}
+    const discount=Number($("service-request-discount").value||0);
+    if(!Number.isFinite(discount)||discount<0){serviceAdminMessage("service-request-admin-detail-message","مبلغ تخفیف معتبر نیست.",true);return;}
+    const button=$("issue-service-quote");button.disabled=true;
+    try{
+      const items=selectedServiceRequestItems.map(x=>({service_id:x.service_id,quantity:x.quantity}));
+      const {data,error}=await supabase.rpc("issue_service_request_quote",{
+        p_request_id:selectedServiceRequestAdmin.id,p_items:items,p_discount_amount:discount,
+        p_currency_code:selectedServiceRequestAdmin.currency_code||"IRR"
+      });
+      if(error)throw error;
+      serviceAdminMessage("service-request-admin-detail-message","پیش‌فاکتور مبلغ نهایی صادر شد. شناسه نسخه: "+String(data||"ثبت شد"));
+      await loadServiceRequestsAdmin();await selectServiceRequestAdmin(selectedServiceRequestAdmin.id);
+    }catch(error){serviceAdminMessage("service-request-admin-detail-message","صدور پیش‌فاکتور انجام نشد: "+(error?.message||"خطای نامشخص"),true);}
+    finally{button.disabled=false;}
+  });
+  $("assign-service-staff").addEventListener("click",async()=>{
+    if(!selectedServiceRequestAdmin){serviceAdminMessage("service-request-admin-detail-message","ابتدا یک درخواست را انتخاب کنید.",true);return;}
+    const userId=$("service-request-assignee").value,role=$("service-request-assignment-role").value;
+    if(!userId){serviceAdminMessage("service-request-admin-detail-message","مسئول رسیدگی را انتخاب کنید.",true);return;}
+    const button=$("assign-service-staff");button.disabled=true;
+    const {error}=await supabase.from("service_request_assignments").insert({
+      request_id:selectedServiceRequestAdmin.id,assigned_user_id:userId,assignment_role:role,status:"active",assigned_by:adminUser.id
+    });
+    button.disabled=false;
+    if(error){serviceAdminMessage("service-request-admin-detail-message","ثبت مسئول رسیدگی ناموفق بود: "+error.message,true);return;}
+    serviceAdminMessage("service-request-admin-detail-message","مسئول رسیدگی ثبت شد. نام کارشناس برای گلخانه‌دار نمایش داده نمی‌شود.");
+  });
 </script>
 </body>
 </html>
