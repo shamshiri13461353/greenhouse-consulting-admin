@@ -1,0 +1,10 @@
+revoke all on function app_private.snapshot_service_request_selection() from public,anon,authenticated;
+revoke all on function app_private.validate_service_request_lab_sample() from public,anon,authenticated;
+revoke all on function app_private.guard_lab_sample_processing_approval() from public,anon,authenticated;
+revoke all on function app_private.guard_lab_report_publication() from public,anon,authenticated;
+revoke all on function app_private.audit_lab_result_update() from public,anon,authenticated;
+revoke all on function app_private.sync_service_request_lab_review() from public,anon,authenticated;
+revoke all on function app_private.sync_service_request_lab_publication() from public,anon,authenticated;
+revoke all on function app_private.guard_lab_result_writes() from public,anon,authenticated;
+revoke all on function app_private.sync_service_request_lab_analysis_progress() from public,anon,authenticated;
+revoke all on function app_private.expected_lab_sample_types(uuid) from public,anon,authenticated;
