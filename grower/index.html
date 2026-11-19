@@ -77,6 +77,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   </section>
   <div id="grower-tabs" class="tabs hidden" role="tablist" aria-label="بخش‌های پنل گلخانه‌دار">
    <button type="button" class="active" data-grower-section="greenhouses-section" role="tab" aria-selected="true">گلخانه‌ها</button>
+   <button type="button" data-grower-section="services-section" role="tab" aria-selected="false">خدمات تخصصی پیوندگستر</button>
    <button type="button" data-grower-section="cycles-section" role="tab" aria-selected="false">دوره‌های کشت</button>
    <button type="button" data-grower-section="cases-section" role="tab" aria-selected="false">پرونده‌های مشاوره</button>
   </div>
@@ -182,6 +183,32 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <div id="final-response-list" class="empty">هنوز پاسخ نهایی منتشرشده‌ای برای این پرونده وجود ندارد.</div>
    </div>
   </section>
+  <section id="services-section" class="section">
+   <div class="card">
+    <h2>خدمات تخصصی پیوندگستر</h2>
+    <p class="muted">در این بخش می‌توانید برای مشاوره تخصصی، تجزیه آب آبیاری و زهاب، تجزیه خاک، بستر کشت، برگ و بافت گیاهی و خدمات تغذیه‌ای درخواست ثبت کنید. مبلغ نهایی پس از بررسی شرکت اعلام می‌شود.</p>
+    <form id="service-request-form">
+     <div class="grid">
+      <div><label for="service-greenhouse">گلخانه *</label><select id="service-greenhouse" required><option value="">انتخاب گلخانه</option></select></div>
+      <div><label for="service-cycle">دوره کشت</label><select id="service-cycle"><option value="">انتخاب دوره کشت (برای آزمایش الزامی)</option></select></div>
+      <div><label for="service-case">پرونده مشاوره مرتبط</label><select id="service-case"><option value="">بدون پرونده مشاوره</option></select></div>
+     </div>
+     <div class="divider"></div>
+     <h3>انتخاب خدمات موردنیاز</h3>
+     <p class="muted">می‌توانید یک خدمت یا چند خدمت مرتبط را هم‌زمان انتخاب کنید. در درخواست‌های ترکیبی، مبلغ نهایی یکجا اعلام می‌شود.</p>
+     <div id="service-options" class="empty">در حال دریافت فهرست خدمات…</div>
+     <label for="service-customer-note">توضیحات تکمیلی (اختیاری)</label>
+     <textarea id="service-customer-note" maxlength="5000" placeholder="توضیح کوتاهی درباره هدف درخواست، نمونه‌ها یا نیاز تخصصی خود بنویسید."></textarea>
+     <div class="actions"><button id="submit-service-request" type="submit">ثبت درخواست خدمات</button></div>
+     <div id="service-request-message" class="notice hidden" role="status"></div>
+    </form>
+   </div>
+   <div class="card">
+    <div class="topline"><h2>درخواست‌های خدمات من</h2><button id="refresh-service-requests" type="button" class="secondary">به‌روزرسانی</button></div>
+    <div id="my-service-requests" class="empty">در حال دریافت درخواست‌ها…</div>
+   </div>
+  </section>
+
  </section>
 </main>
 <script src="./supabase.js"></script>
@@ -218,7 +245,7 @@ function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,activeCaseAttachmentStats={caseId:null,count:0,totalBytes:0},caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function activateGrowerSection(sectionId){
- for(const id of ["greenhouses-section","cycles-section","cases-section"]){
+ for(const id of ["greenhouses-section","cycles-section","cases-section","services-section"]){
   $(id).classList.toggle("active",id===sectionId);
  }
  for(const button of document.querySelectorAll("[data-grower-section]")){
@@ -381,7 +408,7 @@ async function loadCycles(){
   card.append(title,meta);host.append(card);
  }
 }
-async function refreshAll(){await loadGreenhouses();await loadCycles();}
+async function refreshAll(){await loadGreenhouses();await loadCycles();if(currentUser)await loadServiceWorkspace();}
 async function requireGrower(user,accessToken){
  if(!user||!accessToken)throw new Error("نشست ورود یا توکن دسترسی دریافت نشد.");
  const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+accessToken};
@@ -461,15 +488,15 @@ async function enter(user=null,accessToken=null){
   user=data?.session?.user||null;accessToken=data?.session?.access_token||null;
  }
  currentUser=user||null;currentAccessToken=accessToken||null;
- if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("logout",false);return;}
+ if(!user||!accessToken){show("login-card");show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);show("logout",false);return;}
  const {profile,hasGrowerRole}=await requireGrower(user,accessToken);
  show("login-card",false);show("logout",true);
  if(profile?.account_status!=="active"||!hasGrowerRole){
-  show("account-pending");show("app",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);
+  show("account-pending");show("app",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);
   $("pending-message").textContent="حساب شما هنوز به‌عنوان گلخانه‌دار فعال نشده است. پس از بررسی مدیر سامانه، امکان ثبت گلخانه و دوره کشت فعال خواهد شد.";
   return;
  }
- show("account-pending",false);show("app",true);show("grower-tabs",true);show("greenhouses-section",true);show("cycles-section",true);show("cases-section",true);activateGrowerSection("greenhouses-section");
+ show("account-pending",false);show("app",true);show("grower-tabs",true);show("greenhouses-section",true);show("cycles-section",true);show("cases-section",true);show("services-section",true);activateGrowerSection("greenhouses-section");
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
  $("profile-line").textContent=profile.phone?"شماره موبایل: "+profile.phone:"ایمیل حساب: "+user.email;
@@ -934,10 +961,174 @@ async function activatePush(userId){
  }finally{enable.disabled=false;}
 }
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
 await enter();
 
 
+
+const serviceRequestStatusFa={submitted:"ثبت‌شده",under_review:"در حال بررسی",quoted:"پیش‌فاکتور صادر شده",awaiting_customer_approval:"در انتظار تأیید شما",awaiting_payment:"در انتظار پرداخت",confirmed:"تأیید و آماده اجرا",in_progress:"در حال انجام",awaiting_final_approval:"در انتظار تأیید نهایی",completed:"تکمیل‌شده",cancelled:"لغوشده",rejected:"ردشده"};
+const servicePaymentStatusFa={not_required:"نیازی به پرداخت ندارد",pending:"در انتظار پرداخت",paid:"پرداخت‌شده",failed:"پرداخت ناموفق",partially_refunded:"بازپرداخت بخشی",refunded:"بازپرداخت‌شده"};
+const serviceGroupFa={consultation:"مشاوره تخصصی",laboratory:"خدمات آزمایشگاهی",nutrition:"توصیه تغذیه‌ای",bundle:"بسته ترکیبی"};
+let growerServiceCatalog=[],growerServiceCases=[];
+function serviceMoney(value,currency="IRR"){
+ if(value===null||value===undefined)return"پس از بررسی اعلام می‌شود";
+ return new Intl.NumberFormat("fa-IR").format(Number(value))+(currency==="IRR"?" ریال":" "+currency);
+}
+async function loadServiceWorkspace(){
+ if(!currentUser?.id)return;
+ const optionsHost=$("service-options"),greenhouseSelect=$("service-greenhouse"),cycleSelect=$("service-cycle"),caseSelect=$("service-case");
+ try{
+  const [serviceResult,requestResult,caseResult]=await Promise.all([
+   supabase.from("services").select("id,code,title_fa,description,service_group,requires_case,requires_sample,is_bundle").eq("is_active",true).order("title_fa"),
+   supabase.from("service_requests").select("id,request_number,greenhouse_id,crop_cycle_id,case_id,request_group,status,payment_status,fulfillment_status,final_amount,currency_code,created_at").order("created_at",{ascending:false}).limit(100),
+   supabase.from("cases").select("id,case_number,title,crop_cycle_id,status").eq("created_by",currentUser.id).order("created_at",{ascending:false})
+  ]);
+  if(serviceResult.error)throw serviceResult.error;
+  if(requestResult.error)throw requestResult.error;
+  if(caseResult.error)throw caseResult.error;
+  growerServiceCatalog=serviceResult.data||[];
+  growerServiceCases=caseResult.data||[];
+
+  const oldGreenhouse=greenhouseSelect.value,oldCycle=cycleSelect.value,oldCase=caseSelect.value;
+  greenhouseSelect.replaceChildren(new Option("انتخاب گلخانه",""));
+  for(const gh of greenhouses)greenhouseSelect.add(new Option(gh.name,gh.id));
+  if(greenhouses.some(x=>x.id===oldGreenhouse))greenhouseSelect.value=oldGreenhouse;
+  cycleSelect.replaceChildren(new Option("انتخاب دوره کشت (برای آزمایش الزامی)",""));
+  for(const c of cropCycles){
+   const gh=greenhouses.find(x=>x.id===c.greenhouse_id);
+   cycleSelect.add(new Option((gh?.name||"گلخانه")+" — "+c.crop_name+(c.cultivar?" / "+c.cultivar:""),c.id));
+  }
+  if(cropCycles.some(x=>x.id===oldCycle))cycleSelect.value=oldCycle;
+  caseSelect.replaceChildren(new Option("بدون پرونده مشاوره",""));
+  for(const c of growerServiceCases)caseSelect.add(new Option("پرونده "+c.case_number+" — "+c.title,c.id));
+  if(growerServiceCases.some(x=>x.id===oldCase))caseSelect.value=oldCase;
+
+  optionsHost.replaceChildren();
+  if(!growerServiceCatalog.length){
+   optionsHost.className="empty";
+   optionsHost.textContent="در حال حاضر خدمتی برای ثبت درخواست فعال نشده است. پس از اعلام تعرفه و فعال‌سازی خدمات توسط شرکت، فهرست آن‌ها در همین قسمت نمایش داده می‌شود.";
+   $("submit-service-request").disabled=true;
+  }else{
+   optionsHost.className="";
+   $("submit-service-request").disabled=false;
+   for(const service of growerServiceCatalog){
+    const card=node("article","item"),top=node("div","topline"),label=document.createElement("label");
+    label.style.display="flex";label.style.alignItems="center";label.style.gap="9px";label.style.margin="0";
+    const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.value=service.id;checkbox.dataset.serviceChoice="true";checkbox.style.width="auto";
+    const title=node("strong","",service.title_fa);label.append(checkbox,title);
+    const group=node("span","tag",serviceGroupFa[service.service_group]||service.service_group);top.append(label,group);
+    const description=node("p","muted",service.description||"");
+    const requirements=[];
+    if(service.requires_case)requirements.push("نیازمند پرونده مشاوره");
+    if(service.requires_sample)requirements.push("نیازمند انتخاب دوره کشت و تحویل نمونه");
+    const meta=node("div","meta",requirements.join(" · ")||"پس از بررسی، مبلغ نهایی اعلام می‌شود.");
+    const qtyWrap=node("div","");const qtyLabel=node("label","","تعداد / مقدار");qtyLabel.style.margin="8px 0 4px";
+    const qty=document.createElement("input");qty.type="number";qty.min="0.001";qty.max="10000";qty.step="0.001";qty.value="1";qty.disabled=true;qty.dataset.serviceQuantity=service.id;qty.style.maxWidth="180px";
+    checkbox.addEventListener("change",()=>{qty.disabled=!checkbox.checked;});
+    qtyWrap.append(qtyLabel,qty);card.append(top,description,meta,qtyWrap);optionsHost.append(card);
+   }
+  }
+  const requestHost=$("my-service-requests");
+  requestHost.replaceChildren();
+  const requests=requestResult.data||[];
+  if(!requests.length){requestHost.className="empty";requestHost.textContent="هنوز درخواست خدمات تخصصی ثبت نکرده‌اید.";return;}
+  requestHost.className="";
+  const ids=requests.map(x=>x.id);
+  const [selectionResult,quoteResult]=await Promise.all([
+   supabase.from("service_request_selections").select("request_id,service_id,quantity").in("request_id",ids),
+   supabase.from("service_request_customer_quotes").select("id,request_id,version_no,final_amount,currency_code,status,issued_at,approved_at").in("request_id",ids)
+  ]);
+  if(selectionResult.error)throw selectionResult.error;
+  if(quoteResult.error)throw quoteResult.error;
+  const selections=selectionResult.data||[],quotes=quoteResult.data||[];
+  const serviceIds=[...new Set(selections.map(x=>x.service_id))];
+  let serviceRows=[];
+  if(serviceIds.length){
+   const sr=await supabase.from("services").select("id,title_fa").in("id",serviceIds);
+   if(sr.error)throw sr.error;serviceRows=sr.data||[];
+  }
+  const serviceMap=new Map(serviceRows.map(x=>[x.id,x.title_fa]));
+  for(const request of requests){
+   const card=node("article","item"),top=node("div","topline");
+   const title=node("h3","", "درخواست "+new Intl.NumberFormat("fa-IR").format(request.request_number));
+   const tag=node("span","tag",serviceRequestStatusFa[request.status]||request.status);top.append(title,tag);
+   const gh=greenhouses.find(x=>x.id===request.greenhouse_id),cycle=cropCycles.find(x=>x.id===request.crop_cycle_id);
+   const meta=node("div","meta",[
+    "گلخانه: "+(gh?.name||"—"),
+    cycle?"دوره کشت: "+cycle.crop_name:null,
+    "نوع خدمت: "+(serviceGroupFa[request.request_group]||request.request_group),
+    "ثبت: "+new Date(request.created_at).toLocaleDateString("fa-IR")
+   ].filter(Boolean).join(" · "));
+   const selected=selections.filter(x=>x.request_id===request.id);
+   const servicesLine=node("p","muted",selected.length?"خدمات: "+selected.map(x=>(serviceMap.get(x.service_id)||"خدمت")+" × "+new Intl.NumberFormat("fa-IR").format(x.quantity)).join("، "):"خدمات انتخاب‌شده");
+   const amount=node("p","", "مبلغ نهایی: "+serviceMoney(request.final_amount,request.currency_code));
+   const payment=node("p","muted","وضعیت پرداخت: "+(servicePaymentStatusFa[request.payment_status]||request.payment_status));
+   card.append(top,meta,servicesLine,amount,payment);
+   const issuedQuote=quotes.find(q=>q.request_id===request.id&&q.status==="issued");
+   const acceptedQuote=quotes.find(q=>q.request_id===request.id&&q.status==="accepted");
+   if(issuedQuote){
+    const quoteNote=node("p","notice","پیش‌فاکتور شماره "+new Intl.NumberFormat("fa-IR").format(issuedQuote.version_no)+" صادر شده است. مبلغ قابل پرداخت: "+serviceMoney(issuedQuote.final_amount,issuedQuote.currency_code));
+    const accept=node("button","","تأیید مبلغ نهایی");
+    accept.type="button";
+    accept.addEventListener("click",async()=>{
+     accept.disabled=true;
+     const {error}=await supabase.rpc("accept_service_request_quote",{p_quote_id:issuedQuote.id});
+     accept.disabled=false;
+     if(error){notice("service-request-message","تأیید پیش‌فاکتور ناموفق بود: "+error.message,true);return;}
+     notice("service-request-message","مبلغ نهایی تأیید شد. وضعیت درخواست به‌روزرسانی شد.");
+     await loadServiceWorkspace();
+    });
+    card.append(quoteNote,accept);
+   }else if(acceptedQuote){
+    card.append(node("p","notice","مبلغ نهایی تأیید شده است."));
+   }
+   if(request.payment_status==="pending"&&request.status==="awaiting_payment"){
+    card.append(node("p","muted","درگاه پرداخت هنوز به سامانه متصل نشده است؛ پس از آماده‌شدن زیرساخت پرداخت، امکان پرداخت در همین بخش فراهم می‌شود."));
+   }
+   requestHost.append(card);
+  }
+ }catch(error){
+  console.error("Service workspace loading failed",error);
+  optionsHost.textContent="دریافت خدمات تخصصی ناموفق بود: "+(error?.message||"خطای ارتباط");
+  const requestHost=$("my-service-requests");requestHost.textContent="دریافت درخواست‌های خدمات ناموفق بود: "+(error?.message||"خطای ارتباط");
+ }
+}
+$("service-case").addEventListener("change",()=>{
+ const selected=growerServiceCases.find(x=>x.id===$("service-case").value);
+ if(!selected)return;
+ const cycle=cropCycles.find(x=>x.id===selected.crop_cycle_id);
+ if(cycle){$("service-cycle").value=cycle.id;$("service-greenhouse").value=cycle.greenhouse_id;}
+});
+$("service-request-form").addEventListener("submit",async event=>{
+ event.preventDefault();clearNotice("service-request-message");
+ const greenhouseId=$("service-greenhouse").value,cycleId=$("service-cycle").value||null,caseId=$("service-case").value||null;
+ const selected=[...document.querySelectorAll("[data-service-choice]:checked")];
+ if(!greenhouseId){notice("service-request-message","گلخانه را انتخاب کنید.",true);return;}
+ if(!selected.length){notice("service-request-message","حداقل یک خدمت را انتخاب کنید.",true);return;}
+ const items=selected.map(box=>({service_id:box.value,quantity:Number(document.querySelector('[data-service-quantity="'+box.value+'"]').value)}));
+ if(items.some(x=>!Number.isFinite(x.quantity)||x.quantity<=0)){notice("service-request-message","تعداد انتخاب‌شده برای خدمات معتبر نیست.",true);return;}
+ const selectedServices=growerServiceCatalog.filter(s=>selected.some(x=>x.value===s.id));
+ if(selectedServices.some(s=>s.requires_sample)&&!cycleId){notice("service-request-message","برای خدمات آزمایشگاهی، دوره کشت را انتخاب کنید.",true);return;}
+ if(selectedServices.some(s=>s.requires_case)&&!caseId){notice("service-request-message","برای مشاوره تخصصی، پرونده مشاوره مرتبط را انتخاب کنید.",true);return;}
+ if(caseId){
+  const c=growerServiceCases.find(x=>x.id===caseId);
+  if(c&&cycleId&&c.crop_cycle_id!==cycleId){notice("service-request-message","دوره کشت انتخاب‌شده با پرونده مشاوره مطابقت ندارد.",true);return;}
+ }
+ const button=$("submit-service-request");button.disabled=true;
+ try{
+  const {data,error}=await supabase.rpc("submit_service_request",{
+   p_greenhouse_id:greenhouseId,p_crop_cycle_id:cycleId,p_case_id:caseId,p_items:items,
+   p_customer_note:$("service-customer-note").value.trim()||null
+  });
+  if(error)throw error;
+  $("service-request-form").reset();
+  notice("service-request-message","درخواست خدمات با موفقیت ثبت شد. پس از بررسی اولیه، مبلغ نهایی در همین بخش اعلام می‌شود.");
+  await loadServiceWorkspace();
+ }catch(error){
+  notice("service-request-message","ثبت درخواست ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
+ }finally{button.disabled=false;}
+});
+$("refresh-service-requests").addEventListener("click",loadServiceWorkspace);
 </script>
 </body>
 </html>
