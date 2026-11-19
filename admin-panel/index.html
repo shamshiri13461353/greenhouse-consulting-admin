@@ -89,7 +89,7 @@
         <div id="grower-password-message" class="notice hidden"></div>
       </div>
       <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><button id="refresh-growers" class="secondary">به‌روزرسانی</button></div>
-      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>شماره موبایل</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
       <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
     </div>
     <div class="card">
@@ -454,32 +454,60 @@
   }
 
 
-  function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"غیرفعال"})[s]||s||"—";}
+  function growerStatus(s){return ({pending:"در انتظار تأیید",active:"فعال",suspended:"تعلیق‌شده",disabled:"حذف‌شده"})[s]||s||"—";}
   async function loadGrowers(){
-    const body=$("growers"); body.innerHTML='<tr><td colspan="4">در حال دریافت…</td></tr>';
-    const {data:profiles,error}=await supabase.from("user_profiles").select("id,first_name,last_name,account_status,created_at").order("created_at",{ascending:false});
+    const body=$("growers"); body.innerHTML='<tr><td colspan="5">در حال دریافت…</td></tr>';
+    const {data:profiles,error}=await supabase.from("user_profiles").select("id,first_name,last_name,phone,account_status,created_at").order("created_at",{ascending:false});
     if(error){body.innerHTML="";message("grower-message","دریافت حساب‌ها ناموفق بود: "+error.message,true);return;}
     const ids=(profiles||[]).map(x=>x.id);
     if(!ids.length){body.innerHTML="";show("growers-empty",true);return;}
-    const [{data:roles},{data:experts}] = await Promise.all([
+    const [roleResult,expertResult]=await Promise.all([
       supabase.from("user_roles").select("user_id,role_code").in("user_id",ids),
       supabase.from("expert_profiles").select("user_id").in("user_id",ids)
     ]);
-    const expertIds=new Set((experts||[]).map(x=>x.user_id));
-    const roleMap=new Map((roles||[]).map(x=>[x.user_id,x.role_code]));
+    if(roleResult.error||expertResult.error){
+      body.innerHTML="";
+      message("grower-message","دریافت نقش یا فهرست کاربران ناموفق بود: "+(roleResult.error||expertResult.error).message,true);
+      return;
+    }
+    const expertIds=new Set((expertResult.data||[]).map(x=>x.user_id));
+    const roleMap=new Map((roleResult.data||[]).map(x=>[x.user_id,x.role_code]));
     const rows=profiles.filter(p=>!expertIds.has(p.id) && p.id!=="41b9b271-e818-4525-bfd0-6bc5f1c8a34a");
     body.innerHTML=""; show("growers-empty",rows.length===0);
     for(const p of rows){
       const tr=document.createElement("tr");
       const displayName=[p.first_name,p.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";
-      for(const v of [displayName,growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}
+      for(const v of [displayName,p.phone||"ثبت نشده",growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){
+        const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
+      }
       const td=document.createElement("td");
       if(p.account_status==="pending"){
-        const b=document.createElement("button");b.textContent="تأیید و فعال‌سازی";
-        b.addEventListener("click",async()=>{b.disabled=true;const {error}=await supabase.rpc("admin_activate_grower",{p_user_id:p.id});if(error){message("grower-message","فعال‌سازی انجام نشد: "+error.message,true);b.disabled=false;return;}message("grower-message","حساب گلخانه‌دار فعال شد.");await loadGrowers();});
-        td.appendChild(b);
-      }else td.textContent=p.account_status==="active"?"فعال":"—";
-      tr.appendChild(td);body.appendChild(tr);
+        const activate=document.createElement("button");activate.textContent="تأیید و فعال‌سازی";
+        activate.addEventListener("click",async()=>{
+          activate.disabled=true;
+          const {error}=await supabase.rpc("admin_activate_grower",{p_user_id:p.id});
+          if(error){message("grower-message","فعال‌سازی انجام نشد: "+error.message,true);activate.disabled=false;return;}
+          message("grower-message","حساب گلخانه‌دار فعال شد.");await loadGrowers();
+        });
+        td.appendChild(activate);
+      }
+      const remove=document.createElement("button");
+      remove.type="button";remove.className="danger";remove.textContent=p.account_status==="disabled"?"حذف‌شده":"حذف حساب";
+      remove.disabled=p.account_status==="disabled";
+      remove.title=p.account_status==="disabled"?"این حساب قبلاً حذف شده است.":"قطع دسترسی حساب با حفظ سوابق";
+      remove.addEventListener("click",async()=>{
+        const confirmText="حساب «"+displayName+"» حذف شود؟\\n\\nدسترسی این کاربر به سامانه قطع می‌شود؛ اما پرونده‌ها، گلخانه‌ها، درخواست‌ها و سوابق مالی او برای حفظ سوابق سامانه باقی می‌مانند.";
+        if(!window.confirm(confirmText))return;
+        remove.disabled=true;
+        const {data,error}=await supabase.functions.invoke("admin-delete-grower",{body:{user_id:p.id}});
+        if(error||!data?.success){
+          message("grower-message","حذف حساب انجام نشد: "+(data?.error||error?.message||"خطای نامشخص"),true);
+          remove.disabled=false;return;
+        }
+        message("grower-message","حساب گلخانه‌دار حذف و دسترسی آن قطع شد؛ سوابق قبلی محفوظ ماند.");
+        await loadGrowers();
+      });
+      td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
     }
   }
 
