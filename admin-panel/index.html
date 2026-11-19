@@ -801,16 +801,6 @@
     $("refresh").addEventListener("click",loadExperts);
   $("signout").addEventListener("click",async()=>{await supabase.auth.signOut();show("dashboard",false);show("signout",false);show("login-card",true);});
   supabase.auth.onAuthStateChange((_event,session)=>{if(!session){show("dashboard",false);show("signout",false);show("login-card",true);}});
-  try {
-    await enterDashboard();
-  } catch (error) {
-    console.error("Admin session check failed", error);
-    show("login-card", true);
-    show("dashboard", false);
-    message("login-message", "بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. " + (error?.name === "AbortError" ? "مهلت ارتباط با سرور تمام شد." : (error?.message || "")), true);
-  }
-
-
 
   // مدیریت خدمات تخصصی و درخواست‌های مستقل از پرونده مشاوره
   let serviceAdminCatalog=[],serviceAdminPriceMap=new Map(),serviceAdminExperts=[],serviceAdminRequests=[];
@@ -1266,6 +1256,18 @@
     labAdminMessage("lab-sample-detail-message","گزارش منتشر شد و نتایج برای گلخانه‌دار قابل مشاهده است.");
     await loadLabManagement();button.disabled=false;
   });
+
+
+  try {
+    await enterDashboard();
+  } catch (error) {
+    console.error("Admin session check failed", error);
+    show("login-card", true);
+    show("dashboard", false);
+    message("login-message", "بررسی نشست قبلی انجام نشد؛ لطفاً دوباره وارد شوید. " + (error?.name === "AbortError" ? "مهلت ارتباط با سرور تمام شد." : (error?.message || "")), true);
+  }
+
+
 </script>
 </body>
 </html>
