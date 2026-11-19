@@ -1020,11 +1020,11 @@ async function loadServiceWorkspace(){
     const requirements=[];
     if(service.requires_case)requirements.push("نیازمند پرونده مشاوره");
     if(service.requires_sample)requirements.push("نیازمند انتخاب دوره کشت و تحویل نمونه");
-    const meta=node("div","meta",requirements.join(" · ")||"پس از بررسی، مبلغ نهایی اعلام می‌شود.");
+    const meta=service.code==="nutrition_recommendation"&&!requirements.length?null:node("div","meta",requirements.join(" · ")||"پس از بررسی، مبلغ نهایی اعلام می‌شود.");
     const qtyWrap=node("div","");const qtyLabel=node("label","","تعداد / مقدار");qtyLabel.style.margin="8px 0 4px";
     const qty=document.createElement("input");qty.type="number";qty.min="0.001";qty.max="10000";qty.step="0.001";qty.value="1";qty.disabled=true;qty.dataset.serviceQuantity=service.id;qty.style.maxWidth="180px";
     checkbox.addEventListener("change",()=>{qty.disabled=!checkbox.checked;});
-    qtyWrap.append(qtyLabel,qty);card.append(top,description,meta,qtyWrap);optionsHost.append(card);
+    qtyWrap.append(qtyLabel,qty);card.append(top,description);if(meta)card.append(meta);card.append(qtyWrap);optionsHost.append(card);
    }
   }
   const requestHost=$("my-service-requests");
