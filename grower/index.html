@@ -1068,6 +1068,7 @@ async function loadServiceWorkspace(){
      const sample=sampleRows[0];
      const typeLabel={irrigation_water:"آب آبیاری",drainage:"زهاب",soil:"خاک",substrate:"بستر کشت",plant_tissue:"برگ / بافت گیاهی",nutrient_solution:"محلول غذایی",other:"سایر"}[sample.sample_type]||sample.sample_type;
      resultPanel.append(node("h4","",typeLabel+(sample.sample_code?" · "+sample.sample_code:"")));
+     if(sample.sampled_at)resultPanel.append(node("p","muted","تاریخ نمونه‌برداری: "+new Date(sample.sampled_at).toLocaleDateString("fa-IR")));
      const wrap=node("div","table-wrap"),table=document.createElement("table"),thead=document.createElement("thead"),headRow=document.createElement("tr");
      for(const heading of ["شاخص","نتیجه","واحد","تکرار"]){const th=document.createElement("th");th.textContent=heading;headRow.append(th);}
      thead.append(headRow);table.append(thead);
