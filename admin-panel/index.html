@@ -195,6 +195,7 @@
         <h3 id="lab-sample-admin-title">جزئیات نمونه</h3>
         <div id="lab-sample-admin-meta" class="monitor-meta"></div>
         <div class="grid">
+          <div><label for="lab-sample-quality-status">وضعیت کنترل کیفیت نمونه</label><select id="lab-sample-quality-status"><option value="pending">در انتظار کنترل</option><option value="accepted">پذیرفته‌شده</option><option value="rejected">ردشده</option><option value="resampling_required">نیازمند نمونه‌گیری مجدد</option></select></div>
           <div><label for="lab-analysis-method">روش تجزیه</label><input id="lab-analysis-method" type="text" placeholder="روش یا دستگاه مورد استفاده"></div>
           <div><label for="lab-quality-note">یادداشت داخلی کنترل کیفیت</label><input id="lab-quality-note" type="text" placeholder="یادداشت داخلی"></div>
         </div>
@@ -1055,7 +1056,7 @@
       const [requestResult,sampleResult,analyteResult,unitResult]=await Promise.all([
         supabase.from("service_requests")
           .select("id,request_number,greenhouse_id,crop_cycle_id,request_group,status,payment_status,fulfillment_status")
-          .in("payment_status",["paid","not_required"]).in("status",["confirmed","in_progress"]).order("created_at",{ascending:false}),
+          .in("payment_status",["paid","not_required"]).in("status",["confirmed","in_progress","awaiting_final_approval"]).in("request_group",["laboratory","bundle"]).order("created_at",{ascending:false}),
         supabase.from("lab_samples")
           .select("id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,created_at")
           .order("created_at",{ascending:false}).limit(150),
@@ -1069,6 +1070,7 @@
       labEligibleRequests=requestResult.data||[];
       labAdminSamples=sampleResult.data||[];
       labAdminAnalytes=analyteResult.data||[];
+      if(!$("lab-sampled-at").value)$("lab-sampled-at").value=new Date().toISOString().slice(0,10);
       labAdminUnits=unitResult.data||[];
       labSelectionsByRequest=new Map();
       if(labEligibleRequests.length){
@@ -1167,6 +1169,7 @@
     if(processingResult.error)throw processingResult.error;
     if(resultsResult.error)throw resultsResult.error;
     selectedLabProcessingAdmin=processingResult.data||null;
+    $("lab-sample-quality-status").value=sample.quality_status||"pending";
     $("lab-analysis-method").value=selectedLabProcessingAdmin?.analysis_method||"";
     $("lab-quality-note").value=selectedLabProcessingAdmin?.quality_note||"";
     const analyteSelect=$("lab-result-analyte"),unitSelect=$("lab-result-unit");
@@ -1189,15 +1192,19 @@
       body.append(tr);
     }
     const published=!!sample.report_published_at;
-    $("add-lab-result").disabled=published;
+    const qualityAccepted=sample.quality_status==="accepted";
+    $("add-lab-result").disabled=published||!qualityAccepted;
     $("save-lab-processing").disabled=published;
-    $("approve-lab-sample").disabled=published||selectedLabProcessingAdmin?.approval_status==="approved";
+    $("approve-lab-sample").disabled=published||!qualityAccepted||selectedLabProcessingAdmin?.approval_status==="approved";
     $("publish-lab-report").disabled=published||selectedLabProcessingAdmin?.approval_status!=="approved";
     $("lab-sample-detail-message").classList.add("hidden");
   }
   $("refresh-lab-management").addEventListener("click",loadLabManagement);
   $("save-lab-processing").addEventListener("click",async()=>{
     if(!selectedLabSampleAdmin)return;
+    const {error:qualityError}=await supabase.from("lab_samples")
+      .update({quality_status:$("lab-sample-quality-status").value}).eq("id",selectedLabSampleAdmin.id);
+    if(qualityError){labAdminMessage("lab-sample-detail-message","ثبت وضعیت کنترل کیفیت ناموفق بود: "+qualityError.message,true);return;}
     const payload={sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
       analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
       analysis_method:$("lab-analysis-method").value.trim()||null,
@@ -1231,6 +1238,7 @@
   });
   $("approve-lab-sample").addEventListener("click",async()=>{
     if(!selectedLabSampleAdmin)return;
+    if(selectedLabSampleAdmin.quality_status!=="accepted"){labAdminMessage("lab-sample-detail-message","ابتدا وضعیت کنترل کیفیت را «پذیرفته‌شده» ثبت کنید.",true);return;}
     const saveResult=await supabase.from("lab_sample_processing").upsert({
       sample_id:selectedLabSampleAdmin.id,received_by:adminUser.id,
       analyst_user_id:selectedLabProcessingAdmin?.analyst_user_id||null,
