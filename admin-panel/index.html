@@ -151,12 +151,12 @@
     </div>
     <div class="card" id="company-products-admin-card">
       <div class="topline"><h2>مدیریت محصولات شرکت</h2><button id="refresh-company-products" type="button" class="secondary">به‌روزرسانی</button></div>
-      <p class="muted">محصولات تولیدی و دارای برند پیوندگستر پارسان را برای نمایش در پنل گلخانه‌دار تعریف و ویرایش کنید. تصویر محصول فعلاً با نشانی اینترنتی امن (HTTPS) ثبت می‌شود.</p>
+      <p class="muted">محصولات تولیدی و دارای برند پیوندگستر پارسان را برای نمایش در پنل گلخانه‌دار تعریف و ویرایش کنید. تصویر هر محصول را مستقیماً از رایانه انتخاب کنید.</p>
       <form id="company-product-form">
        <input id="company-product-id" type="hidden">
        <div class="grid">
         <div><label for="company-product-title">نام محصول *</label><input id="company-product-title" maxlength="160" required></div>
-        <div><label for="company-product-image">نشانی تصویر محصول (HTTPS)</label><input id="company-product-image" type="url" placeholder="https://..."></div>
+        <div><label for="company-product-image-file">تصویر محصول</label><input id="company-product-image-file" type="file" accept="image/jpeg,image/png,image/webp"><p class="muted">فرمت‌های JPG، PNG و WebP؛ حداکثر ۴ مگابایت</p><img id="company-product-image-preview" class="hidden" alt="پیش‌نمایش تصویر محصول" style="max-width:180px;max-height:150px;object-fit:contain;border:1px solid #dce8e1;border-radius:10px;padding:6px"></div>
        </div>
        <label for="company-product-description">معرفی و توضیحات محصول</label><textarea id="company-product-description" maxlength="5000" rows="4"></textarea>
        <label for="company-product-order">ترتیب نمایش</label><input id="company-product-order" type="number" step="1" value="0">
@@ -837,10 +837,37 @@
   // مدیریت کاتالوگ محصولات شرکت و متن بخش تأمین و توزیع
   let companyProductRows=[];
   function companyProductMessage(id,text,isError=false){message(id,text,isError);}
+  let companyProductEditingImageUrl=null,companyProductPreviewObjectUrl=null;
+  function setCompanyProductPreview(url){
+    const preview=$("company-product-image-preview");
+    if(companyProductPreviewObjectUrl){URL.revokeObjectURL(companyProductPreviewObjectUrl);companyProductPreviewObjectUrl=null;}
+    if(url){preview.src=url;preview.classList.remove("hidden");}
+    else{preview.removeAttribute("src");preview.classList.add("hidden");}
+  }
   function resetCompanyProductForm(){
     $("company-product-id").value="";$("company-product-title").value="";
-    $("company-product-image").value="";$("company-product-description").value="";
+    $("company-product-image-file").value="";$("company-product-description").value="";
     $("company-product-order").value="0";$("save-company-product").textContent="ذخیره محصول";
+    companyProductEditingImageUrl=null;setCompanyProductPreview(null);
+  }
+  $("company-product-image-file").addEventListener("change",()=>{
+    const file=$("company-product-image-file").files?.[0];
+    if(!file){setCompanyProductPreview(companyProductEditingImageUrl);return;}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>4*1024*1024){
+      $("company-product-image-file").value="";
+      companyProductMessage("company-product-message","فقط تصویر JPG، PNG یا WebP با حجم حداکثر ۴ مگابایت مجاز است.",true);
+      setCompanyProductPreview(companyProductEditingImageUrl);return;
+    }
+    companyProductPreviewObjectUrl=URL.createObjectURL(file);
+    $("company-product-image-preview").src=companyProductPreviewObjectUrl;
+    $("company-product-image-preview").classList.remove("hidden");
+  });
+  async function uploadCompanyProductImage(file){
+    const form=new FormData();form.append("file",file,file.name);
+    const {data,error}=await supabase.functions.invoke("company-product-image-upload",{body:form});
+    if(error)throw new Error(data?.error||error.message||"بارگذاری تصویر ناموفق بود.");
+    if(!data?.publicUrl)throw new Error("نشانی تصویر ذخیره‌شده دریافت نشد.");
+    return data.publicUrl;
   }
   async function loadCompanyProductManagement(){
     const [{data:products,error},{data:settings,error:settingsError}]=await Promise.all([
@@ -861,7 +888,7 @@
       edit.type="button";edit.className="secondary";edit.textContent="ویرایش";
       edit.addEventListener("click",()=>{
         $("company-product-id").value=product.id;$("company-product-title").value=product.title;
-        $("company-product-image").value=product.image_url||"";$("company-product-description").value=product.description||"";
+        $("company-product-image-file").value="";companyProductEditingImageUrl=product.image_url||null;setCompanyProductPreview(companyProductEditingImageUrl);$("company-product-description").value=product.description||"";
         $("company-product-order").value=String(product.sort_order??0);$("save-company-product").textContent="ثبت ویرایش";
         $("company-product-title").focus();
       });
@@ -879,19 +906,22 @@
   $("company-product-form").addEventListener("submit",async event=>{
     event.preventDefault();
     const id=$("company-product-id").value,title=$("company-product-title").value.trim();
-    const imageText=$("company-product-image").value.trim(),description=$("company-product-description").value.trim();
+    const file=$("company-product-image-file").files?.[0]||null,description=$("company-product-description").value.trim();
     const sortOrder=Number($("company-product-order").value||0);
     if(!title){companyProductMessage("company-product-message","نام محصول را وارد کنید.",true);return;}
-    let imageUrl=null;
-    if(imageText){try{const parsed=new URL(imageText);if(parsed.protocol!=="https:")throw new Error();imageUrl=parsed.href;}catch{companyProductMessage("company-product-message","نشانی تصویر باید معتبر و با https شروع شود.",true);return;}}
     if(!Number.isInteger(sortOrder)){companyProductMessage("company-product-message","ترتیب نمایش باید عدد صحیح باشد.",true);return;}
     const button=$("save-company-product");button.disabled=true;
-    const payload={title,description,image_url:imageUrl,sort_order:sortOrder,updated_at:new Date().toISOString()};
-    const result=id?await supabase.from("company_products").update(payload).eq("id",id):await supabase.from("company_products").insert(payload);
-    button.disabled=false;
-    if(result.error){companyProductMessage("company-product-message","ذخیره محصول ناموفق بود: "+result.error.message,true);return;}
-    resetCompanyProductForm();companyProductMessage("company-product-message",id?"ویرایش محصول ذخیره شد.":"محصول جدید ثبت شد.");
-    await loadCompanyProductManagement();
+    try{
+      let imageUrl=companyProductEditingImageUrl;
+      if(file)imageUrl=await uploadCompanyProductImage(file);
+      const payload={title,description,image_url:imageUrl,sort_order:sortOrder,updated_at:new Date().toISOString()};
+      const result=id?await supabase.from("company_products").update(payload).eq("id",id):await supabase.from("company_products").insert(payload);
+      if(result.error)throw result.error;
+      resetCompanyProductForm();companyProductMessage("company-product-message",id?"ویرایش محصول ذخیره شد.":"محصول جدید ثبت شد.");
+      await loadCompanyProductManagement();
+    }catch(error){
+      companyProductMessage("company-product-message","ذخیره محصول انجام نشد: "+(error?.message||"خطای نامشخص"),true);
+    }finally{button.disabled=false;}
   });
   $("cancel-company-product-edit").addEventListener("click",resetCompanyProductForm);
   $("refresh-company-products").addEventListener("click",async()=>{
