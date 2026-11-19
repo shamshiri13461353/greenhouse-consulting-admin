@@ -490,7 +490,7 @@ async function loadAssignedLabSamples(){
  const requestIds=[...new Set((assignments||[]).map(x=>x.request_id))];
  if(!requestIds.length){host.className="empty";host.textContent="نمونه‌ای برای تجزیه به شما تخصیص داده نشده است.";expertLabSamples=[];show("expert-lab-sample-detail",false);return;}
  const [sampleResult,requestResult,analyteResult,unitResult]=await Promise.all([
-  supabase.from("lab_samples").select("id,service_request_id,sample_code,sample_type,sampled_at,quality_status,report_published_at,created_at")
+  supabase.from("lab_samples").select("id,service_request_id,sample_code,sample_type,sampled_at,sampling_location,sample_receipt_method,received_at,notes,quality_status,report_published_at,created_at")
    .in("service_request_id",requestIds).order("created_at",{ascending:false}),
   supabase.from("service_requests").select("id,request_number").in("id",requestIds),
   supabase.from("analytes").select("id,code,title_fa,default_unit_id").eq("is_active",true).order("title_fa"),
@@ -517,7 +517,8 @@ async function loadAssignedLabSamples(){
   const title=el("h3","","درخواست "+new Intl.NumberFormat("fa-IR").format(requestMap.get(sample.service_request_id)||0)+" · "+(sample.sample_code||"نمونه بدون کد"));
   const processingRow=processingMap.get(sample.id);
   const status=sample.report_published_at?"گزارش منتشرشده":processingRow?.approval_status==="approved"?"تأییدشده":expertLabQualityFa[sample.quality_status]||sample.quality_status;
-  const meta=el("div","meta","نوع نمونه: "+(expertLabTypeFa[sample.sample_type]||sample.sample_type)+" · وضعیت: "+status+(sample.sampled_at?" · تاریخ: "+sample.sampled_at:""));
+  const receiptLabels={in_person:"تحویل حضوری",courier:"پیک",postal:"پست",other:"سایر روش‌ها"};
+  const meta=el("div","meta","نوع نمونه: "+(expertLabTypeFa[sample.sample_type]||sample.sample_type)+" · وضعیت: "+status+(sample.sampled_at?" · تاریخ: "+sample.sampled_at:"")+(sample.sampling_location?" · محل: "+sample.sampling_location:"")+(sample.sample_receipt_method?" · دریافت: "+(receiptLabels[sample.sample_receipt_method]||sample.sample_receipt_method):""));
   const button=el("button","alt","ثبت / مشاهده نتایج");
   button.disabled=!!sample.report_published_at||processingRow?.approval_status==="approved"||(processingRow?.analyst_user_id&&processingRow.analyst_user_id!==user.id);
   if(button.disabled&&!sample.report_published_at&&processingRow?.analyst_user_id&&processingRow.analyst_user_id!==user.id)button.textContent="تخصیص‌یافته به مسئول دیگر";
@@ -529,7 +530,7 @@ async function loadAssignedLabSamples(){
 }
 async function openExpertLabSample(sampleId){
  const {data:sample,error}=await supabase.from("lab_samples")
-  .select("id,service_request_id,sample_code,sample_type,sampled_at,quality_status,report_published_at")
+  .select("id,service_request_id,sample_code,sample_type,sampled_at,sampling_location,sample_receipt_method,received_at,notes,quality_status,report_published_at")
   .eq("id",sampleId).single();
  if(error)throw error;
  const [processingResult,resultsResult]=await Promise.all([
@@ -541,8 +542,12 @@ async function openExpertLabSample(sampleId){
  activeExpertLabSample=sample;activeExpertLabProcessing=processingResult.data||null;
  show("expert-lab-sample-detail",true);
  $("expert-lab-sample-title").textContent="نمونه "+(sample.sample_code||"بدون کد");
+ const receiptLabels={in_person:"تحویل حضوری",courier:"پیک",postal:"پست",other:"سایر روش‌ها"};
  $("expert-lab-sample-meta").textContent=(expertLabTypeFa[sample.sample_type]||sample.sample_type)+" · "+(sample.sampled_at||"تاریخ نامشخص")+
+  (sample.sampling_location?" · محل: "+sample.sampling_location:"")+
+  (sample.sample_receipt_method?" · دریافت: "+(receiptLabels[sample.sample_receipt_method]||sample.sample_receipt_method):"")+
   (sample.report_published_at?" · گزارش منتشر شده":"");
+ if(sample.notes)$("expert-lab-sample-meta").textContent+=" · یادداشت: "+sample.notes;
  $("expert-lab-quality-status").value=sample.quality_status||"pending";
  $("expert-lab-analysis-method").value=activeExpertLabProcessing?.analysis_method||"";
  $("expert-lab-quality-note").value=activeExpertLabProcessing?.quality_note||"";
