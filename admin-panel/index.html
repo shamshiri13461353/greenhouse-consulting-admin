@@ -149,6 +149,31 @@
       <div id="service-admin-message" class="notice hidden" role="status"></div>
       <div class="table-wrap"><table><thead><tr><th>خدمت</th><th>گروه</th><th>تعرفه فعال</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="service-catalog-admin-rows"></tbody></table></div>
     </div>
+    <div class="card" id="company-products-admin-card">
+      <div class="topline"><h2>مدیریت محصولات شرکت</h2><button id="refresh-company-products" type="button" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">محصولات تولیدی و دارای برند پیوندگستر پارسان را برای نمایش در پنل گلخانه‌دار تعریف و ویرایش کنید. تصویر محصول فعلاً با نشانی اینترنتی امن (HTTPS) ثبت می‌شود.</p>
+      <form id="company-product-form">
+       <input id="company-product-id" type="hidden">
+       <div class="grid">
+        <div><label for="company-product-title">نام محصول *</label><input id="company-product-title" maxlength="160" required></div>
+        <div><label for="company-product-image">نشانی تصویر محصول (HTTPS)</label><input id="company-product-image" type="url" placeholder="https://..."></div>
+       </div>
+       <label for="company-product-description">معرفی و توضیحات محصول</label><textarea id="company-product-description" maxlength="5000" rows="4"></textarea>
+       <label for="company-product-order">ترتیب نمایش</label><input id="company-product-order" type="number" step="1" value="0">
+       <div class="actions"><button id="save-company-product" type="submit">ذخیره محصول</button><button id="cancel-company-product-edit" type="button" class="secondary">پاک‌کردن فرم</button></div>
+       <div id="company-product-message" class="notice hidden" role="status"></div>
+      </form>
+      <div class="divider"></div><h3>عبارت بخش محصولات تأمین و توزیع</h3>
+      <p class="muted">این عبارت در پایین فهرست محصولات پنل گلخانه‌دار نمایش داده می‌شود و هر زمان قابل تغییر است.</p>
+      <div class="grid">
+       <div><label for="distribution-coming-soon-input">متن قابل نمایش</label><input id="distribution-coming-soon-input" maxlength="120" value="به‌زودی"></div>
+       <div class="actions" style="align-items:end"><button id="save-distribution-coming-soon" type="button">ذخیره عبارت</button></div>
+      </div>
+      <div id="distribution-setting-message" class="notice hidden" role="status"></div>
+      <div class="divider"></div><h3>فهرست محصولات</h3>
+      <div class="table-wrap"><table><thead><tr><th>محصول</th><th>ترتیب</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="company-product-admin-rows"></tbody></table></div>
+      <div id="company-product-admin-empty" class="empty hidden">هنوز محصولی ثبت نشده است.</div>
+    </div>
     <div class="card" id="service-requests-admin-card">
       <div class="topline"><h2>مدیریت درخواست‌های خدمات تخصصی</h2><button id="refresh-service-requests-admin" type="button" class="secondary">به‌روزرسانی</button></div>
       <p class="muted">درخواست‌های جدید را بررسی کنید، خدمات انتخاب‌شده را ببینید، پیش‌فاکتور مبلغ نهایی را صادر کنید و مسئول رسیدگی را تعیین کنید. اطلاعات قیمت و هزینه داخلی فقط در این پنل مدیریتی نگهداری می‌شود.</p>
@@ -682,7 +707,7 @@
 
   async function loadDashboardData(){
     try{
-      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox(),loadServiceManagement()]);
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox(),loadServiceManagement(),loadCompanyProductManagement()]);
       await loadReviewQueue();
     }catch(error){
       console.error("Admin dashboard data loading failed",error);
@@ -809,6 +834,79 @@
   const serviceRequestStatusFa={submitted:"ثبت‌شده",under_review:"در حال بررسی",quoted:"پیش‌فاکتور صادر شده",awaiting_customer_approval:"در انتظار تأیید گلخانه‌دار",awaiting_payment:"در انتظار پرداخت",confirmed:"تأیید و آماده اجرا",in_progress:"در حال انجام",awaiting_final_approval:"در انتظار تأیید نهایی",completed:"تکمیل‌شده",cancelled:"لغوشده",rejected:"ردشده"};
   const moneyFa=value=>value===null||value===undefined?"—":new Intl.NumberFormat("fa-IR").format(Number(value))+" تومان";
   function serviceAdminMessage(id,text,isError=false){message(id,text,isError);}
+  // مدیریت کاتالوگ محصولات شرکت و متن بخش تأمین و توزیع
+  let companyProductRows=[];
+  function companyProductMessage(id,text,isError=false){message(id,text,isError);}
+  function resetCompanyProductForm(){
+    $("company-product-id").value="";$("company-product-title").value="";
+    $("company-product-image").value="";$("company-product-description").value="";
+    $("company-product-order").value="0";$("save-company-product").textContent="ذخیره محصول";
+  }
+  async function loadCompanyProductManagement(){
+    const [{data:products,error},{data:settings,error:settingsError}]=await Promise.all([
+      supabase.from("company_products").select("id,title,description,image_url,sort_order,is_active").order("sort_order").order("created_at"),
+      supabase.from("company_product_settings").select("distribution_coming_soon_text").eq("id",true).maybeSingle()
+    ]);
+    if(error)throw error;if(settingsError)throw settingsError;
+    companyProductRows=products||[];$("distribution-coming-soon-input").value=settings?.distribution_coming_soon_text||"به‌زودی";
+    renderCompanyProductRows();
+  }
+  function renderCompanyProductRows(){
+    const body=$("company-product-admin-rows");body.replaceChildren();
+    $("company-product-admin-empty").classList.toggle("hidden",companyProductRows.length>0);
+    for(const product of companyProductRows){
+      const tr=document.createElement("tr");
+      for(const value of [product.title,String(product.sort_order),product.is_active?"فعال":"غیرفعال"]){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+      const actions=document.createElement("td"),edit=document.createElement("button"),toggle=document.createElement("button");
+      edit.type="button";edit.className="secondary";edit.textContent="ویرایش";
+      edit.addEventListener("click",()=>{
+        $("company-product-id").value=product.id;$("company-product-title").value=product.title;
+        $("company-product-image").value=product.image_url||"";$("company-product-description").value=product.description||"";
+        $("company-product-order").value=String(product.sort_order??0);$("save-company-product").textContent="ثبت ویرایش";
+        $("company-product-title").focus();
+      });
+      toggle.type="button";toggle.className=product.is_active?"danger":"secondary";toggle.textContent=product.is_active?"عدم نمایش":"نمایش";
+      toggle.addEventListener("click",async()=>{
+        toggle.disabled=true;
+        const {error}=await supabase.from("company_products").update({is_active:!product.is_active,updated_at:new Date().toISOString()}).eq("id",product.id);
+        if(error){companyProductMessage("company-product-message","تغییر وضعیت محصول انجام نشد: "+error.message,true);toggle.disabled=false;return;}
+        companyProductMessage("company-product-message",product.is_active?"محصول از پنل گلخانه‌دار پنهان شد.":"محصول دوباره نمایش داده می‌شود.");
+        await loadCompanyProductManagement();
+      });
+      actions.append(edit,toggle);tr.append(actions);body.append(tr);
+    }
+  }
+  $("company-product-form").addEventListener("submit",async event=>{
+    event.preventDefault();
+    const id=$("company-product-id").value,title=$("company-product-title").value.trim();
+    const imageText=$("company-product-image").value.trim(),description=$("company-product-description").value.trim();
+    const sortOrder=Number($("company-product-order").value||0);
+    if(!title){companyProductMessage("company-product-message","نام محصول را وارد کنید.",true);return;}
+    let imageUrl=null;
+    if(imageText){try{const parsed=new URL(imageText);if(parsed.protocol!=="https:")throw new Error();imageUrl=parsed.href;}catch{companyProductMessage("company-product-message","نشانی تصویر باید معتبر و با https شروع شود.",true);return;}}
+    if(!Number.isInteger(sortOrder)){companyProductMessage("company-product-message","ترتیب نمایش باید عدد صحیح باشد.",true);return;}
+    const button=$("save-company-product");button.disabled=true;
+    const payload={title,description,image_url:imageUrl,sort_order:sortOrder,updated_at:new Date().toISOString()};
+    const result=id?await supabase.from("company_products").update(payload).eq("id",id):await supabase.from("company_products").insert(payload);
+    button.disabled=false;
+    if(result.error){companyProductMessage("company-product-message","ذخیره محصول ناموفق بود: "+result.error.message,true);return;}
+    resetCompanyProductForm();companyProductMessage("company-product-message",id?"ویرایش محصول ذخیره شد.":"محصول جدید ثبت شد.");
+    await loadCompanyProductManagement();
+  });
+  $("cancel-company-product-edit").addEventListener("click",resetCompanyProductForm);
+  $("refresh-company-products").addEventListener("click",async()=>{
+    try{await loadCompanyProductManagement();companyProductMessage("company-product-message","فهرست محصولات به‌روزرسانی شد.");}
+    catch(error){companyProductMessage("company-product-message","دریافت فهرست محصولات ناموفق بود: "+error.message,true);}
+  });
+  $("save-distribution-coming-soon").addEventListener("click",async()=>{
+    const value=$("distribution-coming-soon-input").value.trim(),button=$("save-distribution-coming-soon");
+    if(!value){companyProductMessage("distribution-setting-message","عبارت نمایش باید خالی نباشد.",true);return;}
+    button.disabled=true;
+    const {error}=await supabase.from("company_product_settings").update({distribution_coming_soon_text:value,updated_at:new Date().toISOString()}).eq("id",true);
+    button.disabled=false;
+    if(error){companyProductMessage("distribution-setting-message","ذخیره عبارت انجام نشد: "+error.message,true);return;}
+    companyProductMessage("distribution-setting-message","عبارت بخش محصولات تأمین و توزیع ذخیره شد.");
+  });
   async function loadServiceCatalogAdmin(){
     const {data:services,error}=await supabase.from("services")
       .select("id,code,title_fa,description,is_active,service_group,requires_case,requires_sample,is_bundle")
