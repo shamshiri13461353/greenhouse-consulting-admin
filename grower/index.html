@@ -988,17 +988,33 @@ function serviceMoney(value,currency="IRT"){
  if(value===null||value===undefined)return"پس از بررسی اعلام می‌شود";
  return new Intl.NumberFormat("fa-IR").format(Number(value))+(currency==="IRT"?" تومان":currency==="IRR"?" ریال قدیم":" "+currency);
 }
+let companyProductsLoadVersion=0;
 async function loadCompanyProducts(){
- const host=$("company-products-grid");host.replaceChildren();
+ const loadVersion=++companyProductsLoadVersion;
+ const host=$("company-products-grid");
  const [{data:products,error},{data:settings,error:settingsError}]=await Promise.all([
   supabase.from("company_products").select("id,title,description,description_group,image_url,sort_order").eq("is_active",true).order("sort_order").order("created_at"),
   supabase.from("company_product_settings").select("distribution_coming_soon_text,behrost_shared_description").eq("id",true).maybeSingle()
  ]);
  if(error)throw error;if(settingsError)throw settingsError;
+ // اگر چند بار بارگذاری هم‌زمان رخ دهد، فقط آخرین پاسخ اجازه نمایش دارد.
+ if(loadVersion!==companyProductsLoadVersion)return;
  $("distribution-coming-soon").textContent=settings?.distribution_coming_soon_text||"به‌زودی";
+ host.replaceChildren();
  if(!products?.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="در حال حاضر محصولی برای معرفی ثبت نشده است.";host.append(empty);return;}
- const behrostProducts=products.filter(product=>product.description_group==="behrost");
+ // جلوگیری از نمایش دوباره یک محصول یا یک تصویر بهرست در صورت تکرار داده دریافتی.
+ const uniqueProducts=[];
+ const seenIds=new Set();
+ const seenBehrostImages=new Set();
  for(const product of products){
+  if(!product?.id||seenIds.has(product.id))continue;
+  if(product.description_group==="behrost"&&product.image_url&&seenBehrostImages.has(product.image_url))continue;
+  seenIds.add(product.id);
+  if(product.description_group==="behrost"&&product.image_url)seenBehrostImages.add(product.image_url);
+  uniqueProducts.push(product);
+ }
+ const behrostProducts=uniqueProducts.filter(product=>product.description_group==="behrost");
+ for(const product of uniqueProducts){
   const card=document.createElement("article");card.className="product-card";
   if(product.image_url){try{const url=new URL(product.image_url);if(url.protocol==="https:"){const img=document.createElement("img");img.src=url.href;img.alt=product.title;img.loading="lazy";card.append(img);}}catch{}}
   const body=document.createElement("div");body.className="product-card-body";
