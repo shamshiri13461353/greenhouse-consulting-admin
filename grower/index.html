@@ -962,7 +962,6 @@ async function activatePush(userId){
 }
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
-await enter();
 
 
 
@@ -1145,6 +1144,9 @@ $("service-request-form").addEventListener("submit",async event=>{
  finally{button.disabled=false;}
 });
 $("refresh-service-requests").addEventListener("click",loadServiceWorkspace);
+
+
+await enter();
 </script>
 </body>
 </html>
