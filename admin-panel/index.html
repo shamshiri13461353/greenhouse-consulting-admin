@@ -19,14 +19,14 @@
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #edf0ee;vertical-align:middle}th{color:#65746e;font-weight:600}
     .table-wrap{overflow-x:auto}.empty{text-align:center;padding:24px;color:#687771;font-size:13px}
     .monitor-filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin:14px 0}
-    .monitor-table{min-width:1120px}.monitor-table tbody tr{cursor:pointer}.monitor-table tbody tr:hover{background:#f4f8f6}.monitor-table tbody tr.selected{background:#eaf3ef;outline:1px solid #a9c9bd}
+    .monitor-table{min-width:1120px}.monitor-page-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}.monitor-page-tools label{margin:0}.monitor-page-tools select{width:84px;min-height:38px;padding:7px}.monitor-page-tools .actions{margin:0;align-items:center}.monitor-page-tools button{padding:7px 12px}.monitor-table tbody tr{cursor:pointer}.monitor-table tbody tr:hover{background:#f4f8f6}.monitor-table tbody tr.selected{background:#eaf3ef;outline:1px solid #a9c9bd}
     .monitor-detail{border:1px solid #dce8e2;border-radius:12px;padding:16px;margin-top:18px;background:#fbfdfc}.monitor-detail h3{margin:0 0 8px;font-size:16px}
     .monitor-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.monitor-meta>div{background:#f1f5f3;border-radius:8px;padding:9px;font-size:12px;line-height:1.8}
     .monitor-timeline{border-right:2px solid #cbdcd4;margin:16px 12px 4px 0;padding-right:16px}.monitor-event{position:relative;padding:0 0 16px;line-height:1.8;font-size:13px}
     .monitor-event:before{content:"";position:absolute;right:-23px;top:7px;width:10px;height:10px;border-radius:50%;background:#176b57;border:2px solid white;box-shadow:0 0 0 1px #9ab9ac}
     .monitor-event time{display:block;color:#64756e;font-size:11px}.monitor-event strong{display:block;margin:2px 0}.monitor-event p{margin:3px 0;white-space:pre-wrap;overflow-wrap:anywhere}
     @media(max-width:760px){.monitor-filters{grid-template-columns:1fr 1fr}.monitor-meta{grid-template-columns:1fr 1fr}}
-    @media(max-width:480px){.monitor-filters,.monitor-meta{grid-template-columns:1fr}}
+    @media(max-width:480px){.monitor-filters,.monitor-meta{grid-template-columns:1fr}.monitor-page-tools{align-items:flex-start}.monitor-page-tools .muted{width:100%}}
     @media(max-width:680px){.grid{grid-template-columns:1fr}header{padding:18px}.card{padding:15px}main{margin:16px auto}h1{font-size:17px}}
 
     /* Visual refresh: presentation only; application logic and data flow remain unchanged */
@@ -271,6 +271,12 @@
         <div><label for="monitor-expert">کارشناس</label><select id="monitor-expert"><option value="">همه کارشناسان</option></select></div>
       </div>
       <div id="monitor-summary" class="muted" aria-live="polite">در حال دریافت اطلاعات…</div>
+      <div class="monitor-page-tools">
+        <label for="monitor-page-size">تعداد پرونده در هر صفحه</label>
+        <select id="monitor-page-size"><option value="5" selected>۵</option><option value="10">۱۰</option><option value="25">۲۵</option><option value="50">۵۰</option></select>
+        <span id="monitor-page-info" class="muted" aria-live="polite"></span>
+        <div class="actions"><button id="monitor-prev" type="button" class="secondary">قبلی</button><span id="monitor-page-number" class="pill">۱</span><button id="monitor-next" type="button" class="secondary">بعدی</button></div>
+      </div>
       <div class="table-wrap"><table class="monitor-table">
         <thead><tr><th>شماره پرونده</th><th>موضوع</th><th>گلخانه‌دار</th><th>تاریخ ثبت</th><th>کارشناس مسئول</th><th>تاریخ ارجاع</th><th>وضعیت دعوت</th><th>زمان پذیرش</th><th>وضعیت پرونده</th><th>آخرین تغییر</th></tr></thead>
         <tbody id="monitor-cases"></tbody>
@@ -827,6 +833,7 @@
     for(const a of monitorAssignments)if(a.expert_user_id)experts.set(a.expert_user_id,monitorExpertName(a));
     for(const [id,name] of [...experts.entries()].sort((a,b)=>a[1].localeCompare(b[1],"fa")))expertSelect.add(new Option(name,id));expertSelect.value=oldExpert;
   }
+  let monitorPage=1,monitorPageSize=5;
   function renderMonitorTable(){
     const body=$("monitor-cases"),empty=$("monitor-empty"),summary=$("monitor-summary");body.replaceChildren();
     const term=$("monitor-search").value.trim().toLocaleLowerCase("fa"),status=$("monitor-case-status").value,assignmentStatus=$("monitor-assignment-status").value,expertId=$("monitor-expert").value;
@@ -837,9 +844,15 @@
       if(assignmentStatus&&assignmentStatus!=="none"&&!assignments.some(a=>a.status===assignmentStatus))return false;
       if(expertId&&!assignments.some(a=>a.expert_user_id===expertId))return false;return true;
     });
+    const pageCount=Math.max(1,Math.ceil(filtered.length/monitorPageSize));
+    monitorPage=Math.min(monitorPage,pageCount);
+    const pageStart=(monitorPage-1)*monitorPageSize,pageRows=filtered.slice(pageStart,pageStart+monitorPageSize);
     summary.textContent="تعداد کل پرونده‌ها: "+monitorCases.length.toLocaleString("fa-IR")+" · پرونده‌های منطبق با فیلتر: "+filtered.length.toLocaleString("fa-IR");
+    $("monitor-page-info").textContent="نمایش "+(filtered.length?pageStart+1:0)+" تا "+Math.min(pageStart+monitorPageSize,filtered.length)+" از "+filtered.length+" پرونده";
+    $("monitor-page-number").textContent=monitorPage.toLocaleString("fa-IR")+" از "+pageCount.toLocaleString("fa-IR");
+    $("monitor-prev").disabled=monitorPage<=1;$("monitor-next").disabled=monitorPage>=pageCount;
     empty.classList.toggle("hidden",filtered.length!==0);
-    for(const c of filtered){
+    for(const c of pageRows){
       const assignments=monitorAssignmentFor(c.id),lead=assignments.find(a=>a.is_lead&&a.status!=="revoked")||assignments.find(a=>a.is_lead);
       const statusText=assignments.length?assignments.map(a=>(a.is_lead?"مسئول: ":"همکار: ")+monitorExpertName(a)+" ("+(monitorAssignmentLabels[a.status]||a.status)+")").join("؛ "):"ارجاع نشده";
       const tr=document.createElement("tr");if(c.id===monitorSelectedCaseId)tr.className="selected";
@@ -928,10 +941,13 @@
       for(const o of op.data){const c=adminCases.find(x=>x.id===o.case_id),e=adminExpertDirectory.find(x=>x.user_id===o.expert_user_id);const box=document.createElement("article");box.className="review-item";const h=document.createElement("h3");h.textContent="پرونده "+(c?.case_number||"—")+" · "+([e?.user_profiles?.first_name,e?.user_profiles?.last_name].filter(Boolean).join(" ")||"کارشناس");const analysis=document.createElement("p");analysis.textContent=o.analysis_text;const meta=document.createElement("div");meta.className="muted";meta.textContent="آخرین ویرایش: "+new Date(o.updated_at).toLocaleString("fa-IR");box.append(h,meta,analysis);if(o.evidence_summary){const p=document.createElement("p");p.textContent="شواهد: "+o.evidence_summary;box.append(p);}if(o.hypotheses?.length){const p=document.createElement("p");p.textContent="فرضیه‌ها: "+o.hypotheses.join("، ");box.append(p);}if(o.recommendations?.length){const p=document.createElement("p");p.textContent="توصیه‌ها: "+o.recommendations.join("، ");box.append(p);}opHost.append(box);}
     }
   }
-  $("monitor-search").addEventListener("input",renderMonitorTable);
-  $("monitor-case-status").addEventListener("change",renderMonitorTable);
-  $("monitor-assignment-status").addEventListener("change",renderMonitorTable);
-  $("monitor-expert").addEventListener("change",renderMonitorTable);
+  $("monitor-search").addEventListener("input",()=>{monitorPage=1;renderMonitorTable();});
+  $("monitor-case-status").addEventListener("change",()=>{monitorPage=1;renderMonitorTable();});
+  $("monitor-assignment-status").addEventListener("change",()=>{monitorPage=1;renderMonitorTable();});
+  $("monitor-expert").addEventListener("change",()=>{monitorPage=1;renderMonitorTable();});
+  $("monitor-page-size").addEventListener("change",()=>{monitorPageSize=Number($("monitor-page-size").value)||5;monitorPage=1;renderMonitorTable();});
+  $("monitor-prev").addEventListener("click",()=>{if(monitorPage>1)monitorPage--;renderMonitorTable();});
+  $("monitor-next").addEventListener("click",()=>{monitorPage++;renderMonitorTable();});
   $("refresh-monitor").addEventListener("click",loadMonitorData);
   $("refresh-admin-inbox").addEventListener("click",loadAdminInbox);
   $("case-select").addEventListener("change",loadSelectedAssignments);
