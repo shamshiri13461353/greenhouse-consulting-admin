@@ -340,7 +340,7 @@
       <div class="grid">
         <div><label for="lab-intake-request">درخواست آماده پذیرش نمونه</label><select id="lab-intake-request"></select></div>
         <div><label for="lab-receipt-method">روش دریافت نمونه</label><select id="lab-receipt-method"><option value="in_person">تحویل حضوری</option><option value="courier">پیک</option><option value="postal">پست</option><option value="other">سایر روش‌ها</option></select></div>
-        <div><label for="lab-sampled-at">تاریخ نمونه‌برداری</label><input id="lab-sampled-at" type="date"></div>
+        <div><label for="lab-sampled-at-jalali">تاریخ نمونه‌برداری (شمسی)</label><input id="lab-sampled-at-jalali" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۹/۰۱" aria-describedby="lab-sampled-at-hint"><input id="lab-sampled-at" type="hidden"><small id="lab-sampled-at-hint" class="muted">تاریخ را به‌صورت سال/ماه/روز وارد کنید؛ مانند ۱۴۰۵/۰۹/۰۱</small></div>
       </div>
       <div id="lab-intake-sample-options" class="review-item">ابتدا یک درخواست آماده پذیرش انتخاب کنید.</div>
       <div class="grid">
@@ -419,6 +419,34 @@
     return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
   }
   const $ = (id) => document.getElementById(id);
+  // تاریخ در رابط کاربری شمسی است و برای حفظ سازگاری، در پایگاه داده به‌صورت میلادی ذخیره می‌شود.
+  const persianCalendarFormatter = new Intl.DateTimeFormat("en-US-u-ca-persian-nu-latn", {year:"numeric",month:"numeric",day:"numeric",timeZone:"UTC"});
+  function gregorianToJalali(isoDate) {
+    if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate).slice(0,10))) return "—";
+    const date = new Date(String(isoDate).slice(0,10) + "T12:00:00Z");
+    if (Number.isNaN(date.getTime())) return "—";
+    const p = Object.fromEntries(persianCalendarFormatter.formatToParts(date).map(x => [x.type,x.value]));
+    return [p.year,String(p.month).padStart(2,"0"),String(p.day).padStart(2,"0")].join("/");
+  }
+  function jalaliToGregorian(value) {
+    const normalized=String(value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[.-]/g,"/");
+    const m=normalized.match(/^\s*(\d{4})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/);
+    if(!m)return null;
+    const jy=+m[1],jm=+m[2],jd=+m[3];
+    if(jy<1200||jy>1600||jm<1||jm>12||jd<1||jd>(jm<=6?31:jm<=11?30:30))return null;
+    let start=null;
+    for(let day=19;day<=22;day++){
+      const d=new Date(Date.UTC(jy+621,2,day,12));
+      const p=Object.fromEntries(persianCalendarFormatter.formatToParts(d).map(x=>[x.type,x.value]));
+      if(+p.year===jy&&+p.month===1&&+p.day===1){start=d;break;}
+    }
+    if(!start)return null;
+    const offset=jm<=6?(jm-1)*31+jd-1:186+(jm-7)*30+jd-1;
+    const result=new Date(start.getTime()+offset*86400000);
+    const check=Object.fromEntries(persianCalendarFormatter.formatToParts(result).map(x=>[x.type,x.value]));
+    if(+check.year!==jy||+check.month!==jm||+check.day!==jd)return null;
+    return [result.getUTCFullYear(),String(result.getUTCMonth()+1).padStart(2,"0"),String(result.getUTCDate()).padStart(2,"0")].join("-");
+  }
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
   function isInvalidCredentialsError(error){const code=String(error?.code||"").toLowerCase(),detail=String(error?.message||"").toLowerCase();return code==="invalid_credentials"||detail.includes("invalid login credentials")||detail.includes("invalid credentials");}
   function message(id, text, error=false){ const el=$(id); el.textContent=text; el.classList.remove("hidden","error"); if(error) el.classList.add("error"); }
@@ -1451,6 +1479,10 @@
     const types=[...document.querySelectorAll("[data-lab-sample-type]:checked")].map(x=>x.value);
     if(!requestId){labAdminMessage("lab-management-message","ابتدا درخواست را انتخاب کنید.",true);return;}
     if(!types.length){labAdminMessage("lab-management-message","حداقل یک نوع نمونه را انتخاب کنید.",true);return;}
+    const jalaliDate=$("lab-sampled-at-jalali").value.trim();
+    const gregorianDate=jalaliDate?jalaliToGregorian(jalaliDate):null;
+    if(jalaliDate&&!gregorianDate){labAdminMessage("lab-management-message","تاریخ نمونه‌برداری معتبر نیست. آن را به‌شکل سال/ماه/روز شمسی وارد کنید.",true);return;}
+    $("lab-sampled-at").value=gregorianDate||"";
     const button=$("receive-lab-samples");button.disabled=true;
     try{
       const {data,error}=await supabase.rpc("receive_lab_samples",{
@@ -1474,7 +1506,7 @@
     const meta=[["نوع نمونه",labTypeFa[sample.sample_type]||sample.sample_type],
       ["کنترل کیفیت",labQualityFa[sample.quality_status]||sample.quality_status],
       ["روش دریافت",receiptLabels[sample.sample_receipt_method]||"—"],
-      ["تاریخ نمونه‌برداری",sample.sampled_at||"—"],
+      ["تاریخ نمونه‌برداری",sample.sampled_at?gregorianToJalali(sample.sampled_at):"—"],
       ["محل نمونه‌برداری",sample.sampling_location||"—"],
       ["گزارش",sample.report_published_at?"منتشرشده":"منتشرنشده"]];
     for(const [k,v] of meta){const d=document.createElement("div");d.textContent=k+" · "+v;$("lab-sample-admin-meta").append(d);}
