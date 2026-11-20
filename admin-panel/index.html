@@ -1487,7 +1487,7 @@
       if(analyteResult.error)throw analyteResult.error;
       if(unitResult.error)throw unitResult.error;
       labEligibleRequests=requestResult.data||[];
-      labAdminSamples=sampleResult.data||[];
+      labAdminSamples=sampleResult||[];
       labAdminAnalytes=analyteResult.data||[];
       if(!$("lab-sampled-at").value)$("lab-sampled-at").value=new Date().toISOString().slice(0,10);
       labAdminUnits=unitResult.data||[];
