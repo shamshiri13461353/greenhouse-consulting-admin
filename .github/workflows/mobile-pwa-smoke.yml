@@ -111,15 +111,14 @@ jobs:
               if (!runtime.manifest || runtime.manifestStatus !== 200) throw new Error('Manifest is missing or unavailable');
               if (runtime.manifest.scope !== '/mobile/' || runtime.manifest.start_url !== '/mobile/') throw new Error('Manifest scope/start_url mismatch');
               if (runtime.icons.length < 2 || runtime.icons.some(icon => icon.status !== 200 || !icon.contentType?.includes('image/png') || !icon.width || !icon.height)) throw new Error('Manifest icons are missing or invalid');
-              if (runtime.serviceWorker.scope !== new URL('/mobile/', location.origin).href || runtime.serviceWorker.state !== 'activated' || !runtime.serviceWorker.controller) throw new Error('Mobile service worker is not active and controlling the page');
+              if (runtime.serviceWorker.scope !== new URL('/mobile/', runtime.pageUrl).href || runtime.serviceWorker.state !== 'activated' || !runtime.serviceWorker.controller) throw new Error('Mobile service worker is not active and controlling the page');
               if (!runtime.beforeInstallPromptSeen) throw new Error('Browser did not emit beforeinstallprompt');
               if (manifestInfo.errors?.length) throw new Error('Browser reported manifest errors');
               if (installability.installabilityErrors?.length) throw new Error('Browser reported installability errors: ' + JSON.stringify(installability.installabilityErrors));
               if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join('; '));
               console.log('MOBILE_PWA_INSTALLABILITY=PASS');
-              await context.close();
             } finally {
-              await browser.close();
+              await context.close();
             }
           })().catch(error => { console.error(error); process.exit(1); });
           JS
