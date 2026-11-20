@@ -77,6 +77,22 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
   <div id="login-message" class="notice hidden"></div>
  </section>
+ <section id="recovery-card" class="card hidden">
+  <h2>بازیابی گذرواژه با پیامک</h2>
+  <p class="muted">شماره موبایل ثبت‌نامی را وارد کنید. پس از تأیید کد پیامکی می‌توانید گذرواژه جدید تعیین کنید.</p>
+  <label for="recovery-phone">شماره موبایل</label><input id="recovery-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx">
+  <div class="actions"><button id="recovery-send-code" type="button">ارسال کد تأیید</button><button id="recovery-cancel" type="button" class="secondary">بازگشت به ورود</button></div>
+  <div id="recovery-code-step" class="hidden">
+   <label for="recovery-code">کد شش‌رقمی پیامک‌شده</label><input id="recovery-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="کد تأیید">
+   <div class="actions"><button id="recovery-verify-code" type="button">تأیید کد</button></div>
+  </div>
+  <div id="recovery-password-step" class="hidden">
+   <label for="recovery-password">گذرواژه جدید (حداقل ۱۲ نویسه)</label><input id="recovery-password" type="password" autocomplete="new-password">
+   <label for="recovery-password-confirm">تکرار گذرواژه جدید</label><input id="recovery-password-confirm" type="password" autocomplete="new-password">
+   <div class="actions"><button id="recovery-reset-password" type="button">ثبت گذرواژه جدید</button></div>
+  </div>
+  <div id="recovery-message" class="notice hidden"></div>
+ </section>
  <section id="account-pending" class="card hidden">
   <h2>حساب کاربری هنوز فعال نیست</h2><p id="pending-message" class="muted">برای استفاده از پنل، حساب باید توسط مدیر سامانه فعال شود.</p>
   <div class="actions"><button id="pending-logout" class="secondary">خروج</button></div>
@@ -601,19 +617,72 @@ async function performGrowerLogin(){
 $("login").addEventListener("click",performGrowerLogin);
 $("password").addEventListener("keydown",event=>{if(event.key==="Enter")performGrowerLogin();});
 $("toggle-password").addEventListener("click",()=>{const input=$("password"),toggle=$("toggle-password"),visible=input.type==="password";input.type=visible?"text":"password";toggle.setAttribute("aria-pressed",String(visible));toggle.setAttribute("aria-label",visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه");toggle.title=visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه";});
+let recoveryPhone=null,recoveryVerified=false;
+function resetRecoveryForm(){
+ recoveryPhone=null;recoveryVerified=false;
+ $("recovery-phone").value="";$("recovery-code").value="";
+ $("recovery-password").value="";$("recovery-password-confirm").value="";
+ show("recovery-code-step",false);show("recovery-password-step",false);
+ clearNotice("recovery-message");
+}
 $("forgot-password").addEventListener("click",async()=>{
  const entered=$("email").value.trim();
  const phone=normalizePhone(entered);
- if(phone){notice("login-message","بازیابی گذرواژه با پیامک هنوز فعال نشده است. لطفاً برای بازیابی با پشتیبانی سامانه تماس بگیرید.",true);return;}
+ if(phone){
+  resetRecoveryForm();$("recovery-phone").value=phone;
+  show("recovery-card",true);$("recovery-phone").focus();
+  return;
+ }
  const email=entered;
- if(!email){notice("login-message","ابتدا ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
- if(!email.includes("@")){notice("login-message","شماره موبایل برای بازیابی پیامکی هنوز پشتیبانی نمی‌شود؛ ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
+ if(!email){notice("login-message","شماره موبایل ثبت‌نامی را وارد کنید.",true);$("email").focus();return;}
+ if(!email.includes("@")){notice("login-message","شماره موبایل معتبر یا ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
  const button=$("forgot-password");button.disabled=true;
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://app.peyvandgostar.com/accept-grower-invitation.html"});
  button.disabled=false;
- if(error){notice("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید. "+error.message,true);return;}
- notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی گذرواژه برای آن ارسال می‌شود. صندوق ورودی و پوشه هرزنامه را بررسی کنید.");
+ if(error){notice("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید.",true);return;}
+ notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی برای آن ارسال می‌شود.");
 });
+$("recovery-send-code").addEventListener("click",async()=>{
+ const phone=normalizePhone($("recovery-phone").value);
+ if(!phone){notice("recovery-message","شماره موبایل معتبر را وارد کنید.",true);return;}
+ const button=$("recovery-send-code");button.disabled=true;
+ try{
+  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"send",purpose:"recovery",phone}});
+  if(error||!data?.success)throw new Error("ارسال کد انجام نشد. لطفاً کمی بعد دوباره تلاش کنید.");
+  recoveryPhone=phone;recoveryVerified=false;show("recovery-code-step",true);show("recovery-password-step",false);
+  notice("recovery-message","اگر این شماره به حساب فعال گلخانه‌دار متصل باشد، کد تأیید ارسال می‌شود. کد معمولاً تا ۵ دقیقه اعتبار دارد.");
+ }catch(error){notice("recovery-message",error.message||"ارتباط با سرویس پیامک برقرار نشد.",true);}
+ finally{button.disabled=false;}
+});
+$("recovery-verify-code").addEventListener("click",async()=>{
+ const code=String($("recovery-code").value||"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).trim();
+ if(!recoveryPhone||!/^\d{6}$/.test(code)){notice("recovery-message","کد شش‌رقمی پیامک‌شده را وارد کنید.",true);return;}
+ const button=$("recovery-verify-code");button.disabled=true;
+ try{
+  const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",purpose:"recovery",phone:recoveryPhone,code}});
+  if(error||!data?.verified)throw new Error("کد تأیید معتبر نیست یا مهلت آن پایان یافته است.");
+  recoveryVerified=true;show("recovery-password-step",true);
+  notice("recovery-message","شماره موبایل تأیید شد. اکنون گذرواژه جدید را تعیین کنید.");
+ }catch(error){notice("recovery-message",error.message||"تأیید کد انجام نشد.",true);}
+ finally{button.disabled=false;}
+});
+$("recovery-reset-password").addEventListener("click",async()=>{
+ if(!recoveryVerified||!recoveryPhone){notice("recovery-message","ابتدا شماره موبایل را با کد پیامکی تأیید کنید.",true);return;}
+ const password=$("recovery-password").value,confirm=$("recovery-password-confirm").value;
+ if(password.length<12||password.length>72){notice("recovery-message","گذرواژه باید حداقل ۱۲ و حداکثر ۷۲ نویسه داشته باشد.",true);return;}
+ if(password!==confirm){notice("recovery-message","تکرار گذرواژه با گذرواژه جدید یکسان نیست.",true);return;}
+ const button=$("recovery-reset-password");button.disabled=true;
+ try{
+  const {data,error}=await supabase.functions.invoke("grower-password-reset",{body:{phone:recoveryPhone,password}});
+  if(error||!data?.success)throw new Error("تغییر گذرواژه انجام نشد؛ ممکن است مهلت کد پایان یافته باشد. دوباره کد بگیرید.");
+  const savedPhone=recoveryPhone;resetRecoveryForm();show("recovery-card",false);
+  $("email").value=savedPhone;$("password").value="";
+  notice("login-message","گذرواژه با موفقیت تغییر کرد. اکنون با شماره موبایل و گذرواژه جدید وارد شوید.");
+  $("password").focus();
+ }catch(error){notice("recovery-message",error.message||"تغییر گذرواژه انجام نشد.",true);}
+ finally{button.disabled=false;}
+});
+$("recovery-cancel").addEventListener("click",()=>{resetRecoveryForm();show("recovery-card",false);});
 function stopCaseMessageAutoRefresh(){if(caseMessageRefreshTimer){clearInterval(caseMessageRefreshTimer);caseMessageRefreshTimer=null;}caseMessageRefreshCaseId=null;}
 async function refreshCaseMessages(){const id=caseMessageRefreshCaseId;if(!id||activeCaseId!==id||$("case-detail").classList.contains("hidden")||document.visibilityState!=="visible"||caseMessageRefreshBusy)return;caseMessageRefreshBusy=true;try{await loadCaseConversation(id);}finally{caseMessageRefreshBusy=false;}}
 function startCaseMessageAutoRefresh(id){stopCaseMessageAutoRefresh();caseMessageRefreshCaseId=id;caseMessageRefreshTimer=setInterval(refreshCaseMessages,20000);}
