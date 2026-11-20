@@ -84,19 +84,18 @@ jobs:
           if marker not in html:
               raise SystemExit("Management portal theme-color marker not found")
           html = html.replace(marker, marker + '  <link rel="manifest" href="/management/manifest.webmanifest">\n  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">\n', 1)
+          # Render the install control in the HTML itself so it is visible even before JavaScript initializes.
+          install_button = '<button id="management-install-button" type="button" style="margin:0 8px;padding:10px 14px;border:0;border-radius:9px;background:#e5f1ec;color:#174b3e;font:inherit;cursor:pointer">نصب اپلیکیشن مدیریت</button>'
+          if 'id="management-install-button"' not in html:
+              html = html.replace('<header>', '<header>\n  ' + install_button, 1)
           # Register a service worker whose scope exactly matches the management PWA route.
           install_script = """<script>
           (() => {
             let deferredPrompt = null;
             const addInstallButton = () => {
-              if (document.getElementById('management-install-button')) return;
-              const button = document.createElement('button');
-              button.id = 'management-install-button';
-              button.type = 'button';
-              button.textContent = 'نصب اپلیکیشن مدیریت';
-              button.style.cssText = 'margin:0 8px;padding:10px 14px;border:0;border-radius:9px;background:#e5f1ec;color:#174b3e;font:inherit;cursor:pointer';
-              const header = document.querySelector('header');
-              if (header) header.appendChild(button);
+              const button = document.getElementById('management-install-button');
+              if (!button || button.dataset.installBound === 'true') return;
+              button.dataset.installBound = 'true';
               button.addEventListener('click', async () => {
                 if (!deferredPrompt) {
                   alert('برای نصب، صفحه را در Microsoft Edge باز کنید و از منوی سه‌نقطه، Apps و سپس Install this site as an app را انتخاب کنید. اگر این گزینه نمایش داده نمی‌شود، صفحه را یک‌بار تازه‌سازی کنید.');
