@@ -36,9 +36,11 @@ jobs:
           const { chromium } = require(require('path').join(process.env.GITHUB_WORKSPACE, 'node_modules', 'playwright'));
 
           (async () => {
-            const browser = await chromium.launch({ headless: false, args: ['--no-sandbox'] });
+            const context = await chromium.launchPersistentContext('/tmp/mobile-pwa-profile', {
+              headless: false,
+              args: ['--no-sandbox']
+            });
             try {
-              const context = await browser.newContext();
               const page = await context.newPage();
               const pageErrors = [];
               page.on('pageerror', error => pageErrors.push(String(error)));
@@ -54,6 +56,7 @@ jobs:
               const response = await page.goto(process.env.PWA_URL, { waitUntil: 'networkidle', timeout: 60000 });
               if (!response || !response.ok()) throw new Error('Mobile page HTTP status: ' + (response && response.status()));
 
+              await page.locator('body').click({ position: { x: 8, y: 8 } });
               await page.waitForFunction(() => navigator.serviceWorker?.controller, { timeout: 30000 });
               await page.waitForTimeout(15000);
 
@@ -84,6 +87,7 @@ jobs:
                 }
                 return {
                   secureContext: isSecureContext,
+                  pageUrl: location.href,
                   manifestUrl,
                   manifestStatus: manifestResponse?.status,
                   manifest,
