@@ -84,6 +84,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   <div class="actions"><button id="recovery-send-code" type="button">ارسال کد تأیید</button><button id="recovery-cancel" type="button" class="secondary">بازگشت به ورود</button></div>
   <div id="recovery-code-step" class="hidden">
    <label for="recovery-code">کد شش‌رقمی پیامک‌شده</label><input id="recovery-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="کد تأیید">
+   <p id="recovery-countdown" class="muted" role="status" aria-live="polite">پس از ارسال کد، زمان باقی‌مانده نمایش داده می‌شود.</p>
    <div class="actions"><button id="recovery-verify-code" type="button">تأیید کد</button></div>
   </div>
   <div id="recovery-password-step" class="hidden">
@@ -617,11 +618,38 @@ async function performGrowerLogin(){
 $("login").addEventListener("click",performGrowerLogin);
 $("password").addEventListener("keydown",event=>{if(event.key==="Enter")performGrowerLogin();});
 $("toggle-password").addEventListener("click",()=>{const input=$("password"),toggle=$("toggle-password"),visible=input.type==="password";input.type=visible?"text":"password";toggle.setAttribute("aria-pressed",String(visible));toggle.setAttribute("aria-label",visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه");toggle.title=visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه";});
-let recoveryPhone=null,recoveryVerified=false;
+let recoveryPhone=null,recoveryVerified=false,recoveryCountdownTimer=null,recoveryExpiresAt=0;
+function stopRecoveryCountdown(){
+ if(recoveryCountdownTimer){clearInterval(recoveryCountdownTimer);recoveryCountdownTimer=null;}
+ recoveryExpiresAt=0;
+}
+function startRecoveryCountdown(ttlSeconds){
+ stopRecoveryCountdown();
+ const seconds=Number.isFinite(Number(ttlSeconds))?Math.min(Math.max(Math.floor(Number(ttlSeconds)),1),600):300;
+ recoveryExpiresAt=Date.now()+seconds*1000;
+ const output=$("recovery-countdown"),verifyButton=$("recovery-verify-code");
+ const number=value=>new Intl.NumberFormat("fa-IR",{minimumIntegerDigits:2,useGrouping:false}).format(value);
+ const render=()=>{
+  const remaining=Math.max(0,Math.ceil((recoveryExpiresAt-Date.now())/1000));
+  if(remaining===0){
+   output.textContent="مهلت اعتبار کد به پایان رسیده است؛ برای دریافت کد تازه، دوباره درخواست ارسال کنید.";
+   verifyButton.disabled=true;
+   stopRecoveryCountdown();
+   return;
+  }
+  output.textContent="زمان باقی‌مانده اعتبار کد: "+number(Math.floor(remaining/60))+":"+number(remaining%60);
+  verifyButton.disabled=false;
+ };
+ render();
+ recoveryCountdownTimer=setInterval(render,250);
+}
 function resetRecoveryForm(){
+ stopRecoveryCountdown();
  recoveryPhone=null;recoveryVerified=false;
  $("recovery-phone").value="";$("recovery-code").value="";
  $("recovery-password").value="";$("recovery-password-confirm").value="";
+ $("recovery-countdown").textContent="پس از ارسال کد، زمان باقی‌مانده نمایش داده می‌شود.";
+ $("recovery-verify-code").disabled=false;
  show("recovery-code-step",false);show("recovery-password-step",false);
  clearNotice("recovery-message");
 }
@@ -644,7 +672,8 @@ $("recovery-send-code").addEventListener("click",async()=>{
   const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"send",purpose:"recovery",phone}});
   if(error||!data?.success)throw new Error("ارسال کد انجام نشد. لطفاً کمی بعد دوباره تلاش کنید.");
   recoveryPhone=phone;recoveryVerified=false;show("recovery-code-step",true);show("recovery-password-step",false);
-  notice("recovery-message","اگر این شماره به حساب فعال گلخانه‌دار متصل باشد، کد تأیید ارسال می‌شود. کد معمولاً تا ۵ دقیقه اعتبار دارد.");
+  startRecoveryCountdown(data?.ttl_seconds);
+  notice("recovery-message","اگر این شماره به حساب فعال گلخانه‌دار متصل باشد، کد تأیید ارسال می‌شود.");
  }catch(error){notice("recovery-message",error.message||"ارتباط با سرویس پیامک برقرار نشد.",true);}
  finally{button.disabled=false;}
 });
@@ -655,7 +684,7 @@ $("recovery-verify-code").addEventListener("click",async()=>{
  try{
   const {data,error}=await supabase.functions.invoke("grower-phone-otp",{body:{action:"verify",purpose:"recovery",phone:recoveryPhone,code}});
   if(error||!data?.verified)throw new Error("کد تأیید معتبر نیست یا مهلت آن پایان یافته است.");
-  recoveryVerified=true;show("recovery-password-step",true);
+  recoveryVerified=true;stopRecoveryCountdown();$("recovery-countdown").textContent="کد با موفقیت تأیید شد.";$("recovery-verify-code").disabled=true;show("recovery-password-step",true);
   notice("recovery-message","شماره موبایل تأیید شد. اکنون گذرواژه جدید را تعیین کنید.");
  }catch(error){notice("recovery-message",error.message||"تأیید کد انجام نشد.",true);}
  finally{button.disabled=false;}
