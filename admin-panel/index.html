@@ -48,6 +48,7 @@
       font-size:11pt;
     }
     input,select,textarea,button{font-family:"B Nazanin","Times New Roman",serif;font-size:11pt}
+    .password-field{display:flex;align-items:stretch;gap:6px}.password-field input{flex:1;min-width:0}.password-toggle{flex:0 0 46px;padding:8px;background:#e9f1ee;color:#174b3e;font-size:19px;line-height:1}.password-toggle:focus-visible{outline:2px solid #176b57;outline-offset:2px}
     input[type="email"],input[type="password"],input[type="number"],input[type="tel"],input[type="url"],input[type="date"],input[type="time"],input[type="datetime-local"],code,pre{
       font-family:"Times New Roman",serif;font-size:10pt;
     }
@@ -180,7 +181,7 @@
     <h2>ورود مدیر سامانه</h2>
     <p class="muted">با ایمیل و گذرواژه حساب مدیریتی فعال خود وارد شوید. دسترسی مدیریتی در سمت سرور و پایگاه داده نیز کنترل می‌شود.</p>
     <label for="email">ایمیل</label><input id="email" type="email" autocomplete="username" placeholder="مدیر سامانه">
-    <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
+    <label for="password">گذرواژه</label><div class="password-field"><input id="password" type="password" autocomplete="current-password"><button id="toggle-password" class="password-toggle" type="button" aria-label="نمایش گذرواژه" aria-pressed="false" title="نمایش گذرواژه">◉</button></div>
     <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
     <div id="login-message" class="notice hidden"></div>
   </section>
@@ -1051,6 +1052,7 @@
   }
   $("login").addEventListener("click",performAdminLogin);
   $("password").addEventListener("keydown",event=>{if(event.key==="Enter") performAdminLogin();});
+  $("toggle-password").addEventListener("click",()=>{const input=$("password"),toggle=$("toggle-password"),visible=input.type==="password";input.type=visible?"text":"password";toggle.setAttribute("aria-pressed",String(visible));toggle.setAttribute("aria-label",visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه");toggle.title=visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه";});
   $("forgot-password").addEventListener("click",async()=>{
     const email=$("email").value.trim();
     if(!email){message("login-message","ابتدا ایمیل ثبت‌شده خود را وارد کنید.",true);$("email").focus();return;}
