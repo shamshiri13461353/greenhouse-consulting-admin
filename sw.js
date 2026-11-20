@@ -1,9 +1,14 @@
-const CACHE_NAME = "greenhouse-mobile-shell-v3";
-const MOBILE_PATH = new URL("./", self.registration.scope).pathname;
+const CACHE_PREFIX = "greenhouse-mobile-shell-";
+const CACHE_NAME = "greenhouse-mobile-shell-v4";
+const registrationScope = new URL(self.registration.scope);
+const MOBILE_BASE = registrationScope.pathname.endsWith("/mobile/")
+  ? registrationScope
+  : new URL("mobile/", registrationScope);
+const MOBILE_PATH = MOBILE_BASE.pathname;
 const SHELL_URLS = [
-  new URL("./", self.registration.scope).href,
-  new URL("manifest.webmanifest", self.registration.scope).href,
-  new URL("icons/icon.svg", self.registration.scope).href
+  MOBILE_BASE.href,
+  new URL("manifest.webmanifest", MOBILE_BASE).href,
+  new URL("icons/icon.svg", MOBILE_BASE).href
 ];
 
 self.addEventListener("install", event => {
@@ -17,7 +22,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -29,9 +34,9 @@ self.addEventListener("push", event => {
   const title = data.title || "سامانه مشاوره گلخانه";
   const options = {
     body: data.body || "اعلان جدیدی در سامانه دارید.",
-    icon: new URL("mobile/icons/icon.svg", self.registration.scope).href,
-    badge: new URL("mobile/icons/icon.svg", self.registration.scope).href,
-    data: { url: data.url || "/mobile/" },
+    icon: new URL("icons/icon.svg", MOBILE_BASE).href,
+    badge: new URL("icons/icon.svg", MOBILE_BASE).href,
+    data: { url: data.url || MOBILE_BASE.pathname },
     tag: data.tag || "greenhouse-system-notification"
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -39,7 +44,7 @@ self.addEventListener("push", event => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || "/mobile/", self.registration.scope).href;
+  const target = new URL(event.notification.data?.url || MOBILE_BASE.pathname, self.registration.scope).href;
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of windows) {
