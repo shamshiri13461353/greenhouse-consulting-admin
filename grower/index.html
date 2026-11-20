@@ -633,14 +633,8 @@ $("forgot-password").addEventListener("click",async()=>{
   show("recovery-card",true);$("recovery-phone").focus();
   return;
  }
- const email=entered;
- if(!email){notice("login-message","شماره موبایل ثبت‌نامی را وارد کنید.",true);$("email").focus();return;}
- if(!email.includes("@")){notice("login-message","شماره موبایل معتبر یا ایمیل حساب را وارد کنید.",true);$("email").focus();return;}
- const button=$("forgot-password");button.disabled=true;
- const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:"https://app.peyvandgostar.com/accept-grower-invitation.html"});
- button.disabled=false;
- if(error){notice("login-message","ارسال درخواست بازیابی انجام نشد. لطفاً کمی بعد دوباره تلاش کنید.",true);return;}
- notice("login-message","اگر این ایمیل به حسابی در سامانه متصل باشد، لینک بازنشانی برای آن ارسال می‌شود.");
+ notice("login-message","بازیابی گذرواژه از طریق پیامک و شماره موبایل ثبت‌شده انجام می‌شود. لطفاً شماره موبایل خود را وارد کنید.",true);
+ $("email").focus();
 });
 $("recovery-send-code").addEventListener("click",async()=>{
  const phone=normalizePhone($("recovery-phone").value);
