@@ -129,6 +129,12 @@
     .divider{border-color:#e6ede8}
     .grid{gap:16px}
     .table-wrap{border:1px solid #e4ebe6;border-radius:12px;background:#fff}
+    .table-tools{display:grid;grid-template-columns:minmax(180px,1fr) auto 90px;align-items:center;gap:9px;margin:12px 0}
+    .table-tools label{margin:0;white-space:nowrap}
+    .table-tools input,.table-tools select{min-height:38px;padding:8px 10px}
+    .table-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+    .table-pagination .actions{margin:0;align-items:center}
+    .table-pagination button{padding:7px 12px}
     table{font-size:11pt}
     th{background:#f3f7f4;color:#425c50;font-size:10.5pt;font-weight:700;white-space:nowrap}
     th,td{padding:12px 11px;border-bottom:1px solid #e9efeb}
@@ -154,6 +160,9 @@
       button{padding:10px 14px}
     }
     @media(max-width:480px){
+      .table-tools{grid-template-columns:1fr 1fr}
+      .table-tools input{grid-column:1/-1}
+      .table-pagination{align-items:flex-start}
       .card{padding:14px}
       header p{font-size:11pt}
       .monitor-filters,.monitor-meta{grid-template-columns:1fr}
@@ -220,12 +229,22 @@
         <div id="grower-password-message" class="notice hidden"></div>
       </div>
       <div class="topline" style="margin-top:22px"><h2>حساب‌های گلخانه‌دار</h2><div class="actions"><button id="refresh-growers" class="secondary">به‌روزرسانی</button><button id="toggle-disabled-growers" class="secondary" type="button">نمایش حساب‌های حذف‌شده</button></div></div>
+      <div class="table-tools">
+        <input id="growers-search" type="search" placeholder="جست‌وجو بر اساس نام یا شماره همراه" aria-label="جست‌وجوی گلخانه‌داران">
+        <label for="growers-page-size">تعداد در هر صفحه</label><select id="growers-page-size"><option value="5" selected>۵</option><option value="10">۱۰</option><option value="25">۲۵</option><option value="50">۵۰</option></select>
+      </div>
       <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>شماره موبایل</th><th>وضعیت حساب</th><th>نقش</th><th>عملیات</th></tr></thead><tbody id="growers"></tbody></table></div>
+      <div class="table-pagination"><span id="growers-page-info" class="muted" aria-live="polite"></span><div class="actions"><button id="growers-prev" type="button" class="secondary">قبلی</button><span id="growers-page-number" class="pill">۱</span><button id="growers-next" type="button" class="secondary">بعدی</button></div></div>
       <div id="growers-empty" class="empty hidden">حساب گلخانه‌داری ثبت نشده است.</div>
     </div>
     <div class="card">
       <div class="topline"><h2>فهرست کارشناسان</h2><span id="count" class="pill">۰ کارشناس</span></div>
+      <div class="table-tools">
+        <input id="experts-search" type="search" placeholder="جست‌وجو بر اساس نام یا تخصص" aria-label="جست‌وجوی کارشناسان">
+        <label for="experts-page-size">تعداد در هر صفحه</label><select id="experts-page-size"><option value="5" selected>۵</option><option value="10">۱۰</option><option value="25">۲۵</option><option value="50">۵۰</option></select>
+      </div>
       <div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>عنوان تخصصی / سازمان</th><th>وضعیت دعوت</th><th>تأیید مدیر</th><th>اطلاعات بانکی</th><th>عملیات</th></tr></thead><tbody id="experts"></tbody></table></div>
+      <div class="table-pagination"><span id="experts-page-info" class="muted" aria-live="polite"></span><div class="actions"><button id="experts-prev" type="button" class="secondary">قبلی</button><span id="experts-page-number" class="pill">۱</span><button id="experts-next" type="button" class="secondary">بعدی</button></div></div>
       <div id="empty" class="empty hidden">هنوز کارشناس دعوت‌شده‌ای ثبت نشده است.</div>
       <p class="muted">کارشناس فقط پس از پذیرش دعوت و تأیید مدیر فعال می‌شود. این پنل فعلاً برای دعوت و تأیید کارشناسان در نسخه آزمایشی است.</p>
     </div>
@@ -526,6 +545,39 @@
     status.textContent="برای دریافت اعلان‌های مدیریتی، یک‌بار دریافت اعلان‌ها را فعال کنید.";
   }
 
+  const tablePaginationStates={};
+  function refreshTablePagination(key){
+    const state=tablePaginationStates[key],body=$(key),search=$(key+"-search"),size=$(key+"-page-size");
+    if(!state||!body||!search||!size)return;
+    const rows=[...body.querySelectorAll("tr[data-page-row]")];
+    const term=search.value.trim().toLocaleLowerCase("fa");
+    const filtered=rows.filter(row=>!term||row.textContent.toLocaleLowerCase("fa").includes(term));
+    const pages=Math.max(1,Math.ceil(filtered.length/state.pageSize));
+    state.page=Math.min(state.page,pages);
+    const start=(state.page-1)*state.pageSize,end=start+state.pageSize;
+    rows.forEach(row=>{
+      const index=Number(row.dataset.pageRow),visible=filtered.slice(start,end).includes(row);
+      row.classList.toggle("hidden",!visible);
+      const detail=body.querySelector('tr[data-detail-row="'+index+'"]');
+      if(detail)detail.classList.toggle("hidden",!visible||detail.dataset.expanded!=="true");
+    });
+    $(key+"-page-info").textContent="نمایش "+(filtered.length?start+1:0)+" تا "+Math.min(end,filtered.length)+" از "+filtered.length+" رکورد";
+    $(key+"-page-number").textContent=state.page.toLocaleString("fa-IR")+" از "+pages.toLocaleString("fa-IR");
+    $(key+"-prev").disabled=state.page<=1;
+    $(key+"-next").disabled=state.page>=pages;
+  }
+  function initTablePagination(key){
+    if(!tablePaginationStates[key]){
+      tablePaginationStates[key]={page:1,pageSize:5};
+      $(key+"-search").addEventListener("input",()=>{tablePaginationStates[key].page=1;refreshTablePagination(key);});
+      $(key+"-page-size").addEventListener("change",()=>{const state=tablePaginationStates[key];state.pageSize=Number($(key+"-page-size").value)||5;state.page=1;refreshTablePagination(key);});
+      $(key+"-prev").addEventListener("click",()=>{const state=tablePaginationStates[key];if(state.page>1)state.page--;refreshTablePagination(key);});
+      $(key+"-next").addEventListener("click",()=>{const state=tablePaginationStates[key];state.page++;refreshTablePagination(key);});
+    }
+    tablePaginationStates[key].page=1;
+    refreshTablePagination(key);
+  }
+
   async function loadExperts(){
     const host=$("experts");
     host.innerHTML='<tr><td colspan="6">در حال دریافت اطلاعات…</td></tr>';
@@ -559,8 +611,11 @@
         .filter(e=>e.invitation_status!=="revoked"&&e.user_profiles?.account_status!=="disabled");
       $("count").textContent=new Intl.NumberFormat("fa-IR").format(visibleExperts.length)+" کارشناس";
       host.innerHTML="";$("empty").classList.toggle("hidden",visibleExperts.length!==0);
+      let expertRowIndex=0;
       for(const e of visibleExperts){
+        const rowIndex=expertRowIndex++;
         const p=e.user_profiles||{},bank=bankMap.get(e.user_id),tr=document.createElement("tr");
+        tr.dataset.pageRow=String(rowIndex);
         const name=[p.first_name,p.last_name].filter(Boolean).join(" ")||e.professional_title||"بدون نام";
         const expertise=[e.professional_title,e.organization].filter(Boolean).join(" · ")||"—";
         for(const v of [name,expertise,faStatus(e.invitation_status),e.is_verified?"تأیید شده":"در انتظار تأیید"]){
@@ -569,18 +624,19 @@
         const bankTd=document.createElement("td"),bankButton=document.createElement("button");
         bankButton.className="secondary";bankButton.textContent=bank?"مشاهده اطلاعات":"ثبت نشده";bankButton.disabled=!bank;
         bankTd.appendChild(bankButton);tr.appendChild(bankTd);
-        const detailRow=document.createElement("tr");detailRow.classList.add("hidden");
+        const detailRow=document.createElement("tr");detailRow.classList.add("hidden");detailRow.dataset.detailRow=String(rowIndex);detailRow.dataset.expanded="false";
         const detailCell=document.createElement("td");detailCell.colSpan=6;
         if(bank)detailCell.textContent="صاحب حساب: "+bank.account_holder_name+" · بانک: "+bank.bank_name+" · شماره شبا: "+bank.iban+" · شماره کارت: "+(bank.card_number||"ثبت نشده");
         else detailCell.textContent="اطلاعات بانکی ثبت نشده است.";
         detailRow.appendChild(detailCell);
-        bankButton.addEventListener("click",()=>detailRow.classList.toggle("hidden"));
+        bankButton.addEventListener("click",()=>{detailRow.dataset.expanded=detailRow.dataset.expanded==="true"?"false":"true";detailRow.classList.toggle("hidden",detailRow.dataset.expanded!=="true"||tr.classList.contains("hidden"));});
         const td=document.createElement("td");
         if(e.invitation_status==="accepted"&&!e.is_verified){const b=document.createElement("button");b.textContent="تأیید کارشناس";b.addEventListener("click",()=>approve(e.user_id,b));td.appendChild(b);}
         else td.textContent=e.is_verified?"فعال":"—";
         if(p.id!==adminUser?.id){const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="حذف کارشناس";remove.style.marginRight="6px";remove.addEventListener("click",()=>removeExpert(e.user_id,name,remove));td.appendChild(remove);}
         tr.appendChild(td);host.appendChild(tr);host.appendChild(detailRow);
       }
+      initTablePagination("experts");
     } catch(error) {
       clearTimeout(timer);host.innerHTML="";
       const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;
@@ -637,8 +693,9 @@
     body.innerHTML="";
     $("growers-empty").textContent=showDisabledGrowers?"حساب حذف‌شده‌ای در فهرست وجود ندارد.":"حساب گلخانه‌داری ثبت نشده است.";
     show("growers-empty",rows.length===0);
+    let growerRowIndex=0;
     for(const p of rows){
-      const tr=document.createElement("tr");
+      const tr=document.createElement("tr");tr.dataset.pageRow=String(growerRowIndex++);
       const displayName=[p.first_name,p.last_name].filter(Boolean).join(" ") || "نام ثبت نشده";
       for(const v of [displayName,p.phone||"ثبت نشده",growerStatus(p.account_status),roleMap.get(p.id)||"نقش تخصیص نیافته"]){
         const td=document.createElement("td");td.textContent=v;tr.appendChild(td);
@@ -672,6 +729,7 @@
       });
       td.appendChild(remove);tr.appendChild(td);body.appendChild(tr);
     }
+    initTablePagination("growers");
   }
 
   const caseLabels={draft:"پیش‌نویس",awaiting_information:"در انتظار تکمیل اطلاعات",ready_for_review:"آماده ارجاع",awaiting_quote_approval:"در انتظار تأیید پیشنهاد هزینه",awaiting_payment:"در انتظار پرداخت",reopened:"بازگشایی‌شده",awaiting_final_approval:"در انتظار تأیید پاسخ نهایی",under_review:"در حال بررسی",awaiting_expert_input:"در انتظار نظر کارشناس همکار",assigned:"ارجاع‌شده",answered:"پاسخ داده‌شده",follow_up:"در حال پیگیری",closed:"بسته‌شده",cancelled:"لغوشده"};
