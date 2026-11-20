@@ -84,6 +84,49 @@ jobs:
           if marker not in html:
               raise SystemExit("Management portal theme-color marker not found")
           html = html.replace(marker, marker + '  <link rel="manifest" href="/management/manifest.webmanifest">\n  <link rel="icon" href="/management/icons/icon-192.png" type="image/png">\n', 1)
+          # Register a service worker whose scope exactly matches the management PWA route.
+          install_script = """<script>
+          (() => {
+            let deferredPrompt = null;
+            const addInstallButton = () => {
+              if (document.getElementById('management-install-button')) return;
+              const button = document.createElement('button');
+              button.id = 'management-install-button';
+              button.type = 'button';
+              button.textContent = 'نصب اپلیکیشن مدیریت';
+              button.style.cssText = 'margin:0 8px;padding:10px 14px;border:0;border-radius:9px;background:#e5f1ec;color:#174b3e;font:inherit;cursor:pointer';
+              const header = document.querySelector('header');
+              if (header) header.appendChild(button);
+              button.addEventListener('click', async () => {
+                if (!deferredPrompt) {
+                  alert('برای نصب، صفحه را در Microsoft Edge باز کنید و از منوی سه‌نقطه، Apps و سپس Install this site as an app را انتخاب کنید. اگر این گزینه نمایش داده نمی‌شود، صفحه را یک‌بار تازه‌سازی کنید.');
+                  return;
+                }
+                deferredPrompt.prompt();
+                const choice = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                button.hidden = true;
+                if (choice.outcome === 'accepted') button.textContent = 'درخواست نصب پذیرفته شد';
+              });
+            };
+            window.addEventListener('beforeinstallprompt', event => {
+              event.preventDefault();
+              deferredPrompt = event;
+              addInstallButton();
+            });
+            window.addEventListener('appinstalled', () => {
+              const button = document.getElementById('management-install-button');
+              if (button) { button.textContent = 'اپلیکیشن نصب شد'; button.disabled = true; }
+              deferredPrompt = null;
+            });
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addInstallButton);
+            else addInstallButton();
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/management/sw.js', {scope:'/management/'}).catch(error => console.error('Management PWA service worker:', error));
+            }
+          })();
+          </script>"""
+          html = html.replace('</head>', install_script + '\\n</head>', 1)
           page.write_text(html)
           admin = Path("_site/admin-panel/index.html").read_text()
           import re
