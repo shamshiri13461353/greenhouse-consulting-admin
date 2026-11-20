@@ -12,7 +12,7 @@ h1{font-size:19px;margin:0 0 5px}header p{margin:0;color:#c5d8d1;font-size:12px}
 main{max-width:1100px;margin:24px auto;padding:0 16px}.card{background:#fff;border:1px solid #e1eae5;border-radius:15px;padding:20px;margin-bottom:16px;box-shadow:0 4px 18px #163d3010}
 h2{font-size:17px;margin:0 0 14px}.muted{font-size:13px;color:#62756d;line-height:1.9}
 label{display:block;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #cbd9d2;border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;background:#fff;color:#18332c}
-textarea{min-height:75px;resize:vertical}button{border:0;border-radius:9px;padding:11px 17px;background:#176b57;color:white;font:inherit;cursor:pointer}
+textarea{min-height:75px;resize:vertical}.password-field{display:flex;align-items:stretch;gap:6px}.password-field input{flex:1;min-width:0}.password-toggle{flex:0 0 46px;padding:8px;background:#e9f1ed;color:#194c3e;font-size:19px;line-height:1}.password-toggle:focus-visible{outline:2px solid #176b57;outline-offset:2px}button{border:0;border-radius:9px;padding:11px 17px;background:#176b57;color:white;font:inherit;cursor:pointer}
 .jalali-date-wrap{position:relative;display:flex;gap:6px;align-items:stretch}
 .jalali-date-input{min-width:0;direction:ltr;text-align:right;flex:1}
 .date-picker-toggle{flex:0 0 44px;padding:8px;background:#e9f1ed;color:#194c3e;font-size:19px}
@@ -73,7 +73,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
   <h2>ورود گلخانه‌دار</h2>
   <p class="muted">با شماره موبایل و گذرواژه ثبت‌نامی، یا ایمیل حساب کارشناسی/قدیمی خود وارد شوید.</p>
   <label for="email">ایمیل یا شماره موبایل</label><input id="email" type="text" inputmode="email" autocomplete="username" placeholder="ایمیل یا 09xxxxxxxxx">
-  <label for="password">گذرواژه</label><input id="password" type="password" autocomplete="current-password">
+  <label for="password">گذرواژه</label><div class="password-field"><input id="password" type="password" autocomplete="current-password"><button id="toggle-password" class="password-toggle" type="button" aria-label="نمایش گذرواژه" aria-pressed="false" title="نمایش گذرواژه">◉</button></div>
   <div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="secondary">فراموشی گذرواژه</button></div>
   <div id="login-message" class="notice hidden"></div>
  </section>
@@ -600,6 +600,7 @@ async function performGrowerLogin(){
 }
 $("login").addEventListener("click",performGrowerLogin);
 $("password").addEventListener("keydown",event=>{if(event.key==="Enter")performGrowerLogin();});
+$("toggle-password").addEventListener("click",()=>{const input=$("password"),toggle=$("toggle-password"),visible=input.type==="password";input.type=visible?"text":"password";toggle.setAttribute("aria-pressed",String(visible));toggle.setAttribute("aria-label",visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه");toggle.title=visible?"پنهان‌کردن گذرواژه":"نمایش گذرواژه";});
 $("forgot-password").addEventListener("click",async()=>{
  const entered=$("email").value.trim();
  const phone=normalizePhone(entered);
