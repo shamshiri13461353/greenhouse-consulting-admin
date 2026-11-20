@@ -1,9 +1,9 @@
 const CACHE_NAME = "greenhouse-mobile-shell-v3";
-const MOBILE_PATH = new URL("mobile/", self.registration.scope).pathname;
+const MOBILE_PATH = new URL("./", self.registration.scope).pathname;
 const SHELL_URLS = [
-  new URL("mobile/", self.registration.scope).href,
-  new URL("mobile/manifest.webmanifest", self.registration.scope).href,
-  new URL("mobile/icons/icon.svg", self.registration.scope).href
+  new URL("./", self.registration.scope).href,
+  new URL("manifest.webmanifest", self.registration.scope).href,
+  new URL("icons/icon.svg", self.registration.scope).href
 ];
 
 self.addEventListener("install", event => {
