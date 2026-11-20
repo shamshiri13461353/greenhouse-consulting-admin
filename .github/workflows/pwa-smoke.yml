@@ -1,11 +1,9 @@
 name: Management PWA live smoke test
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "management/**"
-      - ".github/workflows/pwa-smoke.yml"
+  workflow_run:
+    workflows: ["Deploy admin, grower, expert and mobile portals to GitHub Pages"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +11,7 @@ permissions:
 
 jobs:
   pwa-smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
