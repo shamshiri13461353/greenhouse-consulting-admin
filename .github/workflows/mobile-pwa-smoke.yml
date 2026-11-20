@@ -1,0 +1,126 @@
+name: Mobile PWA installability smoke test
+
+on:
+  workflow_run:
+    workflows: ["Deploy admin, grower, expert and mobile portals to GitHub Pages"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - "sw.js"
+      - ".github/workflows/mobile-pwa-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-pwa-smoke:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium test browser
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify the published mobile PWA is installable
+        env:
+          PWA_URL: https://app.peyvandgostar.com/mobile/
+        run: |
+          cat > /tmp/mobile-pwa-smoke.cjs <<'JS'
+          const { chromium } = require(require('path').join(process.env.GITHUB_WORKSPACE, 'node_modules', 'playwright'));
+
+          (async () => {
+            const browser = await chromium.launch({ headless: false, args: ['--no-sandbox'] });
+            try {
+              const context = await browser.newContext();
+              const page = await context.newPage();
+              const pageErrors = [];
+              page.on('pageerror', error => pageErrors.push(String(error)));
+
+              await page.addInitScript(() => {
+                window.__testBeforeInstallPromptSeen = false;
+                window.addEventListener('beforeinstallprompt', event => {
+                  window.__testBeforeInstallPromptSeen = true;
+                  event.preventDefault();
+                });
+              });
+
+              const response = await page.goto(process.env.PWA_URL, { waitUntil: 'networkidle', timeout: 60000 });
+              if (!response || !response.ok()) throw new Error('Mobile page HTTP status: ' + (response && response.status()));
+
+              await page.waitForFunction(() => navigator.serviceWorker?.controller, { timeout: 30000 });
+              await page.waitForTimeout(15000);
+
+              const cdp = await context.newCDPSession(page);
+              const manifestInfo = await cdp.send('Page.getAppManifest');
+              const installability = await cdp.send('Page.getInstallabilityErrors').catch(error => ({ unavailable: String(error) }));
+
+              const runtime = await page.evaluate(async () => {
+                const link = document.querySelector('link[rel="manifest"]');
+                const manifestUrl = link ? new URL(link.href).href : null;
+                const manifestResponse = manifestUrl ? await fetch(manifestUrl, { cache: 'no-store' }) : null;
+                const manifest = manifestResponse?.ok ? await manifestResponse.json() : null;
+                const registration = await navigator.serviceWorker.getRegistration('/mobile/');
+                const icons = [];
+                for (const icon of (manifest?.icons || [])) {
+                  const url = new URL(icon.src, manifestUrl).href;
+                  const imageResponse = await fetch(url, { cache: 'no-store' });
+                  const blob = await imageResponse.blob();
+                  const bitmap = await createImageBitmap(blob).catch(() => null);
+                  icons.push({
+                    url,
+                    status: imageResponse.status,
+                    contentType: imageResponse.headers.get('content-type'),
+                    width: bitmap?.width,
+                    height: bitmap?.height,
+                    purpose: icon.purpose
+                  });
+                }
+                return {
+                  secureContext: isSecureContext,
+                  manifestUrl,
+                  manifestStatus: manifestResponse?.status,
+                  manifest,
+                  serviceWorker: {
+                    scope: registration?.scope,
+                    state: registration?.active?.state,
+                    controller: !!navigator.serviceWorker.controller
+                  },
+                  icons,
+                  beforeInstallPromptSeen: !!window.__testBeforeInstallPromptSeen || !!window.__mobileInstallPrompt,
+                  installButtonText: document.getElementById('install-app')?.textContent
+                };
+              });
+
+              const result = {
+                pageStatus: response.status(),
+                manifestErrors: manifestInfo.errors,
+                installability,
+                runtime,
+                pageErrors
+              };
+              console.log(JSON.stringify(result, null, 2));
+
+              if (!runtime.secureContext) throw new Error('Page is not a secure context');
+              if (!runtime.manifest || runtime.manifestStatus !== 200) throw new Error('Manifest is missing or unavailable');
+              if (runtime.manifest.scope !== '/mobile/' || runtime.manifest.start_url !== '/mobile/') throw new Error('Manifest scope/start_url mismatch');
+              if (runtime.icons.length < 2 || runtime.icons.some(icon => icon.status !== 200 || !icon.contentType?.includes('image/png') || !icon.width || !icon.height)) throw new Error('Manifest icons are missing or invalid');
+              if (runtime.serviceWorker.scope !== new URL('/mobile/', location.origin).href || runtime.serviceWorker.state !== 'activated' || !runtime.serviceWorker.controller) throw new Error('Mobile service worker is not active and controlling the page');
+              if (!runtime.beforeInstallPromptSeen) throw new Error('Browser did not emit beforeinstallprompt');
+              if (manifestInfo.errors?.length) throw new Error('Browser reported manifest errors');
+              if (installability.installabilityErrors?.length) throw new Error('Browser reported installability errors: ' + JSON.stringify(installability.installabilityErrors));
+              if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join('; '));
+              console.log('MOBILE_PWA_INSTALLABILITY=PASS');
+              await context.close();
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => { console.error(error); process.exit(1); });
+          JS
+          xvfb-run -a node /tmp/mobile-pwa-smoke.cjs
