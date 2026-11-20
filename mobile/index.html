@@ -145,7 +145,17 @@
         }
 
         navigator.serviceWorker.register("/sw.js", { scope: "/mobile/" })
-          .then(() => navigator.serviceWorker.ready)
+          .then(async registration => {
+            await navigator.serviceWorker.ready;
+            const rootRegistration = await navigator.serviceWorker.getRegistration("/");
+            if (rootRegistration &&
+                rootRegistration.scope === new URL("/", location.origin).href &&
+                rootRegistration.active?.scriptURL === new URL("/sw.js", location.origin).href &&
+                rootRegistration !== registration) {
+              await rootRegistration.unregister();
+            }
+            return registration;
+          })
           .then(() => {
             if (navigator.serviceWorker.controller) {
               sessionStorage.removeItem(reloadKey);
