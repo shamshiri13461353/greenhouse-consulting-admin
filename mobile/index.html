@@ -104,31 +104,45 @@
 
     if (isInstalledApp()) hideInstallUI();
 
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      installPrompt = event;
+      window.__mobileInstallPrompt = event;
+      installButton.textContent = "نصب سامانه";
+      installHelp.textContent = "امکان نصب آماده است. برای نصب، دکمه زیر را انتخاب کنید.";
+    });
+
     if (installPrompt) {
       installButton.textContent = "نصب سامانه";
       installHelp.textContent = "امکان نصب آماده است. برای نصب، دکمه زیر را انتخاب کنید.";
     }
 
     installButton.addEventListener("click", async () => {
-      if (!installPrompt) {
+      const promptEvent = installPrompt || window.__mobileInstallPrompt;
+      if (!promptEvent) {
         installHelp.textContent = "در این مرورگر، نصب از منوی مرورگر انجام می‌شود: در Microsoft Edge از منوی سه‌نقطه، بخش Apps و سپس Install this site as an app را انتخاب کنید. در Chrome از منوی سه‌نقطه، Install app یا Add to Home screen را بزنید.";
         return;
       }
       installButton.disabled = true;
       try {
-        await installPrompt.prompt();
-        const choice = await installPrompt.userChoice;
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
         installHelp.textContent = choice?.outcome === "accepted" ? "درخواست نصب پذیرفته شد." : "درخواست نصب لغو شد؛ هر زمان خواستید دوباره اقدام کنید.";
       } catch (error) {
         installHelp.textContent = "مرورگر پنجره نصب را باز نکرد. از منوی مرورگر گزینه نصب برنامه را انتخاب کنید.";
         console.error("نمایش پنجره نصب ناموفق بود:", error);
       } finally {
         installPrompt = null;
+        window.__mobileInstallPrompt = null;
         installButton.disabled = false;
       }
     });
 
-    window.addEventListener("appinstalled", hideInstallUI);
+    window.addEventListener("appinstalled", () => {
+      installPrompt = null;
+      window.__mobileInstallPrompt = null;
+      hideInstallUI();
+    });
 
     if ("serviceWorker" in navigator) {
       const reloadKey = "mobile-pwa-controller-reload";
