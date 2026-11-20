@@ -103,6 +103,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){header{padding:16px}h1{font-size:16px}.card{padding:15px}main{margin:15px auto}.grid{grid-template-columns:1fr}.topline{align-items:flex-start;flex-direction:column}}
 @media(max-width:420px){.product-grid{grid-template-columns:1fr}}
+.company-presentation-content{display:grid;gap:14px}.company-presentation-content article,.company-team-member{padding:15px;border:1px solid #e1ebe5;border-radius:12px;background:#fbfdfb}.company-presentation-content h3,.company-team-heading{margin:0 0 8px;color:#245342}.company-presentation-content p,.company-team-member p{white-space:pre-wrap;line-height:2;margin:0 0 6px;color:#40574e}.company-team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.company-team-member img{width:100%;height:180px;object-fit:cover;border-radius:9px;margin-bottom:10px}.company-team-member h4{margin:0 0 8px;color:#214b3d}.company-team-heading{margin-top:16px}
 </style>
 </head>
 <body>
@@ -153,6 +154,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
    <button type="button" data-grower-section="cases-section" role="tab" aria-selected="false">پرونده‌های مشاوره</button>
    <button type="button" data-grower-section="services-section" role="tab" aria-selected="false">خدمات تخصصی شرکت پیوند گستر پارسان</button>
    <button type="button" data-grower-section="products-section" role="tab" aria-selected="false">محصولات شرکت</button>
+   <button type="button" data-grower-section="company-presentation-section" role="tab" aria-selected="false">معرفی شرکت</button>
    <button type="button" data-grower-section="profile-section" role="tab" aria-selected="false">حساب کاربری</button>
   </div>
   <section id="dashboard-section" class="section active hidden" aria-label="صفحه اصلی">
@@ -322,6 +324,10 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <div id="my-service-requests" class="empty">در حال دریافت درخواست‌ها…</div>
    </div>
   </section>
+  <section id="company-presentation-section" class="section">
+   <div class="card"><h2 id="company-presentation-name">معرفی شرکت پیوندگستر پارسان</h2><div id="company-presentation-content" class="company-presentation-content"><div class="empty">در حال دریافت اطلاعات…</div></div></div>
+   <div class="card" id="company-team-card"><h2>مدیران و کارشناسان شرکت</h2><div id="company-team-content"><div class="empty">در حال دریافت اطلاعات…</div></div></div>
+  </section>
   <section id="products-section" class="section">
    <div class="card">
     <h2>محصولات پیوندگستر پارسان</h2>
@@ -371,7 +377,7 @@ function authEmailForPhone(phone){return phone+"@grower.peyvandgostar.com";}
 let currentUser=null,currentAccessToken=null, greenhouses=[], cropCycles=[], activeCaseId=null,activeCaseAttachmentStats={caseId:null,count:0,totalBytes:0},caseMessageRefreshTimer=null,caseMessageRefreshBusy=false,caseMessageRefreshCaseId=null,editingGreenhouseId=null;
 const show=(id,on=true)=>$(id).classList.toggle("hidden",!on);
 function activateGrowerSection(sectionId){
- for(const id of ["dashboard-section","greenhouses-section","cycles-section","cases-section","services-section","products-section","profile-section"]){
+ for(const id of ["dashboard-section","greenhouses-section","cycles-section","cases-section","services-section","products-section","company-presentation-section","profile-section"]){
   $(id).classList.toggle("active",id===sectionId);
  }
  for(const button of document.querySelectorAll("[data-grower-section]")){
@@ -629,7 +635,7 @@ async function enter(user=null,accessToken=null){
  void refreshPushStatus(user.id);
  void loadGrowerProfile();
  // بارگذاری اطلاعات پنل پس از نمایش موفق صفحه، بدون معطل‌کردن ورود
- void Promise.all([refreshAll(),loadCases(),loadCompanyProducts()]).then(()=>loadGrowerDashboard()).catch(error=>{
+ void Promise.all([refreshAll(),loadCases(),loadCompanyProducts(),loadCompanyPresentation()]).then(()=>loadGrowerDashboard()).catch(error=>{
   console.error("Grower dashboard data loading failed",error);
   notice("login-message","ورود انجام شد، اما دریافت بخشی از اطلاعات پنل ناموفق بود: "+(error?.message||"خطای ارتباط"),true);
  });
@@ -1217,6 +1223,40 @@ function serviceMoney(value,currency="IRT"){
  return new Intl.NumberFormat("fa-IR").format(Number(value))+(currency==="IRT"?" تومان":currency==="IRR"?" ریال قدیم":" "+currency);
 }
 let companyProductsLoadVersion=0;
+async function loadCompanyPresentation(){
+ const content=$("company-presentation-content"),teamHost=$("company-team-content");
+ content.replaceChildren();teamHost.replaceChildren();
+ try{
+  const [{data:profile,error:pe},{data:members,error:me}]=await Promise.all([
+   supabase.from("company_public_profile").select("company_name,short_intro,history,mission,activities,capabilities,achievements,is_published").eq("id",true).maybeSingle(),
+   supabase.from("company_team_members").select("id,member_group,full_name,position_title,academic_degree,academic_title,specialty,biography,photo_url,sort_order").eq("is_published",true).order("member_group").order("sort_order").order("created_at")
+  ]);
+  if(pe)throw pe;if(me)throw me;
+  if(!profile?.is_published){content.className="empty";content.textContent="اطلاعات معرفی شرکت در حال آماده‌سازی است."; $("company-team-card").classList.add("hidden");return;}
+  $("company-team-card").classList.remove("hidden");$("company-presentation-name").textContent=profile.company_name||"معرفی شرکت";
+  content.className="company-presentation-content";
+  for(const [heading,value] of [["معرفی کوتاه",profile.short_intro],["تاریخچه",profile.history],["مأموریت",profile.mission],["زمینه‌های فعالیت",profile.activities],["توانمندی‌ها",profile.capabilities],["دستاوردها",profile.achievements]]){
+   if(!String(value||"").trim())continue;
+   const article=document.createElement("article"),h=document.createElement("h3"),p=document.createElement("p");h.textContent=heading;p.textContent=value;article.append(h,p);content.append(article);
+  }
+  if(!content.children.length){content.className="empty";content.textContent="اطلاعات معرفی شرکت هنوز تکمیل نشده است.";}
+  for(const [group,label] of [["board","هیئت‌مدیره"],["expert","کارشناسان"]]){
+   const rows=(members||[]).filter(x=>x.member_group===group);if(!rows.length)continue;
+   const h=document.createElement("h3");h.className="company-team-heading";h.textContent=label;teamHost.append(h);
+   const grid=document.createElement("div");grid.className="company-team-grid";
+   for(const m of rows){
+    const card=document.createElement("article");card.className="company-team-member";
+    if(m.photo_url){try{const u=new URL(m.photo_url);if(u.protocol==="https:"){const img=document.createElement("img");img.src=u.href;img.alt=m.full_name;img.loading="lazy";card.append(img);}}catch{}}
+    const name=document.createElement("h4");name.textContent=m.full_name;card.append(name);
+    for(const value of [m.position_title,m.academic_degree,m.academic_title,m.specialty,m.biography])if(String(value||"").trim()){const p=document.createElement("p");p.textContent=value;card.append(p);}
+    grid.append(card);
+   }
+   teamHost.append(grid);
+  }
+  if(!teamHost.children.length){teamHost.className="empty";teamHost.textContent="اطلاعات اعضای شرکت هنوز ثبت نشده است.";}
+ }catch(error){content.className="empty";content.textContent="دریافت معرفی شرکت ناموفق بود: "+(error?.message||"خطای ارتباط");teamHost.textContent="دریافت اطلاعات اعضای شرکت ناموفق بود.";throw error;}
+}
+
 async function loadCompanyProducts(){
  const loadVersion=++companyProductsLoadVersion;
  const host=$("company-products-grid");
