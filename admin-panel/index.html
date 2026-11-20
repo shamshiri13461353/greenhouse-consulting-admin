@@ -338,6 +338,37 @@
       <div class="table-wrap"><table><thead><tr><th>تصویر</th><th>محصول</th><th>ترتیب</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="company-product-admin-rows"></tbody></table></div>
       <div id="company-product-admin-empty" class="empty hidden">هنوز محصولی ثبت نشده است.</div>
     </div>
+    <div class="card" id="company-presentation-admin-card">
+      <div class="topline"><h2>مدیریت معرفی شرکت</h2><button id="refresh-company-presentation" type="button" class="secondary">به‌روزرسانی</button></div>
+      <p class="muted">اطلاعات این بخش پس از انتشار در منوی «معرفی شرکت» پنل گلخانه‌دار نمایش داده می‌شود.</p>
+      <form id="company-presentation-form">
+       <div class="grid"><div><label for="company-presentation-admin-name">نام شرکت *</label><input id="company-presentation-admin-name" maxlength="180" required></div><div><label style="display:flex;align-items:center;gap:8px"><input id="company-presentation-published" type="checkbox" style="width:auto"> انتشار برای گلخانه‌داران</label></div></div>
+       <label for="company-presentation-short">معرفی کوتاه</label><textarea id="company-presentation-short" rows="3" maxlength="5000"></textarea>
+       <label for="company-presentation-history">تاریخچه شرکت</label><textarea id="company-presentation-history" rows="4" maxlength="12000"></textarea>
+       <label for="company-presentation-mission">مأموریت و چشم‌انداز</label><textarea id="company-presentation-mission" rows="3" maxlength="8000"></textarea>
+       <label for="company-presentation-activities">زمینه‌های فعالیت</label><textarea id="company-presentation-activities" rows="4" maxlength="12000"></textarea>
+       <label for="company-presentation-capabilities">توانمندی‌ها و امکانات</label><textarea id="company-presentation-capabilities" rows="4" maxlength="12000"></textarea>
+       <label for="company-presentation-achievements">دستاوردها و سوابق شاخص</label><textarea id="company-presentation-achievements" rows="4" maxlength="12000"></textarea>
+       <div class="actions"><button id="save-company-presentation" type="submit">ذخیره اطلاعات شرکت</button></div><div id="company-presentation-admin-message" class="notice hidden" role="status"></div>
+      </form>
+      <div class="divider"></div><h3>مدیریت اعضای هیئت‌مدیره و کارشناسان</h3>
+      <form id="company-team-form"><input id="company-team-id" type="hidden"/>
+       <div class="grid">
+        <div><label for="company-team-group">گروه عضو *</label><select id="company-team-group" required><option value="board">هیئت‌مدیره</option><option value="expert">کارشناسان</option></select></div>
+        <div><label for="company-team-name">نام و نام خانوادگی *</label><input id="company-team-name" maxlength="180" required></div>
+        <div><label for="company-team-position">سمت</label><input id="company-team-position" maxlength="180"></div>
+        <div><label for="company-team-degree">مدرک تحصیلی</label><input id="company-team-degree" maxlength="180"></div>
+        <div><label for="company-team-academic-title">عنوان علمی/حرفه‌ای</label><input id="company-team-academic-title" maxlength="180"></div>
+        <div><label for="company-team-specialty">تخصص</label><input id="company-team-specialty" maxlength="300"></div>
+        <div><label for="company-team-photo">نشانی تصویر (اختیاری، HTTPS)</label><input id="company-team-photo" type="url" maxlength="1000" placeholder="https://..."></div>
+        <div><label for="company-team-order">ترتیب نمایش</label><input id="company-team-order" type="number" step="1" value="0"></div>
+       </div>
+       <label for="company-team-bio">زندگی‌نامه / معرفی تخصصی</label><textarea id="company-team-bio" rows="3" maxlength="6000"></textarea>
+       <label style="display:flex;align-items:center;gap:8px"><input id="company-team-published" type="checkbox" style="width:auto"> نمایش این عضو در معرفی عمومی شرکت</label>
+       <div class="actions"><button id="save-company-team" type="submit">ثبت عضو</button><button id="cancel-company-team-edit" type="button" class="secondary hidden">انصراف از ویرایش</button></div><div id="company-team-admin-message" class="notice hidden" role="status"></div>
+      </form>
+      <div class="table-wrap"><table><thead><tr><th>نام</th><th>گروه</th><th>سمت / تخصص</th><th>وضعیت نمایش</th><th>عملیات</th></tr></thead><tbody id="company-team-admin-rows"></tbody></table></div><div id="company-team-admin-empty" class="empty hidden">هنوز عضوی ثبت نشده است.</div>
+    </div>
     <div class="card" id="service-requests-admin-card">
       <div class="topline"><h2>مدیریت درخواست‌های خدمات تخصصی</h2><button id="refresh-service-requests-admin" type="button" class="secondary">به‌روزرسانی</button></div>
       <p class="muted">درخواست‌های جدید را بررسی کنید، خدمات انتخاب‌شده را ببینید، پیش‌فاکتور مبلغ نهایی را صادر کنید و مسئول رسیدگی را تعیین کنید. اطلاعات قیمت و هزینه داخلی فقط در این پنل مدیریتی نگهداری می‌شود.</p>
@@ -988,7 +1019,7 @@
 
   async function loadDashboardData(){
     try{
-      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox(),loadServiceManagement(),loadCompanyProductManagement()]);
+      await Promise.all([loadExperts(),loadGrowers(),loadCaseManagement(),loadMonitorData(),loadAdminInbox(),loadServiceManagement(),loadCompanyProductManagement(),loadCompanyPresentationManagement()]);
       await loadReviewQueue();
     }catch(error){
       console.error("Admin dashboard data loading failed",error);
@@ -1242,6 +1273,55 @@
     if(error){companyProductMessage("distribution-setting-message","ذخیره عبارت انجام نشد: "+error.message,true);return;}
     companyProductMessage("distribution-setting-message","عبارت بخش محصولات تأمین و توزیع ذخیره شد.");
   });
+  let companyTeamRows=[];
+  function companyPresentationMessage(id,text,isError=false){const el=$(id);el.textContent=text;el.classList.remove("hidden","error");if(isError)el.classList.add("error");}
+  async function loadCompanyPresentationManagement(){
+    const [{data:p,error:pe},{data:members,error:me}]=await Promise.all([
+      supabase.from("company_public_profile").select("company_name,short_intro,history,mission,activities,capabilities,achievements,is_published").eq("id",true).maybeSingle(),
+      supabase.from("company_team_members").select("id,member_group,full_name,position_title,academic_degree,academic_title,specialty,biography,photo_url,sort_order,is_published").order("member_group").order("sort_order").order("created_at")
+    ]);
+    if(pe)throw pe;if(me)throw me;
+    $("company-presentation-admin-name").value=p?.company_name||"پیوندگستر پارسان";
+    for(const [id,key] of [["company-presentation-short","short_intro"],["company-presentation-history","history"],["company-presentation-mission","mission"],["company-presentation-activities","activities"],["company-presentation-capabilities","capabilities"],["company-presentation-achievements","achievements"]])$(id).value=p?.[key]||"";
+    $("company-presentation-published").checked=!!p?.is_published;companyTeamRows=members||[];renderCompanyTeamRows();
+  }
+  function resetCompanyTeamForm(){$("company-team-form").reset();$("company-team-id").value="";$("company-team-order").value="0";$("company-team-published").checked=false;$("save-company-team").textContent="ثبت عضو";$("cancel-company-team-edit").classList.add("hidden");}
+  function renderCompanyTeamRows(){
+    const body=$("company-team-admin-rows");body.replaceChildren();$("company-team-admin-empty").classList.toggle("hidden",companyTeamRows.length>0);
+    const labels={board:"هیئت‌مدیره",expert:"کارشناسان"};
+    for(const m of companyTeamRows){
+      const tr=document.createElement("tr");for(const v of [m.full_name,labels[m.member_group]||m.member_group,m.position_title||m.specialty||"—",m.is_published?"منتشرشده":"پیش‌نویس"]){const td=document.createElement("td");td.textContent=v;tr.append(td);}
+      const td=document.createElement("td"),edit=document.createElement("button"),toggle=document.createElement("button"),del=document.createElement("button");
+      edit.type="button";edit.className="secondary";edit.textContent="ویرایش";edit.addEventListener("click",()=>{
+       $("company-team-id").value=m.id;$("company-team-group").value=m.member_group;$("company-team-name").value=m.full_name;
+       $("company-team-position").value=m.position_title||"";$("company-team-degree").value=m.academic_degree||"";$("company-team-academic-title").value=m.academic_title||"";
+       $("company-team-specialty").value=m.specialty||"";$("company-team-photo").value=m.photo_url||"";$("company-team-order").value=String(m.sort_order??0);
+       $("company-team-bio").value=m.biography||"";$("company-team-published").checked=!!m.is_published;
+       $("save-company-team").textContent="ذخیره ویرایش";$("cancel-company-team-edit").classList.remove("hidden");$("company-team-name").focus();
+      });
+      toggle.type="button";toggle.className=m.is_published?"danger":"secondary";toggle.textContent=m.is_published?"عدم انتشار":"انتشار";
+      toggle.addEventListener("click",async()=>{toggle.disabled=true;const {error}=await supabase.from("company_team_members").update({is_published:!m.is_published,updated_at:new Date().toISOString(),updated_by:adminUser.id}).eq("id",m.id);if(error){companyPresentationMessage("company-team-admin-message","تغییر وضعیت انتشار ناموفق بود: "+error.message,true);toggle.disabled=false;return;}await loadCompanyPresentationManagement();});
+      del.type="button";del.className="danger";del.textContent="حذف";del.addEventListener("click",async()=>{if(!confirm("این عضو از فهرست معرفی شرکت حذف شود؟"))return;del.disabled=true;const {error}=await supabase.from("company_team_members").delete().eq("id",m.id);if(error){companyPresentationMessage("company-team-admin-message","حذف عضو ناموفق بود: "+error.message,true);del.disabled=false;return;}await loadCompanyPresentationManagement();});
+      td.append(edit,toggle,del);tr.append(td);body.append(tr);
+    }
+  }
+  $("company-presentation-form").addEventListener("submit",async e=>{
+    e.preventDefault();const button=$("save-company-presentation");button.disabled=true;
+    try{const payload={id:true,company_name:$("company-presentation-admin-name").value.trim(),short_intro:$("company-presentation-short").value.trim(),history:$("company-presentation-history").value.trim(),mission:$("company-presentation-mission").value.trim(),activities:$("company-presentation-activities").value.trim(),capabilities:$("company-presentation-capabilities").value.trim(),achievements:$("company-presentation-achievements").value.trim(),is_published:$("company-presentation-published").checked,updated_at:new Date().toISOString(),updated_by:adminUser.id};
+      if(!payload.company_name)throw new Error("نام شرکت را وارد کنید.");const {error}=await supabase.from("company_public_profile").upsert(payload,{onConflict:"id"});if(error)throw error;
+      companyPresentationMessage("company-presentation-admin-message","اطلاعات معرفی شرکت ذخیره شد."+(payload.is_published?" برای گلخانه‌داران منتشر است.":" فعلاً منتشر نشده است."));
+    }catch(error){companyPresentationMessage("company-presentation-admin-message","ذخیره اطلاعات شرکت ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}finally{button.disabled=false;}
+  });
+  $("company-team-form").addEventListener("submit",async e=>{
+    e.preventDefault();const id=$("company-team-id").value,name=$("company-team-name").value.trim(),order=Number($("company-team-order").value||0),photo=$("company-team-photo").value.trim();
+    if(!name||!Number.isInteger(order)){companyPresentationMessage("company-team-admin-message","نام عضو و ترتیب نمایش معتبر را وارد کنید.",true);return;}
+    if(photo){try{const u=new URL(photo);if(u.protocol!=="https:")throw Error();}catch{companyPresentationMessage("company-team-admin-message","نشانی تصویر باید معتبر و با HTTPS باشد.",true);return;}}
+    const payload={member_group:$("company-team-group").value,full_name:name,position_title:$("company-team-position").value.trim(),academic_degree:$("company-team-degree").value.trim(),academic_title:$("company-team-academic-title").value.trim(),specialty:$("company-team-specialty").value.trim(),biography:$("company-team-bio").value.trim(),photo_url:photo||null,sort_order:order,is_published:$("company-team-published").checked,updated_at:new Date().toISOString(),updated_by:adminUser.id};
+    const button=$("save-company-team");button.disabled=true;try{const result=id?await supabase.from("company_team_members").update(payload).eq("id",id):await supabase.from("company_team_members").insert(payload);if(result.error)throw result.error;resetCompanyTeamForm();companyPresentationMessage("company-team-admin-message",id?"ویرایش عضو ذخیره شد.":"عضو جدید ثبت شد.");await loadCompanyPresentationManagement();}catch(error){companyPresentationMessage("company-team-admin-message","ذخیره عضو ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}finally{button.disabled=false;}
+  });
+  $("cancel-company-team-edit").addEventListener("click",resetCompanyTeamForm);
+  $("refresh-company-presentation").addEventListener("click",async()=>{try{await loadCompanyPresentationManagement();companyPresentationMessage("company-presentation-admin-message","اطلاعات معرفی شرکت به‌روزرسانی شد.");}catch(error){companyPresentationMessage("company-presentation-admin-message","دریافت اطلاعات ناموفق بود: "+error.message,true);}});
+
   async function loadServiceCatalogAdmin(){
     const {data:services,error}=await supabase.from("services")
       .select("id,code,title_fa,description,is_active,service_group,requires_case,requires_sample,is_bundle")
