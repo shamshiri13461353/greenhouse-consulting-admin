@@ -18,6 +18,7 @@
     .topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{font-size:12px;padding:5px 9px;border-radius:99px;background:#edf2ef;color:#40534d}
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #edf0ee;vertical-align:middle}th{color:#65746e;font-weight:600}
     .table-wrap{overflow-x:auto}.empty{text-align:center;padding:24px;color:#687771;font-size:13px}
+    .company-team-photo-preview{display:block;width:112px;height:112px;object-fit:cover;border-radius:14px;border:1px solid #d8e5dd;margin-top:10px;background:#f3f6f4}
     .monitor-filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin:14px 0}
     .monitor-table{min-width:1120px}.monitor-page-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}.monitor-page-tools label{margin:0}.monitor-page-tools select{width:84px;min-height:38px;padding:7px}.monitor-page-tools .actions{margin:0;align-items:center}.monitor-page-tools button{padding:7px 12px}.monitor-table tbody tr{cursor:pointer}.monitor-table tbody tr:hover{background:#f4f8f6}.monitor-table tbody tr.selected{background:#eaf3ef;outline:1px solid #a9c9bd}
     .monitor-detail{border:1px solid #dce8e2;border-radius:12px;padding:16px;margin-top:18px;background:#fbfdfc}.monitor-detail h3{margin:0 0 8px;font-size:16px}
@@ -360,7 +361,13 @@
         <div><label for="company-team-degree">مدرک تحصیلی</label><input id="company-team-degree" maxlength="180"></div>
         <div><label for="company-team-academic-title">عنوان علمی/حرفه‌ای</label><input id="company-team-academic-title" maxlength="180"></div>
         <div><label for="company-team-specialty">تخصص</label><input id="company-team-specialty" maxlength="300"></div>
-        <div><label for="company-team-photo">نشانی تصویر (اختیاری، HTTPS)</label><input id="company-team-photo" type="url" maxlength="1000" placeholder="https://..."></div>
+        <div>
+         <label for="company-team-photo-file">تصویر عضو (اختیاری)</label>
+         <input id="company-team-photo" type="hidden">
+         <input id="company-team-photo-file" type="file" accept="image/jpeg,image/png,image/webp">
+         <p class="muted">فایل JPG، PNG یا WEBP؛ حداکثر ۳ مگابایت. تصویر پس از ذخیره در معرفی عمومی شرکت نمایش داده می‌شود.</p>
+         <img id="company-team-photo-preview" class="company-team-photo-preview hidden" alt="پیش‌نمایش تصویر عضو">
+        </div>
         <div><label for="company-team-order">ترتیب نمایش</label><input id="company-team-order" type="number" step="1" value="0"></div>
        </div>
        <label for="company-team-bio">زندگی‌نامه / معرفی تخصصی</label><textarea id="company-team-bio" rows="3" maxlength="6000"></textarea>
@@ -1285,7 +1292,38 @@
     for(const [id,key] of [["company-presentation-short","short_intro"],["company-presentation-history","history"],["company-presentation-mission","mission"],["company-presentation-activities","activities"],["company-presentation-capabilities","capabilities"],["company-presentation-achievements","achievements"]])$(id).value=p?.[key]||"";
     $("company-presentation-published").checked=!!p?.is_published;companyTeamRows=members||[];renderCompanyTeamRows();
   }
-  function resetCompanyTeamForm(){$("company-team-form").reset();$("company-team-id").value="";$("company-team-order").value="0";$("company-team-published").checked=false;$("save-company-team").textContent="ثبت عضو";$("cancel-company-team-edit").classList.add("hidden");}
+  let companyTeamPhotoObjectUrl=null;
+  function setCompanyTeamPhotoPreview(url){
+    const img=$("company-team-photo-preview");
+    if(companyTeamPhotoObjectUrl){URL.revokeObjectURL(companyTeamPhotoObjectUrl);companyTeamPhotoObjectUrl=null;}
+    if(url){img.src=url;img.classList.remove("hidden");}
+    else{img.removeAttribute("src");img.classList.add("hidden");}
+  }
+  async function uploadCompanyTeamPhoto(file){
+    const ext=file.type==="image/jpeg"?"jpg":file.type==="image/png"?"png":"webp";
+    const path=adminUser.id+"/"+(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2))+"."+ext;
+    const {error}=await supabase.storage.from("company-team-photos").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+    if(error)throw error;
+    return supabase.storage.from("company-team-photos").getPublicUrl(path).data.publicUrl;
+  }
+  async function removeCompanyTeamPhoto(url){
+    if(!url)return;
+    const marker="/storage/v1/object/public/company-team-photos/",index=url.indexOf(marker);
+    if(index<0)return;
+    const path=decodeURIComponent(url.slice(index+marker.length).split("?")[0]);
+    if(path){const {error}=await supabase.storage.from("company-team-photos").remove([path]);if(error)console.warn("Company team photo cleanup failed",error);}
+  }
+  $("company-team-photo-file").addEventListener("change",()=>{
+    const file=$("company-team-photo-file").files?.[0];
+    if(!file){setCompanyTeamPhotoPreview($("company-team-photo").value);return;}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>3145728){
+      $("company-team-photo-file").value="";
+      companyPresentationMessage("company-team-admin-message","فقط تصویر JPG، PNG یا WEBP با حجم حداکثر ۳ مگابایت مجاز است.",true);
+      setCompanyTeamPhotoPreview($("company-team-photo").value);return;
+    }
+    setCompanyTeamPhotoPreview(URL.createObjectURL(file));
+  });
+  function resetCompanyTeamForm(){$("company-team-form").reset();$("company-team-id").value="";$("company-team-photo").value="";setCompanyTeamPhotoPreview("");$("company-team-order").value="0";$("company-team-published").checked=false;$("save-company-team").textContent="ثبت عضو";$("cancel-company-team-edit").classList.add("hidden");}
   function renderCompanyTeamRows(){
     const body=$("company-team-admin-rows");body.replaceChildren();$("company-team-admin-empty").classList.toggle("hidden",companyTeamRows.length>0);
     const labels={board:"هیئت‌مدیره",expert:"کارشناسان"};
@@ -1295,7 +1333,7 @@
       edit.type="button";edit.className="secondary";edit.textContent="ویرایش";edit.addEventListener("click",()=>{
        $("company-team-id").value=m.id;$("company-team-group").value=m.member_group;$("company-team-name").value=m.full_name;
        $("company-team-position").value=m.position_title||"";$("company-team-degree").value=m.academic_degree||"";$("company-team-academic-title").value=m.academic_title||"";
-       $("company-team-specialty").value=m.specialty||"";$("company-team-photo").value=m.photo_url||"";$("company-team-order").value=String(m.sort_order??0);
+       $("company-team-specialty").value=m.specialty||"";$("company-team-photo").value=m.photo_url||"";$("company-team-photo-file").value="";setCompanyTeamPhotoPreview(m.photo_url||"");$("company-team-order").value=String(m.sort_order??0);
        $("company-team-bio").value=m.biography||"";$("company-team-published").checked=!!m.is_published;
        $("save-company-team").textContent="ذخیره ویرایش";$("cancel-company-team-edit").classList.remove("hidden");$("company-team-name").focus();
       });
@@ -1313,11 +1351,25 @@
     }catch(error){companyPresentationMessage("company-presentation-admin-message","ذخیره اطلاعات شرکت ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}finally{button.disabled=false;}
   });
   $("company-team-form").addEventListener("submit",async e=>{
-    e.preventDefault();const id=$("company-team-id").value,name=$("company-team-name").value.trim(),order=Number($("company-team-order").value||0),photo=$("company-team-photo").value.trim();
+    e.preventDefault();
+    const id=$("company-team-id").value,name=$("company-team-name").value.trim(),order=Number($("company-team-order").value||0);
+    const file=$("company-team-photo-file").files?.[0]||null,oldPhoto=$("company-team-photo").value.trim();
     if(!name||!Number.isInteger(order)){companyPresentationMessage("company-team-admin-message","نام عضو و ترتیب نمایش معتبر را وارد کنید.",true);return;}
-    if(photo){try{const u=new URL(photo);if(u.protocol!=="https:")throw Error();}catch{companyPresentationMessage("company-team-admin-message","نشانی تصویر باید معتبر و با HTTPS باشد.",true);return;}}
-    const payload={member_group:$("company-team-group").value,full_name:name,position_title:$("company-team-position").value.trim(),academic_degree:$("company-team-degree").value.trim(),academic_title:$("company-team-academic-title").value.trim(),specialty:$("company-team-specialty").value.trim(),biography:$("company-team-bio").value.trim(),photo_url:photo||null,sort_order:order,is_published:$("company-team-published").checked,updated_at:new Date().toISOString(),updated_by:adminUser.id};
-    const button=$("save-company-team");button.disabled=true;try{const result=id?await supabase.from("company_team_members").update(payload).eq("id",id):await supabase.from("company_team_members").insert(payload);if(result.error)throw result.error;resetCompanyTeamForm();companyPresentationMessage("company-team-admin-message",id?"ویرایش عضو ذخیره شد.":"عضو جدید ثبت شد.");await loadCompanyPresentationManagement();}catch(error){companyPresentationMessage("company-team-admin-message","ذخیره عضو ناموفق بود: "+(error?.message||"خطای نامشخص"),true);}finally{button.disabled=false;}
+    if(file&&(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>3145728)){companyPresentationMessage("company-team-admin-message","فقط تصویر JPG، PNG یا WEBP با حجم حداکثر ۳ مگابایت مجاز است.",true);return;}
+    const button=$("save-company-team");button.disabled=true;let uploadedPhoto=null;
+    try{
+      if(file)uploadedPhoto=await uploadCompanyTeamPhoto(file);
+      const photo=uploadedPhoto||oldPhoto||null;
+      const payload={member_group:$("company-team-group").value,full_name:name,position_title:$("company-team-position").value.trim(),academic_degree:$("company-team-degree").value.trim(),academic_title:$("company-team-academic-title").value.trim(),specialty:$("company-team-specialty").value.trim(),biography:$("company-team-bio").value.trim(),photo_url:photo,sort_order:order,is_published:$("company-team-published").checked,updated_at:new Date().toISOString(),updated_by:adminUser.id};
+      const result=id?await supabase.from("company_team_members").update(payload).eq("id",id):await supabase.from("company_team_members").insert(payload);
+      if(result.error)throw result.error;
+      if(uploadedPhoto&&oldPhoto&&oldPhoto!==uploadedPhoto)await removeCompanyTeamPhoto(oldPhoto);
+      resetCompanyTeamForm();companyPresentationMessage("company-team-admin-message",id?"ویرایش عضو ذخیره شد.":"عضو جدید ثبت شد.");
+      await loadCompanyPresentationManagement();
+    }catch(error){
+      if(uploadedPhoto)await removeCompanyTeamPhoto(uploadedPhoto);
+      companyPresentationMessage("company-team-admin-message","ذخیره عضو ناموفق بود: "+(error?.message||"خطای نامشخص"),true);
+    }finally{button.disabled=false;}
   });
   $("cancel-company-team-edit").addEventListener("click",resetCompanyTeamForm);
   $("refresh-company-presentation").addEventListener("click",async()=>{try{await loadCompanyPresentationManagement();companyPresentationMessage("company-presentation-admin-message","اطلاعات معرفی شرکت به‌روزرسانی شد.");}catch(error){companyPresentationMessage("company-presentation-admin-message","دریافت اطلاعات ناموفق بود: "+error.message,true);}});
