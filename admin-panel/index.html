@@ -1296,7 +1296,7 @@
   function setCompanyTeamPhotoPreview(url){
     const img=$("company-team-photo-preview");
     if(companyTeamPhotoObjectUrl){URL.revokeObjectURL(companyTeamPhotoObjectUrl);companyTeamPhotoObjectUrl=null;}
-    if(url){img.src=url;img.classList.remove("hidden");}
+    if(url){if(url.startsWith("blob:"))companyTeamPhotoObjectUrl=url;img.src=url;img.classList.remove("hidden");}
     else{img.removeAttribute("src");img.classList.add("hidden");}
   }
   async function uploadCompanyTeamPhoto(file){
@@ -1339,7 +1339,7 @@
       });
       toggle.type="button";toggle.className=m.is_published?"danger":"secondary";toggle.textContent=m.is_published?"عدم انتشار":"انتشار";
       toggle.addEventListener("click",async()=>{toggle.disabled=true;const {error}=await supabase.from("company_team_members").update({is_published:!m.is_published,updated_at:new Date().toISOString(),updated_by:adminUser.id}).eq("id",m.id);if(error){companyPresentationMessage("company-team-admin-message","تغییر وضعیت انتشار ناموفق بود: "+error.message,true);toggle.disabled=false;return;}await loadCompanyPresentationManagement();});
-      del.type="button";del.className="danger";del.textContent="حذف";del.addEventListener("click",async()=>{if(!confirm("این عضو از فهرست معرفی شرکت حذف شود؟"))return;del.disabled=true;const {error}=await supabase.from("company_team_members").delete().eq("id",m.id);if(error){companyPresentationMessage("company-team-admin-message","حذف عضو ناموفق بود: "+error.message,true);del.disabled=false;return;}await loadCompanyPresentationManagement();});
+      del.type="button";del.className="danger";del.textContent="حذف";del.addEventListener("click",async()=>{if(!confirm("این عضو از فهرست معرفی شرکت حذف شود؟"))return;del.disabled=true;const {error}=await supabase.from("company_team_members").delete().eq("id",m.id);if(error){companyPresentationMessage("company-team-admin-message","حذف عضو ناموفق بود: "+error.message,true);del.disabled=false;return;}await removeCompanyTeamPhoto(m.photo_url);await loadCompanyPresentationManagement();});
       td.append(edit,toggle,del);tr.append(td);body.append(tr);
     }
   }
