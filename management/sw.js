@@ -1,11 +1,10 @@
-const CACHE_NAME = "peyvand-management-pwa-v2";
+const CACHE_NAME = "peyvand-management-pwa-v3";
 const SHELL = [
   "/management/",
   "/management/index.html",
   "/management/install.html",
   "/management/manifest.webmanifest",
-  "/management/icons/icon-192.png",
-  "/management/icons/icon-512.png"
+  "/management/icons/icon.svg"
 ];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
