@@ -377,6 +377,14 @@
       <div id="lab-management-message" class="notice hidden" role="status"></div>
       <div class="divider"></div>
       <h3>فهرست نمونه‌های ثبت‌شده</h3>
+      <div class="monitor-page-tools">
+        <label for="lab-sample-admin-search">جست‌وجوی نمونه</label>
+        <input id="lab-sample-admin-search" type="search" placeholder="کد نمونه یا نوع نمونه">
+        <label for="lab-sample-admin-page-size">تعداد نمونه در هر صفحه</label>
+        <select id="lab-sample-admin-page-size"><option value="5" selected>۵</option><option value="10">۱۰</option><option value="25">۲۵</option><option value="50">۵۰</option></select>
+        <span id="lab-sample-admin-page-info" class="muted" aria-live="polite"></span>
+        <div class="actions"><button id="lab-sample-admin-prev" type="button" class="secondary">قبلی</button><span id="lab-sample-admin-page-number" class="pill">۱</span><button id="lab-sample-admin-next" type="button" class="secondary">بعدی</button></div>
+      </div>
       <div class="table-wrap"><table><thead><tr><th>کد نمونه</th><th>نوع نمونه</th><th>وضعیت کنترل کیفیت</th><th>وضعیت گزارش</th><th></th></tr></thead><tbody id="lab-sample-admin-rows"></tbody></table></div>
       <div id="lab-sample-admin-empty" class="empty hidden">هنوز نمونه‌ای ثبت نشده است.</div>
       <section id="lab-sample-admin-detail" class="monitor-detail hidden">
@@ -1427,6 +1435,7 @@
 
   // مدیریت پذیرش نمونه، ثبت نتایج و انتشار گزارش آزمایشگاه
   let labAdminSamples=[],selectedLabSampleAdmin=null,selectedLabProcessingAdmin=null;
+  let labSampleAdminPage=1,labSampleAdminPageSize=5;
   let labAdminAnalytes=[],labAdminUnits=[];
   const labTypeFa={irrigation_water:"آب آبیاری",drainage:"زهاب",soil:"خاک",substrate:"بستر کشت",plant_tissue:"برگ / بافت گیاهی",nutrient_solution:"محلول غذایی",other:"سایر"};
   const labQualityFa={pending:"در انتظار کنترل",accepted:"پذیرفته‌شده",rejected:"ردشده",resampling_required:"نیازمند نمونه‌گیری مجدد"};
@@ -1470,14 +1479,11 @@
         supabase.from("service_requests")
           .select("id,request_number,greenhouse_id,crop_cycle_id,request_group,status,payment_status,fulfillment_status")
           .in("payment_status",["paid","not_required"]).in("status",["confirmed","in_progress","awaiting_final_approval"]).in("request_group",["laboratory","bundle"]).order("created_at",{ascending:false}),
-        supabase.from("lab_samples")
-          .select("id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,sampling_location,sample_receipt_method,received_at,notes,created_at")
-          .order("created_at",{ascending:false}).limit(150),
+        fetchMonitorRows("lab_samples","id,service_request_id,sample_code,sample_type,quality_status,report_published_at,sampled_at,sampling_location,sample_receipt_method,received_at,notes,created_at","created_at",false),
         supabase.from("analytes").select("id,code,title_fa,default_unit_id,category").eq("is_active",true).order("title_fa"),
         supabase.from("units").select("id,code,title_fa,dimension").eq("is_active",true).order("title_fa")
       ]);
       if(requestResult.error)throw requestResult.error;
-      if(sampleResult.error)throw sampleResult.error;
       if(analyteResult.error)throw analyteResult.error;
       if(unitResult.error)throw unitResult.error;
       labEligibleRequests=requestResult.data||[];
@@ -1519,8 +1525,23 @@
   }
   function renderLabSampleAdminRows(){
     const body=$("lab-sample-admin-rows");body.replaceChildren();
+    const term=$("lab-sample-admin-search").value.trim().toLocaleLowerCase("fa");
+    const filtered=labAdminSamples.filter(sample=>{
+      const searchable=[sample.sample_code||"",labTypeFa[sample.sample_type]||sample.sample_type||"",
+        labQualityFa[sample.quality_status]||sample.quality_status||"",sample.report_published_at?"منتشرشده":"منتشرنشده"]
+        .join(" ").toLocaleLowerCase("fa");
+      return !term||searchable.includes(term);
+    });
+    const pages=Math.max(1,Math.ceil(filtered.length/labSampleAdminPageSize));
+    labSampleAdminPage=Math.min(labSampleAdminPage,pages);
+    const start=(labSampleAdminPage-1)*labSampleAdminPageSize;
+    const pageRows=filtered.slice(start,start+labSampleAdminPageSize);
     $("lab-sample-admin-empty").classList.toggle("hidden",labAdminSamples.length>0);
-    for(const sample of labAdminSamples){
+    if(labAdminSamples.length&&filtered.length===0){
+      const tr=document.createElement("tr"),td=document.createElement("td");
+      td.colSpan=5;td.textContent="نمونه‌ای با این عبارت پیدا نشد.";tr.append(td);body.append(tr);
+    }
+    for(const sample of pageRows){
       const tr=document.createElement("tr");
       const values=[sample.sample_code||"—",labTypeFa[sample.sample_type]||sample.sample_type,
         labQualityFa[sample.quality_status]||sample.quality_status,
@@ -1530,7 +1551,23 @@
       button.type="button";button.className="secondary";button.textContent="ثبت / مشاهده نتایج";
       button.addEventListener("click",()=>selectLabSampleAdmin(sample.id));td.append(button);tr.append(td);body.append(tr);
     }
+    const end=Math.min(start+labSampleAdminPageSize,filtered.length);
+    $("lab-sample-admin-page-info").textContent="نمایش "+(filtered.length?start+1:0)+" تا "+end+" از "+filtered.length+" نمونه";
+    $("lab-sample-admin-page-number").textContent=labSampleAdminPage.toLocaleString("fa-IR")+" از "+pages.toLocaleString("fa-IR");
+    $("lab-sample-admin-prev").disabled=labSampleAdminPage<=1;
+    $("lab-sample-admin-next").disabled=labSampleAdminPage>=pages;
   }
+  $("lab-sample-admin-search").addEventListener("input",()=>{labSampleAdminPage=1;renderLabSampleAdminRows();});
+  $("lab-sample-admin-page-size").addEventListener("change",()=>{
+    labSampleAdminPageSize=Number($("lab-sample-admin-page-size").value)||5;
+    labSampleAdminPage=1;renderLabSampleAdminRows();
+  });
+  $("lab-sample-admin-prev").addEventListener("click",()=>{
+    if(labSampleAdminPage>1)labSampleAdminPage--;renderLabSampleAdminRows();
+  });
+  $("lab-sample-admin-next").addEventListener("click",()=>{
+    labSampleAdminPage++;renderLabSampleAdminRows();
+  });
   async function loadLabAssignedAnalysts(requestId){
     const select=$("lab-intake-analyst"),old=select.value;
     select.replaceChildren(new Option("بدون تعیین مسئول",""));
