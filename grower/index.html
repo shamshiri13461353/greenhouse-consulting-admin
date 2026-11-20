@@ -32,31 +32,36 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 .hidden{display:none!important}.notice{padding:11px 13px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;line-height:1.8;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}
 .topline{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{font-size:12px;border-radius:20px;padding:5px 10px;background:#edf3ef;color:#3f6255}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tabs button{background:#e6efea;color:#255344}.tabs button.active{background:#176b57;color:#fff}
-/* Refined greenhouse navigation: subtle gold edging and a raised surface */
-.tabs button{
- border:1px solid #c7a65a;
- border-radius:11px;
- background:linear-gradient(180deg,#fffdf7 0%,#f2ead5 100%);
- color:#23483c;
- font-weight:600;
- padding:11px 17px;
- box-shadow:0 3px 0 #b18c3e,0 5px 12px #243d3018,inset 0 1px 0 #ffffff;
- transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease;
+/* High-visibility greenhouse navigation: unmistakable gold frame and raised buttons */
+#grower-tabs.tabs button{
+ border:2px solid #c4932f !important;
+ border-radius:13px !important;
+ background:linear-gradient(180deg,#fff9e8 0%,#e9d49b 100%) !important;
+ color:#183f32 !important;
+ font-weight:700 !important;
+ padding:12px 19px !important;
+ min-height:46px;
+ box-shadow:0 5px 0 #89651f,0 8px 14px #203d302e,inset 0 2px 0 #ffffff !important;
+ text-shadow:0 1px 0 #ffffff80;
+ transition:transform .16s ease,box-shadow .16s ease,filter .16s ease !important;
 }
-.tabs button:hover{
- transform:translateY(-2px);
- border-color:#a9822e;
- box-shadow:0 5px 0 #a9822e,0 8px 16px #243d3022,inset 0 1px 0 #ffffff;
+#grower-tabs.tabs button:hover{
+ transform:translateY(-3px) !important;
+ filter:brightness(1.04);
+ box-shadow:0 8px 0 #89651f,0 12px 18px #203d3038,inset 0 2px 0 #ffffff !important;
 }
-.tabs button.active{
- background:linear-gradient(180deg,#1c705b 0%,#104b3d 100%);
- color:#fff;
- border-color:#d8b45e;
- box-shadow:0 3px 0 #9b762c,0 6px 14px #163d3030,inset 0 1px 0 #ffffff30;
+#grower-tabs.tabs button.active{
+ background:linear-gradient(180deg,#1b7259 0%,#0d4939 100%) !important;
+ color:#ffffff !important;
+ border:2px solid #f0c75d !important;
+ box-shadow:0 5px 0 #76551b,0 8px 16px #123d3040,inset 0 2px 0 #ffffff55 !important;
 }
-.tabs button:active{transform:translateY(1px);box-shadow:0 1px 0 #a9822e,0 2px 6px #243d3018}
-.tabs button:focus-visible{outline:3px solid #d8b45e;outline-offset:3px}
-@media(prefers-reduced-motion:reduce){.tabs button{transition:none}}
+#grower-tabs.tabs button:active{
+ transform:translateY(2px) !important;
+ box-shadow:0 2px 0 #89651f,0 3px 7px #203d3025 !important;
+}
+#grower-tabs.tabs button:focus-visible{outline:3px solid #e2b94e !important;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){#grower-tabs.tabs button{transition:none !important}}
 
 .item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0}.behrost-shared-description{margin-top:20px;padding:18px;border-top:1px solid #e2ebe6;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px}
 .empty{padding:22px;text-align:center;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}
