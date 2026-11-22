@@ -74,7 +74,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 #grower-tabs.tabs button:focus-visible{outline:4px solid #e2ad24 !important;outline-offset:4px}
 @media(prefers-reduced-motion:reduce){#grower-tabs.tabs button{transition:none !important}}
 
-.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0}.behrost-shared-description{margin-top:20px;padding:18px;border-top:1px solid #e2ebe6;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px}
+.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0}.behrost-shared-description{grid-column:1/-1;margin:0;padding:18px;border:1px solid #dce9e1;border-radius:12px;background:#f7faf8;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px}
 .empty{padding:22px;text-align:center;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}
 .grower-hero{background:linear-gradient(120deg,#103d34,#176b57 70%,#2c8066);color:#fff;border:0;overflow:hidden;position:relative}
 .grower-hero:after{content:"";position:absolute;left:-42px;bottom:-95px;width:230px;height:230px;border:1px solid #ffffff24;border-radius:50%;box-shadow:0 0 0 28px #ffffff0b,0 0 0 58px #ffffff08}
@@ -333,7 +333,6 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
     <h2>محصولات پیوندگستر پارسان</h2>
     <p class="muted">در این بخش با محصولات تولیدی و دارای برند شرکت آشنا می‌شوید.</p>
     <div id="company-products-grid" class="product-grid"><div class="empty">در حال دریافت فهرست محصولات…</div></div>
-    <div id="behrost-shared-description" class="behrost-shared-description hidden" aria-live="polite"></div>
    </div>
    <div class="card">
     <h2>تامین و توزیع نهاده های گلخانه ای</h2>
@@ -1282,7 +1281,8 @@ async function loadCompanyProducts(){
   uniqueProducts.push(product);
  }
  const behrostProducts=uniqueProducts.filter(product=>product.description_group==="behrost");
- for(const product of uniqueProducts){
+ const otherProducts=uniqueProducts.filter(product=>product.description_group!=="behrost");
+ const createProductCard=product=>{
   const card=document.createElement("article");card.className="product-card";
   if(product.image_url){try{const url=new URL(product.image_url);if(url.protocol==="https:"){const img=document.createElement("img");img.src=url.href;img.alt=product.title;img.loading="lazy";card.append(img);}}catch{}}
   const body=document.createElement("div");body.className="product-card-body";
@@ -1291,14 +1291,22 @@ async function loadCompanyProducts(){
   if(product.description_group!=="behrost"&&product.description){
    const description=document.createElement("p");description.textContent=product.description;body.append(description);
   }
-  card.append(body);host.append(card);
+  card.append(body);return card;
+ };
+ // محصولات دیگر ابتدا و با همان ترتیب ثبت‌شده نمایش داده می‌شوند.
+ for(const product of otherProducts)host.append(createProductCard(product));
+ // معرفی مشترک دقیقاً پیش از کارت‌های استوک بهرست قرار می‌گیرد و تمام عرض شبکه را می‌گیرد.
+ const sharedText=(settings?.behrost_shared_description||"").trim();
+ if(behrostProducts.length&&sharedText){
+  const sharedDescription=document.createElement("div");
+  sharedDescription.id="behrost-shared-description";
+  sharedDescription.className="behrost-shared-description";
+  sharedDescription.setAttribute("aria-live","polite");
+  sharedDescription.textContent=sharedText;
+  host.append(sharedDescription);
  }
- const sharedDescription=$("behrost-shared-description");
- if(sharedDescription){
-  const text=(settings?.behrost_shared_description||"").trim();
-  sharedDescription.textContent=text;
-  sharedDescription.classList.toggle("hidden",behrostProducts.length===0||!text);
- }
+ // استوک‌های بهرست پس از معرفی مشترک و در کنار یکدیگر نمایش داده می‌شوند.
+ for(const product of behrostProducts)host.append(createProductCard(product));
 }
 async function loadServiceWorkspace(){
  if(!currentUser?.id)return;
