@@ -74,7 +74,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 #grower-tabs.tabs button:focus-visible{outline:4px solid #e2ad24 !important;outline-offset:4px}
 @media(prefers-reduced-motion:reduce){#grower-tabs.tabs button{transition:none !important}}
 
-.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0;text-align:justify;text-justify:inter-word}.behrost-shared-description{grid-column:1/-1;margin:0;padding:18px;border:1px solid #dce9e1;border-radius:12px;background:#f7faf8;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px;text-align:justify;text-justify:inter-word}
+.item{border:1px solid #e2ebe6;border-radius:12px;padding:14px;margin:10px 0}.item h3{margin:0 0 8px;font-size:15px}.meta{font-size:12px;color:#62756d;line-height:2}.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e2ebe6;border-radius:12px;overflow:hidden;background:#fff}.product-card img{display:block;width:100%;height:180px;object-fit:contain;background:#f7faf8}.product-card-body{padding:14px}.product-card h3{font-size:15px;margin:0 0 8px}.product-card p{font-size:13px;color:#62756d;line-height:1.9;white-space:pre-wrap;margin:0;text-align:justify;text-justify:inter-word}.behrost-products-group{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:16px;border:2px solid #b9d6c5;border-radius:16px;background:#f4faf6}.behrost-products-heading{grid-column:1/-1;margin:0;color:#205b43;font-size:16px}.behrost-shared-description{grid-column:1/-1;margin:0;padding:18px;border:1px solid #dce9e1;border-radius:12px;background:#f7faf8;color:#42584f;line-height:2;white-space:pre-wrap;font-size:14px;text-align:justify;text-justify:inter-word}
 .empty{padding:22px;text-align:center;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}
 .grower-hero{background:linear-gradient(120deg,#103d34,#176b57 70%,#2c8066);color:#fff;border:0;overflow:hidden;position:relative}
 .grower-hero:after{content:"";position:absolute;left:-42px;bottom:-95px;width:230px;height:230px;border:1px solid #ffffff24;border-radius:50%;box-shadow:0 0 0 28px #ffffff0b,0 0 0 58px #ffffff08}
@@ -100,9 +100,9 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 @media(max-width:850px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-columns{grid-template-columns:1fr}}
 @media(max-width:650px){.grower-hero{padding:17px}.grower-hero h2{font-size:19px}.grower-hero-main{align-items:flex-start}.grower-hero-footer{flex-direction:column}.dashboard-welcome{padding:19px}.dashboard-welcome h2{font-size:17px}.dashboard-mark{width:58px;height:58px;font-size:29px;border-radius:17px}.dashboard-stat{padding:13px}.dashboard-stat strong{font-size:22px}.dashboard-help{align-items:flex-start;flex-wrap:wrap}.dashboard-help button{margin-right:40px}}
 @media(max-width:420px){.shortcut-grid{grid-template-columns:1fr}.shortcut-card{min-height:unset}.dashboard-stats{gap:8px}.dashboard-stat{grid-template-columns:30px 1fr;column-gap:7px;padding:10px}.stat-icon{width:30px;height:30px;font-size:15px}.dashboard-stat strong{font-size:20px}.dashboard-stat small{font-size:9px}}
-@media(max-width:900px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.product-grid,.behrost-products-group{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){header{padding:16px}h1{font-size:16px}.card{padding:15px}main{margin:15px auto}.grid{grid-template-columns:1fr}.topline{align-items:flex-start;flex-direction:column}}
-@media(max-width:420px){.product-grid{grid-template-columns:1fr}}
+@media(max-width:420px){.product-grid,.behrost-products-group{grid-template-columns:1fr}}
 .company-presentation-content{display:grid;gap:14px}.company-presentation-content article,.company-team-member{padding:15px;border:1px solid #e1ebe5;border-radius:12px;background:#fbfdfb}.company-presentation-content h3,.company-team-heading{margin:0 0 8px;color:#245342}.company-presentation-content p,.company-team-member p{white-space:pre-wrap;line-height:2;margin:0 0 6px;color:#40574e}.company-team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.company-team-member img{width:100%;height:180px;object-fit:cover;border-radius:9px;margin-bottom:10px}.company-team-member h4{margin:0 0 8px;color:#214b3d}.company-team-heading{margin-top:16px}
 </style>
 </head>
@@ -1290,19 +1290,28 @@ async function loadCompanyProducts(){
   }
   card.append(body);return card;
  };
- // محصولات غیر بهرست با ترتیب ثبت‌شده نمایش داده می‌شوند.
+ // محصولات دیگر طبق ترتیب ثبت‌شده در شبکه اصلی نمایش داده می‌شوند.
  for(const product of otherProducts)host.append(createProductCard(product));
- // ابتدا همه کارت‌های بهرست نمایش داده می‌شوند.
- for(const product of behrostProducts)host.append(createProductCard(product));
- // معرفی مشترک بهرست پس از تمام کارت‌های آن و در عرض کامل شبکه قرار می‌گیرد.
- const sharedText=(settings?.behrost_shared_description||"").trim();
- if(behrostProducts.length&&sharedText){
-  const sharedDescription=document.createElement("div");
-  sharedDescription.id="behrost-shared-description";
-  sharedDescription.className="behrost-shared-description";
-  sharedDescription.setAttribute("aria-live","polite");
-  sharedDescription.textContent=sharedText;
-  host.append(sharedDescription);
+ // تمام محصولات بهرست در یک مجموعه مستقل و پیوسته قرار می‌گیرند.
+ if(behrostProducts.length){
+  const group=document.createElement("section");
+  group.className="behrost-products-group";
+  group.setAttribute("aria-label","مجموعه محصولات بهرست");
+  const heading=document.createElement("h3");
+  heading.className="behrost-products-heading";
+  heading.textContent="محصولات بهرست";
+  group.append(heading);
+  for(const product of behrostProducts)group.append(createProductCard(product));
+  const sharedText=(settings?.behrost_shared_description||"").trim();
+  if(sharedText){
+   const sharedDescription=document.createElement("div");
+   sharedDescription.id="behrost-shared-description";
+   sharedDescription.className="behrost-shared-description";
+   sharedDescription.setAttribute("aria-live","polite");
+   sharedDescription.textContent=sharedText;
+   group.append(sharedDescription);
+  }
+  host.append(group);
  }
 }
 async function loadServiceWorkspace(){
