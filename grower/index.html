@@ -1168,7 +1168,7 @@ async function activatePush(userId){
   const permission=Notification.permission==="granted"?"granted":await withPushTimeout(Notification.requestPermission(),"دریافت مجوز اعلان");
   if(permission!=="granted"){status.textContent="مجوز اعلان داده نشد. از تنظیمات مرورگر، اعلان‌های این سایت را فعال کنید.";return;}
   status.textContent="در حال ثبت سرویس اعلان روی گوشی…";
-  const registration=await withPushTimeout(navigator.serviceWorker.register("../sw.js",{scope:"../"}),"ثبت سرویس اعلان");
+  const registration=await withPushTimeout(navigator.serviceWorker.register("/sw.js",{scope:"/"}),"ثبت سرویس اعلان");
   status.textContent="در حال آماده‌سازی سرویس اعلان…";
   await withPushTimeout(navigator.serviceWorker.ready,"آماده‌شدن سرویس اعلان");
   status.textContent="در حال ایجاد اشتراک اعلان…";
