@@ -3,14 +3,86 @@
 <style>
 :root{font-family:Tahoma,Arial,sans-serif;color:#18332c;background:#f3f7f5}*{box-sizing:border-box}body{margin:0}header{background:#123d35;color:white;padding:18px max(16px,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:18px;margin:0 0 5px}header p{margin:0;color:#c5d8d1;font-size:12px}main{max-width:1100px;margin:24px auto;padding:0 16px}.card{background:white;border:1px solid #e1eae5;border-radius:15px;padding:19px;margin-bottom:16px;box-shadow:0 4px 18px #163d3010}h2{font-size:17px;margin:0 0 13px}h3{font-size:15px;margin:0 0 8px}.muted,.meta{font-size:12px;color:#62756d;line-height:2}label{display:block;font-size:13px;margin:11px 0 6px}input,textarea,select{width:100%;border:1px solid #cbd9d2;border-radius:9px;padding:11px;font:inherit;font-size:14px}textarea{min-height:95px}button{border:0;border-radius:9px;padding:10px 15px;background:#176b57;color:white;font:inherit;cursor:pointer}button.alt{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5}.hidden{display:none!important}.notice{padding:11px;border-radius:9px;background:#edf6f1;color:#1b5b46;margin:12px 0;font-size:13px;white-space:pre-wrap}.notice.error{background:#fff0ef;color:#8c2929}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.tabs button{background:#e6efea;color:#255344}.tabs button.active{background:#176b57;color:white}.item{border:1px solid #e2ebe6;border-radius:11px;padding:13px;margin:9px 0}.tag{display:inline-block;background:#edf3ef;color:#3f6255;border-radius:18px;padding:5px 9px;font-size:12px}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.empty{text-align:center;padding:20px;color:#718078;font-size:13px}.section{display:none}.section.active{display:block}.divider{border-top:1px solid #e5ece8;margin:18px 0}
 @media(max-width:650px){header{padding:15px}main{margin:14px auto}.card{padding:15px}.grid{grid-template-columns:1fr}}
+
+/* Expert workspace visual system — aligned with the greenhouse portal */
+:root{color-scheme:light}
+body{background:linear-gradient(180deg,#eef4f0 0,#f5f7f5 260px,#f3f7f5 100%);color:#18332c}
+.expert-site-header{position:relative;overflow:hidden;background:linear-gradient(112deg,#0e352e 0%,#145443 62%,#1d6b54 100%);padding:19px max(16px,calc((100% - 1100px)/2));box-shadow:0 5px 18px #123d3020}
+.expert-site-header:after{content:"";position:absolute;left:7%;top:-78px;width:210px;height:210px;border:1px solid #ffffff20;border-radius:50%;box-shadow:0 0 0 24px #ffffff08,0 0 0 52px #ffffff06;pointer-events:none}
+.expert-brand{display:flex;align-items:center;gap:13px;position:relative;z-index:1}
+.expert-brand-mark{width:43px;height:43px;display:grid;place-items:center;border:1px solid #e6c87599;border-radius:13px;background:linear-gradient(145deg,#f6e7b8,#c7a85a);color:#173d32;font-size:23px;font-weight:900;box-shadow:0 3px 9px #071f1938}
+.expert-site-header h1{font-size:19px;letter-spacing:-.2px;margin:0 0 5px}
+.expert-site-header p{font-size:12px;color:#d3e5dc;margin:0}
+.expert-site-header p span{color:#d9bf78;padding:0 3px}
+.expert-site-header #logout{position:relative;z-index:1;background:#ffffff16;color:#fff;border:1px solid #ffffff3a;border-radius:10px}
+main{max-width:1100px;margin:25px auto 40px}
+.card{border-color:#dfe9e3;border-radius:16px;box-shadow:0 5px 20px #183d3010;transition:box-shadow .18s ease,border-color .18s ease}
+h2{font-size:17px;color:#203b34}
+h3{color:#29483d}
+.expert-hero{position:relative;overflow:hidden;padding:23px 25px;border:0;background:linear-gradient(118deg,#103c33 0%,#17664f 72%,#287b60 100%);color:#fff;box-shadow:0 9px 24px #123d3026}
+.expert-hero:after{content:"";position:absolute;left:-30px;bottom:-115px;width:245px;height:245px;border:1px solid #ffffff24;border-radius:50%;box-shadow:0 0 0 27px #ffffff0a,0 0 0 57px #ffffff08;pointer-events:none}
+.expert-hero .top{position:relative;z-index:1;align-items:center}
+.expert-hero h2{color:#fff;font-size:22px;margin:5px 0 7px}
+.expert-eyebrow{font-size:10px;letter-spacing:.6px;color:#d9c78e;font-weight:700}
+.expert-profile-line{color:#d7e8df;font-size:12px;line-height:1.9}
+.expert-verified{background:#ffffff18;border:1px solid #ffffff48;color:#fff;padding:7px 12px;font-weight:700}
+.expert-hero .actions{position:relative;z-index:1;margin-top:17px;padding-top:13px;border-top:1px solid #ffffff2b}
+.expert-hero #enable-push{background:#fff;color:#17513f;border:1px solid #e4eee8;font-weight:700}
+.expert-hero #push-status{position:relative;z-index:1;color:#d7e8df;margin:8px 0 0}
+#expert-tabs.tabs{gap:10px;padding:12px;margin:0 0 17px;background:linear-gradient(135deg,#e8eee8 0%,#f7f3e8 100%);border:1px solid #d6c58f;border-radius:15px;box-shadow:0 3px 12px #253d3010}
+#expert-tabs.tabs button{min-height:45px;padding:10px 16px;border:1px solid #d5c17d;border-radius:10px;background:linear-gradient(180deg,#fffdf5 0%,#f2e4b9 100%);color:#294638;font-size:13px;font-weight:700;box-shadow:0 3px 0 #a78a45,0 5px 9px #263d301b;transition:transform .15s ease,box-shadow .15s ease}
+#expert-tabs.tabs button:hover{transform:translateY(-2px);box-shadow:0 5px 0 #a78a45,0 8px 13px #263d3024}
+#expert-tabs.tabs button.active{background:linear-gradient(180deg,#287d61 0%,#10513e 100%);border-color:#e1c16c;color:#fff;box-shadow:0 3px 0 #795d24,0 6px 11px #163d3026}
+#expert-tabs.tabs button:focus-visible,button:focus-visible{outline:3px solid #d7b65f;outline-offset:3px}
+button{font-weight:700;transition:filter .15s ease,transform .15s ease,box-shadow .15s ease}
+button:hover:not(:disabled){filter:brightness(1.04)}
+button.alt{background:#edf4ef;color:#225541;border:1px solid #d7e5dc}
+input,textarea,select{background:#fff;color:#18332c;border-color:#cbd9d2;transition:border-color .15s ease,box-shadow .15s ease}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#4c9278;box-shadow:0 0 0 3px #35856520}
+.section.card{padding:21px}
+.section h2{padding-right:11px;border-right:3px solid #c5a96a}
+.item{border-color:#e0e9e3;border-radius:13px;background:#fcfdfc;padding:15px}
+.item h3{margin-bottom:7px}
+.notice{border:1px solid #d6e8dc;line-height:1.9}
+.notice.error{border-color:#f0d4d1}
+.table-wrap{max-width:100%;overflow-x:auto;border:1px solid #e2ebe5;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+th{background:#edf4ef;color:#355749;font-weight:700;white-space:nowrap}
+th,td{padding:10px 11px;border-bottom:1px solid #e8efea;text-align:right}
+tbody tr:last-child td{border-bottom:0}
+.empty{border:1px dashed #d8e4dc;border-radius:12px;background:#fafcfb;line-height:1.9}
+#login-card{max-width:570px;margin:clamp(24px,7vh,70px) auto;padding:26px;border-top:4px solid #c5a96a}
+#login-card h2{font-size:20px}
+#login-card .actions button{min-width:125px}
+#blocked{max-width:650px;margin:35px auto;border-top:4px solid #c5a96a}
+#detail{border-top:3px solid #c5a96a}
+@media(max-width:760px){
+ .expert-site-header{padding:16px}
+ main{margin:17px auto 28px;padding:0 12px}
+ .expert-hero{padding:19px}
+ .expert-hero h2{font-size:19px}
+ #expert-tabs.tabs{padding:10px;gap:9px}
+ #expert-tabs.tabs button{flex:1 1 calc(50% - 9px);padding:10px 9px;font-size:12px}
+ .section.card{padding:16px}
+}
+@media(max-width:480px){
+ .expert-brand-mark{width:38px;height:38px;font-size:20px}
+ .expert-site-header h1{font-size:16px}
+ .expert-site-header p{font-size:11px}
+ .expert-hero .top{align-items:flex-start;flex-direction:column}
+ .expert-verified{align-self:flex-start}
+ #login-card{margin:20px auto;padding:19px}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+
 </style></head><body>
-<header><div><h1>سامانه مشاوره تخصصی گلخانه</h1><p>پیوندگستر پارسان · پنل کارشناس</p></div><button id="logout" class="alt hidden">خروج</button></header>
+<header class="expert-site-header"><div class="expert-brand"><span class="expert-brand-mark" aria-hidden="true">پ</span><div><h1>سامانه مشاوره تخصصی گلخانه</h1><p>پیوندگستر پارسان <span>·</span> فضای تخصصی کارشناسان</p></div></div><button id="logout" class="alt hidden">خروج از حساب</button></header>
 <main>
 <section id="login-card" class="card"><h2>ورود کارشناس</h2><p class="muted">ورود فقط برای کارشناسان دعوت‌شده، تأییدشده و فعال امکان‌پذیر است.</p><label>ایمیل</label><input id="email" type="email" autocomplete="username"><label>گذرواژه</label><input id="password" type="password" autocomplete="current-password"><div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="alt">فراموشی گذرواژه</button></div><div id="login-msg" class="notice hidden"></div></section>
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
-<div class="card"><div class="top"><div><h2 id="welcome">پنل کارشناس</h2><div id="profile" class="muted"></div></div><span class="tag">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
-<nav class="tabs"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="lab-assignments">کارهای آزمایشگاه</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
+<div class="card expert-hero"><div class="top"><div><div class="expert-eyebrow">WORKSPACE · پیوندگستر پارسان</div><h2 id="welcome">پنل تخصصی کارشناس</h2><div id="profile" class="expert-profile-line"></div></div><span class="tag expert-verified">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
+<nav id="expert-tabs" class="tabs" aria-label="بخش‌های پنل کارشناس"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="lab-assignments">کارهای آزمایشگاه</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
 <section id="expert-profile-section" class="section card">
  <h2>پروفایل من</h2>
  <p class="muted">اطلاعات فردی، تخصصی و بانکی خود را تکمیل یا اصلاح کنید. اطلاعات بانکی فقط برای شما و مدیر سامانه قابل مشاهده است.</p>
