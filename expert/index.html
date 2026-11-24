@@ -25,7 +25,7 @@ h3{color:#29483d}
 .expert-hero h2{color:#fff;font-size:22px;margin:5px 0 7px}
 .expert-eyebrow{font-size:10px;letter-spacing:.6px;color:#d9c78e;font-weight:700}
 .expert-profile-line{color:#d7e8df;font-size:12px;line-height:1.9}
-.expert-verified{background:#ffffff18;border:1px solid #ffffff48;color:#fff;padding:7px 12px;font-weight:700}
+.expert-verified{background:#ffffff18;border:1px solid #ffffff48;color:#fff;padding:7px 12px;font-weight:700}.expert-status{display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}.expert-active{background:#dff4e7;border:1px solid #a7dfb8;color:#145638;padding:7px 12px;font-weight:800}
 .expert-hero .actions{position:relative;z-index:1;margin-top:17px;padding-top:13px;border-top:1px solid #ffffff2b}
 .expert-hero #enable-push{background:#fff;color:#17513f;border:1px solid #e4eee8;font-weight:700}
 .expert-hero #push-status{position:relative;z-index:1;color:#d7e8df;margin:8px 0 0}
@@ -81,7 +81,7 @@ tbody tr:last-child td{border-bottom:0}
 <section id="login-card" class="card"><h2>ورود کارشناس</h2><p class="muted">ورود فقط برای کارشناسان دعوت‌شده، تأییدشده و فعال امکان‌پذیر است.</p><label>ایمیل</label><input id="email" type="email" autocomplete="username"><label>گذرواژه</label><input id="password" type="password" autocomplete="current-password"><div class="actions"><button id="login">ورود</button><button id="forgot-password" type="button" class="alt">فراموشی گذرواژه</button></div><div id="login-msg" class="notice hidden"></div></section>
 <section id="blocked" class="card hidden"><h2>دسترسی کارشناسی فعال نیست</h2><p id="blocked-msg" class="muted"></p><button id="blocked-logout" class="alt">خروج</button></section>
 <section id="app" class="hidden">
-<div class="card expert-hero"><div class="top"><div><div class="expert-eyebrow">WORKSPACE · پیوندگستر پارسان</div><h2 id="welcome">پنل تخصصی کارشناس</h2><div id="profile" class="expert-profile-line"></div></div><span class="tag expert-verified">کارشناس تأییدشده</span></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
+<div class="card expert-hero"><div class="top"><div><div class="expert-eyebrow">WORKSPACE · پیوندگستر پارسان</div><h2 id="welcome">پنل تخصصی کارشناس</h2><div id="profile" class="expert-profile-line"></div></div><div class="expert-status"><span class="tag expert-verified">✓ کارشناس تأییدشده</span><span class="tag expert-active">● حساب فعال</span></div></div><div class="actions"><button id="enable-push" type="button" class="alt">فعال‌سازی اعلان‌ها</button></div><p id="push-status" class="muted" role="status">برای دریافت اعلان روی گوشی، اعلان‌ها را فعال کنید.</p></div>
 <nav id="expert-tabs" class="tabs" aria-label="بخش‌های پنل کارشناس"><button class="active" data-tab="invites">دعوت‌های جدید</button><button data-tab="assigned">پرونده‌های فعال</button><button data-tab="lab-assignments">کارهای آزمایشگاه</button><button data-tab="expert-profile-section">پروفایل من</button></nav>
 <section id="expert-profile-section" class="section card">
  <h2>پروفایل من</h2>
@@ -233,7 +233,7 @@ $("expert-profile-form").addEventListener("submit",async event=>{
   const failed=results.find(x=>x.error);if(failed?.error)throw failed.error;
   msg("expert-profile-message","اطلاعات پروفایل و بانکی با موفقیت ذخیره شد.");
   $("welcome").textContent=[first_name,last_name].filter(Boolean).join(" ")||"پنل کارشناس";
-  $("profile").textContent=(title||"کارشناس")+(organization?" · "+organization:"")+" · "+(user.email||"");
+  $("profile").textContent=(title||"کارشناس")+(organization?" · "+organization:"")+(phone?" · همراه: "+phone:" · شماره همراه ثبت نشده")+(user.email?" · "+user.email:"");
  }catch(error){msg("expert-profile-message","ذخیره اطلاعات ناموفق بود: "+(error?.message||"خطای ارتباط"),true);}
  finally{button.disabled=false;}
 });
@@ -249,7 +249,7 @@ async function verifyAndEnter(inputUser=null,inputToken=null){
  const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+token};
  const base=SUPABASE_URL+"/rest/v1/";
  const requests=await withLoginTimeout(Promise.all([
-  fetchWithTimeout(base+"user_profiles?select=first_name,last_name,account_status&id=eq."+encodeURIComponent(user.id),{headers}),
+  fetchWithTimeout(base+"user_profiles?select=first_name,last_name,phone,account_status&id=eq."+encodeURIComponent(user.id),{headers}),
   fetchWithTimeout(base+"user_roles?select=role_code&user_id=eq."+encodeURIComponent(user.id)+"&role_code=eq.expert",{headers}),
   fetchWithTimeout(base+"expert_profiles?select=professional_title,organization,invitation_status,is_verified&user_id=eq."+encodeURIComponent(user.id),{headers})
  ]),"بررسی دسترسی کارشناسی");
@@ -265,7 +265,7 @@ async function verifyAndEnter(inputUser=null,inputToken=null){
  }
  show("blocked",false);show("app",true);
  $("welcome").textContent=[p.first_name,p.last_name].filter(Boolean).join(" ")||"پنل کارشناس";
- $("profile").textContent=(e.professional_title||"کارشناس")+(e.organization?" · "+e.organization:"")+" · "+user.email;
+ $("profile").textContent=(e.professional_title||"کارشناس")+(e.organization?" · "+e.organization:"")+(p.phone?" · همراه: "+p.phone:" · شماره همراه ثبت نشده")+(user.email?" · "+user.email:"");
  const activeUserId=user.id;
  void loadExpertProfile();
  Promise.allSettled([loadInvites(),loadAssigned(),loadAssignedLabSamples()]).then(results=>{
