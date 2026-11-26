@@ -158,7 +158,7 @@
           sessionStorage.removeItem(reloadKey);
         }
 
-        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+        navigator.serviceWorker.register("./sw.js", { scope: "/mobile/" })
           .then(async registration => {
             await navigator.serviceWorker.ready;
             return registration;
