@@ -1,4 +1,5 @@
 name: Deploy admin, grower, expert and mobile portals to GitHub Pages
+# Mobile PWA is published with its own /mobile/sw.js worker and /mobile/ scope.
 
 on:
   push:
