@@ -146,6 +146,7 @@ jobs:
           cp expert/index.html _site/expert/index.html
           cp expert/sw.js _site/expert/sw.js
           cp mobile/index.html _site/mobile/index.html
+          cp mobile/sw.js _site/mobile/sw.js
           cp users/index.html _site/users/index.html
           cp mobile/manifest.webmanifest _site/mobile/manifest.webmanifest
           cp mobile/icons/icon.svg _site/mobile/icons/icon.svg
