@@ -120,7 +120,25 @@ jobs:
               if (manifestInfo.errors?.length) throw new Error('Browser reported manifest errors');
               if (installability.installabilityErrors?.length) throw new Error('Browser reported installability errors: ' + JSON.stringify(installability.installabilityErrors));
               if (pageErrors.length) throw new Error('Browser page errors: ' + pageErrors.join('; '));
+
+              const expertErrors = [];
+              page.on('pageerror', error => expertErrors.push(String(error)));
+              const expertResponse = await page.goto('https://app.peyvandgostar.com/expert/?logo-check=20261126', { waitUntil: 'networkidle', timeout: 60000 });
+              if (!expertResponse || !expertResponse.ok()) throw new Error('Expert page HTTP status: ' + (expertResponse && expertResponse.status()));
+              const expertLogo = await page.locator('.expert-brand-mark').evaluate(img => ({
+                complete: img.complete,
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight,
+                sourceType: img.currentSrc.startsWith('data:image/webp;base64,') ? 'embedded-webp' : img.currentSrc.slice(0, 80),
+                background: getComputedStyle(img).backgroundColor
+              }));
+              console.log('EXPERT_LOGO_CHECK=' + JSON.stringify(expertLogo));
+              if (!expertLogo.complete || !expertLogo.naturalWidth || !expertLogo.naturalHeight) throw new Error('Expert company logo did not render');
+              if (expertLogo.background !== 'rgba(0, 0, 0, 0)') throw new Error('Expert company logo background is not transparent');
+              if (expertErrors.length) throw new Error('Expert page errors: ' + expertErrors.join('; '));
+
               console.log('MOBILE_PWA_INSTALLABILITY=PASS');
+              console.log('EXPERT_LOGO_RENDER=PASS');
             } finally {
               await context.close();
             }
