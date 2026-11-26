@@ -761,6 +761,13 @@ async function savePushSubscription(userId,subscription){
 }
 async function syncPushStatus(userId){
  const status=$("push-status"),enable=$("enable-push");
+ // Electron desktop builds do not provide a browser push service. Keep this
+ // optional feature out of the desktop flow so it cannot affect normal use.
+ if(/Electron/i.test(navigator.userAgent)){
+  enable.hidden=true;
+  status.textContent="اعلان فوری در نسخه ویندوز فعال نیست؛ سایر امکانات پنل بدون محدودیت در دسترس هستند.";
+  return;
+ }
  enable.hidden=false;enable.disabled=false;
  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
   status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";enable.hidden=true;return;
@@ -791,6 +798,11 @@ async function syncPushStatus(userId){
 }
 async function activatePush(userId){
  const status=$("push-status"),enable=$("enable-push");
+ if(/Electron/i.test(navigator.userAgent)){
+  enable.hidden=true;
+  status.textContent="اعلان فوری در نسخه ویندوز فعال نیست؛ سایر امکانات پنل بدون محدودیت در دسترس هستند.";
+  return;
+ }
  try{
   if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
    status.textContent="این مرورگر از اعلان اینترنتی پشتیبانی نمی‌کند.";return;
