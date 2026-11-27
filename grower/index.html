@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#123d35">
 <title>پنل گلخانه‌دار | سامانه مشاوره گلخانه</title>
 <style>
+body.auth-locked #app,body.auth-locked #grower-tabs,body.auth-locked .section{display:none!important}
 :root{font-family:Tahoma,Arial,sans-serif;color:#18332c;background:#f3f7f5;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}header{background:#123d35;color:#fff;padding:20px max(16px,calc((100% - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px}
 h1{font-size:19px;margin:0 0 5px}header p{margin:0;color:#c5d8d1;font-size:12px}
@@ -153,7 +154,7 @@ button.secondary{background:#e9f1ed;color:#194c3e}button:disabled{opacity:.5;cur
 
 </style>
 </head>
-<body>
+<body class="auth-locked">
 <header>
  <div><h1>سامانه مشاوره تخصصی گلخانه</h1><p>پیوندگستر پارسان · پنل گلخانه‌دار</p></div>
  <button id="logout" class="secondary hidden">خروج از حساب</button>
@@ -661,6 +662,7 @@ $("grower-profile-form").addEventListener("submit",async event=>{
 });
 async function enter(user=null,accessToken=null){
  if(!user||!accessToken){
+  document.body.classList.add("auth-locked");
   const {data,error}=await supabase.auth.getSession();
   if(error)throw error;
   user=data?.session?.user||null;accessToken=data?.session?.access_token||null;
@@ -670,10 +672,12 @@ async function enter(user=null,accessToken=null){
  const {profile,hasGrowerRole}=await requireGrower(user,accessToken);
  show("login-card",false);show("logout",true);
  if(profile?.account_status!=="active"||!hasGrowerRole){
+  document.body.classList.add("auth-locked");
   show("account-pending");show("app",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);
   $("pending-message").textContent="حساب شما هنوز به‌عنوان گلخانه‌دار فعال نشده است. پس از بررسی مدیر سامانه، امکان ثبت گلخانه و دوره کشت فعال خواهد شد.";
   return;
  }
+ document.body.classList.remove("auth-locked");
  show("account-pending",false);show("app",true);show("grower-tabs",true);show("dashboard-section",true);show("profile-section",true);show("greenhouses-section",true);show("cycles-section",true);show("cases-section",true);show("services-section",true);show("products-section",true);activateGrowerSection("dashboard-section");
  const full=[profile.first_name,profile.last_name].filter(Boolean).join(" ");
  $("welcome").textContent=full?"خوش آمدید، "+full:"پنل گلخانه‌دار";
@@ -1256,7 +1260,7 @@ async function activatePush(userId){
  }finally{enable.disabled=false;}
 }
 $("enable-push").addEventListener("click",()=>activatePush(currentUser?.id));
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);show("products-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){document.body.classList.add("auth-locked");currentUser=null;currentAccessToken=null;show("app",false);show("account-pending",false);show("grower-tabs",false);show("greenhouses-section",false);show("cycles-section",false);show("cases-section",false);show("services-section",false);show("products-section",false);show("logout",false);show("login-card",true);}else if(session?.access_token&&currentUser?.id===session.user?.id){currentAccessToken=session.access_token;}});
 
 
 
